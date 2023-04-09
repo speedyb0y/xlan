@@ -68,7 +68,7 @@ typedef struct xlan_path_s {
 typedef struct xlan_itfc_s {
     void* dev; // VIRTUAL INTERFACE
     u32 hash; // PARA IDENTIFICAR AO ENTRAR
-    uint pathsN;
+    u32 pathsN;
     xlan_path_s paths[XLAN_PATHS_N];
 } xlan_itfc_s;
 
@@ -303,10 +303,10 @@ static int __init xlan_init (void) {
 
         xlan_itfc_s* const itfc = &itfcs[i];
 
-        net_device_s* dev;
-
         // CREATE THE VIRTUAL INTERFACE
-        if ((dev = alloc_netdev(sizeof(xlan_itfc_s*), (const char*)itfc->dev, NET_NAME_USER, xlan_setup))) {
+        net_device_s* dev = alloc_netdev(sizeof(xlan_itfc_s*), (const char*)itfc->dev, NET_NAME_USER, xlan_setup);
+
+        if (dev) {
 
             // MAKE IT VISIBLE IN THE SYSTEM
             if (register_netdev(dev)) {
