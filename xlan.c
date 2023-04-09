@@ -74,22 +74,22 @@ typedef struct xlan_itfc_s {
 
 static uint itfcsN = 1;
 
-#define GW 0x01010100U
-#define GW_A "\x00\x01\x01\x01\x01\xAA"
-#define GW_B "\x00\x01\x01\x01\x01\xBB"
+#define GW_A "lan-a"
+#define GW_B "lan-b"
 
-#define SPEEDYB0Y 0x20202000U
-#define SPEEDYB0Y_A "\x00\x20\x20\x20\x20\xAA"
-#define SPEEDYB0Y_B "\x00\x20\x20\x20\x20\xBB"
+#define GW_ID 0x01010100U
+#define GW_ETH_A "\x00\x01\x01\x01\x01\xAA"
+#define GW_ETH_B "\x00\x01\x01\x01\x01\xBB"
+
+#define SPEEDYB0Y_ID 0x20202000U
+#define SPEEDYB0Y_ETH_A "\x00\x20\x20\x20\x20\xAA"
+#define SPEEDYB0Y_ETH_B "\x00\x20\x20\x20\x20\xBB"
 
 static xlan_itfc_s itfcs[] = {
-    {
-        .dev = "speedyb0y",
-        .hash = SPEEDYB0Y,
-        .pathsN = 2,
-        .paths = {
-            { .dev = "lan-a", .eth = { .h_dest   = SPEEDYB0Y_A, .h_source = GW_A, .h_proto  = 0x0008 }, },
-            { .dev = "lan-b", .eth = { .h_dest   = SPEEDYB0Y_B, .h_source = GW_B, .h_proto  = 0x0008 }, }
+    { "speedyb0y", SPEEDYB0Y_ID,
+        2, {
+            { GW_A, { SPEEDYB0Y_ETH_A, GW_ETH_A, 0x0008 }, },
+            { GW_B, { SPEEDYB0Y_ETH_B, GW_ETH_B, 0x0008 }, }
         },
     },
 };
