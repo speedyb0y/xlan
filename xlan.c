@@ -326,10 +326,10 @@ static int __init xlan_init (void) {
 
             xlan_path_s* const path = &itfc->paths[i];
 
-            net_device_s* dev;
+            net_device_s* dev = dev_get_by_name(&init_net, (const char*)path->dev);
 
             // TODO: PODE USAR O rx_handler_data COMO REF COUNT
-            if ((dev = dev_get_by_name(&init_net, (const char*)path->dev))) {
+            if (dev) {
 
                 rtnl_lock();
 
@@ -368,9 +368,7 @@ static void __exit xlan_exit (void) {
             // UNHOOK PHYSICAL INTERFACES
             foreach (i, itfc->pathsN) {
 
-                xlan_path_s* const path = &itfc->paths[i];
-
-                net_device_s* const dev = path->dev;
+                net_device_s* const dev = itfc->paths[i].dev;
 
                 if (dev) {
 
