@@ -81,18 +81,18 @@ static uint itfcsN = 1;
 
 static xlan_itfc_s itfcs[] = {
     {
-        .name = "speedyb0y",
+        .dev = "speedyb0y",
         .hash = SPEEDYB0Y,
         .pathsN = 2,
         .paths = {
-            { .itfc = "lan-a",
+            { .dev = "lan-a",
                 .eth = {
                     .h_dest   = SPEEDYB0Y_A,
                     .h_source = GW_A,
                     .h_proto  = 0x0080 // BE16(ETH_P_IP)
                 },
             },
-            { .itfc = "lan-b",
+            { .dev = "lan-b",
                 .eth = {
                     .h_dest   = SPEEDYB0Y_B,
                     .h_source = GW_B,
