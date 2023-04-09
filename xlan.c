@@ -79,23 +79,31 @@ typedef struct xlan_itfc_s {
 
 static uint itfcsN = 1;
 
+#define GW 0x01016225U
+#define GW_A "\x25\x62\x01\x01\xAA\xAA"
+#define GW_B "\x25\x62\x01\x01\xBB\xBB"
+
+#define SPEEDYB0Y 0x20206225U
+#define SPEEDYB0Y_A "\x25\x62\x20\x20\xAA\xAA"
+#define SPEEDYB0Y_B "\x25\x62\x20\x20\xBB\xBB"
+
 static xlan_itfc_s itfcs[] = {
     {
         .name = "speedyb0y",
-        .hash = 0x20206225U, // 25 62 20 20
+        .hash = SPEEDYB0Y,
         .pathsN = 2,
         .paths = {
             { .itfc = "lan-a",
                 .eth = {
-                    .h_dest   = "\x25\x62\x20\x20\xAA\xAA",
-                    .h_source = "\x25\x62\x01\x01\xAA\xAA",
+                    .h_dest   = SPEEDYB0Y_A,
+                    .h_source = GW_A,
                     .h_proto  = 0x0080 // BE16(ETH_P_IP)
                 },
             },
             { .itfc = "lan-b",
                 .eth = {
-                    .h_dest   = "\x25\x62\x20\x20\xBB\xBB",
-                    .h_source = "\x25\x62\x01\x01\xBB\xBB",
+                    .h_dest   = SPEEDYB0Y_B,
+                    .h_source = GW_B,
                     .h_proto  = 0x0080 // BE16(ETH_P_IP)
                 },
             }
