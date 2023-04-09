@@ -53,6 +53,10 @@ typedef struct ethhdr ethhdr_s;
 #define BE64(x) ((u64)__builtin_bswap64((u64)(x)))
 #endif
 
+#define ETH_SIZE 14
+#define IP4_SIZE 20
+#define IP6_SIZE 40
+
 // MAX
 #define XLAN_PATHS_N 4
 
