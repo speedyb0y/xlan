@@ -320,11 +320,11 @@ static int __init xlan_init (void) {
 
                 rtnl_lock();
 
-                const int failed = rcu_dereference(dev->rx_handler) != xlan_in && !netdev_rx_handler_register(dev, xlan_in, NULL);
+                const int ok = (rcu_dereference(dev->rx_handler) == xlan_in || netdev_rx_handler_register(dev, xlan_in, NULL) == 0);
 
                 rtnl_unlock();
 
-                if (failed) {
+                if (!ok) {
                     dev_put(dev);
                     dev = NULL;
                 }
