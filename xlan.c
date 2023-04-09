@@ -107,45 +107,45 @@ static xlan_itfc_s itfcs[] = {
 #if HOST == HOST_GW || HOST == HOST_XQUOTES
     { "speedyb0y", SPEEDYB0Y_ID,
         2, {
-            { "switch-a", { SPEEDYB0Y_ETH_A, GW_ETH_A, 0x0008 }, },
-            { "switch-b", { SPEEDYB0Y_ETH_B, GW_ETH_B, 0x0008 }, }
+            { "lan-a", { SPEEDYB0Y_ETH_A, GW_ETH_A, 0x0008 }, },
+            { "lan-b", { SPEEDYB0Y_ETH_B, GW_ETH_B, 0x0008 }, }
         },
     },
     { "xtrader", XTRADER_ID,
         2, {
-            { "switch-a", { XTRADER_ETH_A, GW_ETH_A, 0x0008 }, },
-            { "switch-b", { XTRADER_ETH_B, GW_ETH_B, 0x0008 }, }
+            { "lan-a", { XTRADER_ETH_A, GW_ETH_A, 0x0008 }, },
+            { "lan-b", { XTRADER_ETH_B, GW_ETH_B, 0x0008 }, }
         },
     },
     { "pc2", PC2_ID,
         2, {
-            { "switch-a", { PC2_ETH_A, GW_ETH_A, 0x0008 }, },
-            { "switch-b", { PC2_ETH_B, GW_ETH_B, 0x0008 }, }
+            { "lan-a", { PC2_ETH_A, GW_ETH_A, 0x0008 }, },
+            { "lan-b", { PC2_ETH_B, GW_ETH_B, 0x0008 }, }
         },
     },
 #elif HOST == HOST_SPEEDYB0Y
     { "gw", GW_ID,
         2, {
-            { "switch-a", { GW_ETH_A, SPEEDYB0Y_ETH_A, 0x0008 }, },
-            { "switch-b", { GW_ETH_B, SPEEDYB0Y_ETH_B, 0x0008 }, }
+            { "lan-a", { GW_ETH_A, SPEEDYB0Y_ETH_A, 0x0008 }, },
+            { "lan-b", { GW_ETH_B, SPEEDYB0Y_ETH_B, 0x0008 }, }
         },
     },
     { "xquotes", XQUOTES_ID,
         2, {
-            { "switch-a", { XQUOTES_ETH_A, SPEEDYB0Y_ETH_A, 0x0008 }, },
-            { "switch-b", { XQUOTES_ETH_B, SPEEDYB0Y_ETH_B, 0x0008 }, }
+            { "lan-a", { XQUOTES_ETH_A, SPEEDYB0Y_ETH_A, 0x0008 }, },
+            { "lan-b", { XQUOTES_ETH_B, SPEEDYB0Y_ETH_B, 0x0008 }, }
         },
     },
     { "xtrader", XTRADER_ID,
         2, {
-            { "switch-a", { XTRADER_ETH_A, SPEEDYB0Y_ETH_A, 0x0008 }, },
-            { "switch-b", { XTRADER_ETH_B, SPEEDYB0Y_ETH_B, 0x0008 }, }
+            { "lan-a", { XTRADER_ETH_A, SPEEDYB0Y_ETH_A, 0x0008 }, },
+            { "lan-b", { XTRADER_ETH_B, SPEEDYB0Y_ETH_B, 0x0008 }, }
         },
     },
     { "pc2", PC2_ID,
         2, {
-            { "switch-a", { PC2_ETH_A, SPEEDYB0Y_ETH_A, 0x0008 }, },
-            { "switch-b", { PC2_ETH_B, SPEEDYB0Y_ETH_B, 0x0008 }, }
+            { "lan-a", { PC2_ETH_A, SPEEDYB0Y_ETH_A, 0x0008 }, },
+            { "lan-b", { PC2_ETH_B, SPEEDYB0Y_ETH_B, 0x0008 }, }
         },
     },
 #endif
