@@ -134,7 +134,7 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
         goto pass;
 
     // IDENTIFY
-    const u32 hash = *(u32*)eth->h_source;
+    const u32 hash = *(u32*)&eth->h_source;
 
     foreach (i, itfcsN) {
 
