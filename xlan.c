@@ -105,7 +105,7 @@ typedef struct xlan_itfc_s {
 
 #define itfcsN (sizeof(itfcs)/sizeof(*itfcs))
 
-static xlan_itfc_s itfcs[] = {
+static xlan_itfc_s itfcs[] = { // TODO: FIXME: MOSTLY READ
 #if HOST == HOST_GW || HOST == HOST_XQUOTES
     { "speedyb0y", SPEEDYB0Y_ID, 0, {
         { "lan-a", { SPEEDYB0Y_ETH_A, GW_ETH_A, 0 }, },
