@@ -216,12 +216,12 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
         // SEM ESPACO PARA COLOCAR O MAC HEADER
         goto drop;
 
-    memcpy(eth, &path->eth, sizeof(path->eth));
+    memcpy(eth, &path->eth, sizeof(*eth));
 
     if (!v4)
         eth->h_proto = BE16(ETH_P_IPV6);
     
-    skb->mac_len          = sizeof(eth);
+    skb->mac_len          = sizeof(*eth);
     skb->data             = PTR(eth);
 #ifdef NET_SKBUFF_DATA_USES_OFFSET
     skb->mac_header       = PTR(eth) - SKB_HEAD(skb);
