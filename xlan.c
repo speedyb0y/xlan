@@ -145,15 +145,15 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
                 void* const ip = PTR(eth) + sizeof(*eth);
 
                 skb->mac_len          = 0;
-                skb->data             = ip;
+                skb->data             = PTR(ip);
 #ifdef NET_SKBUFF_DATA_USES_OFFSET
-                skb->mac_header       = ip - SKB_HEAD(skb);
-                skb->network_header   = ip - SKB_HEAD(skb);
+                skb->mac_header       = PTR(ip) - SKB_HEAD(skb);
+                skb->network_header   = PTR(ip) - SKB_HEAD(skb);
 #else
-                skb->mac_header       = ip;
-                skb->network_header   = ip;
+                skb->mac_header       = PTR(ip);
+                skb->network_header   = PTR(ip);
 #endif
-                skb->len              = SKB_TAIL(skb) - ip;
+                skb->len              = SKB_TAIL(skb) - PTR(ip);
                 skb->dev              = itfc->dev;
             }
 
@@ -225,11 +225,15 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
 
     if (!v4)
         eth->h_proto = BE16(ETH_P_IPV6);
-
-    skb->data            -= sizeof(eth);
-    skb->len             += sizeof(eth);
+    
     skb->mac_len          = sizeof(eth);
+    skb->data             = PTR(eth);
+#ifdef NET_SKBUFF_DATA_USES_OFFSET
     skb->mac_header       = PTR(eth) - SKB_HEAD(skb);
+#else
+    skb->mac_header       = PTR(eth);
+#endif
+    skb->len              = SKB_TAIL(skb) - PTR(eth);
     skb->dev              = path->itfc;
 
     // -- THE FUNCTION CAN BE CALLED FROM AN INTERRUPT
