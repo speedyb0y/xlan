@@ -94,7 +94,6 @@ static xlan_itfc_s itfcs[] = {
     },
 };
 
-// TODO: FIXME: PROTECT THE REAL SERVER TCP PORTS SO WE DON'T NEED TO BIND TO THE FAKE INTERFACE
 static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
 
     sk_buff_s* const skb = *pskb;
@@ -131,6 +130,7 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
         if (itfc->hash == hash) {
             
             if (itfc->dev) {
+                // TODO: SE A INTERFACE ESTIVER DOWN, PASS
 
                 // RETIRA O ETHERNET HEADER
                 void* const ip = PTR(eth) + sizeof(*eth);
@@ -328,11 +328,17 @@ static int __init xlan_init (void) {
 
             net_device_s* dev;
 
-            if ((dev = dev_get_by_name(&init_net, (const char*)path->dev))) { // TODO: FIXME: VAI TER QUE USAR O rx_handler_data COMO USAGE COUNT
+            // TODO: PODE USAR O rx_handler_data COMO REF COUNT
+            if ((dev = dev_get_by_name(&init_net, (const char*)path->dev))) {
 
                 rtnl_lock();
 
-                const int ok = (rcu_dereference(dev->rx_handler) == xlan_in || netdev_rx_handler_register(dev, xlan_in, NULL) == 0);
+                const int ok =
+                        // JÁ ESTA HOOKADA
+                        rcu_dereference(dev->rx_handler) == xlan_in
+                        // ...OU CONSEGUIU HOOKAR
+                    || netdev_rx_handler_register(dev, xlan_in, NULL) ==  0
+                ;
 
                 rtnl_unlock();
 
