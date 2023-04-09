@@ -318,7 +318,7 @@ static int __init xlan_init (void) {
         net_device_s* dev;
 
         // CREATE THE VIRTUAL INTERFACE
-        if ((dev = alloc_netdev(sizeof(xlan_itfc_s*), itfc->dev, NET_NAME_USER, xlan_setup))) {
+        if ((dev = alloc_netdev(sizeof(xlan_itfc_s*), (const char*)itfc->dev, NET_NAME_USER, xlan_setup))) {
 
             // MAKE IT VISIBLE IN THE SYSTEM
             if (register_netdev(dev)) {
@@ -338,9 +338,9 @@ static int __init xlan_init (void) {
 
             xlan_path_s* const path = &itfc->paths[i];
 
-            net_device_s* dev = path->dev;
+            net_device_s* dev;
 
-            if ((dev = dev_get_by_name(&init_net, dev))) { // TODO: FIXME: VAI TER QUE USAR O rx_handler_data COMO USAGE COUNT
+            if ((dev = dev_get_by_name(&init_net, (const char*)path->dev))) { // TODO: FIXME: VAI TER QUE USAR O rx_handler_data COMO USAGE COUNT
 
                 rtnl_lock();
 
