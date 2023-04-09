@@ -294,7 +294,7 @@ static void xlan_setup (net_device_s* const dev) {
     dev->priv_flags      = IFF_NO_QUEUE
                          | IFF_NO_RX_HANDLER
                          | IFF_LIVE_ADDR_CHANGE
-                         | IFF_LIVE_RENAME_OK
+                         //| IFF_LIVE_RENAME_OK
         ;
     dev->features        = // TODO: TEM QUE TER AS MESMAS FEATURES DAS INTERFACES
     dev->hw_features     = 0
