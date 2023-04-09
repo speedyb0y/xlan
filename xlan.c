@@ -72,33 +72,83 @@ typedef struct xlan_itfc_s {
     xlan_path_s paths[XLAN_PATHS_N];
 } xlan_itfc_s;
 
-static uint itfcsN = 1;
-
-#define HOST_GW         1
+#define HOST_GW          1
 #define HOST_WIFI       10
-#define HOST_XQUOTES    50
 #define HOST_SPEEDYB0Y  20
 #define HOST_PC2        30
 #define HOST_XTRADER    40
+#define HOST_XQUOTES    50
+#define HOST_TEST       70
 
-#define GW_A "lan-a"
-#define GW_B "lan-b"
-
-#define GW_ID 0x01010100U
-#define GW_ETH_A "\x00\x01\x01\x01\x01\xAA"
-#define GW_ETH_B "\x00\x01\x01\x01\x01\xBB"
-
+#define GW_ID        0x01010100U
 #define SPEEDYB0Y_ID 0x20202000U
+#define PC2_ID       0x30303000U
+#define XTRADER_ID   0x40404000U
+#define XQUOTES_ID   0x50505000U
+
+#define GW_ETH_A        "\x00\x01\x01\x01\x01\xAA"
+#define GW_ETH_B        "\x00\x01\x01\x01\x01\xBB"
+
 #define SPEEDYB0Y_ETH_A "\x00\x20\x20\x20\x20\xAA"
 #define SPEEDYB0Y_ETH_B "\x00\x20\x20\x20\x20\xBB"
 
+#define PC2_ETH_A       "\x00\x30\x30\x30\x30\xAA"
+#define PC2_ETH_B       "\x00\x30\x30\x30\x30\xBB"
+
+#define XTRADER_ETH_A   "\x00\x40\x40\x40\x40\xAA"
+#define XTRADER_ETH_B   "\x00\x40\x40\x40\x40\xBB"
+
+#define XQUOTES_ETH_A   "\x00\x50\x50\x50\x50\xAA"
+#define XQUOTES_ETH_B   "\x00\x50\x50\x50\x50\xBB"
+
+#define itfcsN = (sizeof(itfcs)/sizeof(*itfcs))
+
 static xlan_itfc_s itfcs[] = {
+#if HOST == HOST_GW || HOST == HOST_XQUOTES
     { "speedyb0y", SPEEDYB0Y_ID,
         2, {
-            { GW_A, { SPEEDYB0Y_ETH_A, GW_ETH_A, 0x0008 }, },
-            { GW_B, { SPEEDYB0Y_ETH_B, GW_ETH_B, 0x0008 }, }
+            { "switch-a", { SPEEDYB0Y_ETH_A, GW_ETH_A, 0x0008 }, },
+            { "switch-b", { SPEEDYB0Y_ETH_B, GW_ETH_B, 0x0008 }, }
         },
     },
+    { "xtrader", XTRADER_ID,
+        2, {
+            { "switch-a", { XTRADER_ETH_A, GW_ETH_A, 0x0008 }, },
+            { "switch-b", { XTRADER_ETH_B, GW_ETH_B, 0x0008 }, }
+        },
+    },
+    { "pc2", PC2_ID,
+        2, {
+            { "switch-a", { PC2_ETH_A, GW_ETH_A, 0x0008 }, },
+            { "switch-b", { PC2_ETH_B, GW_ETH_B, 0x0008 }, }
+        },
+    },
+#elif HOST == HOST_SPEEDYB0Y
+    { "gw", GW_ID,
+        2, {
+            { "switch-a", { GW_ETH_A, SPEEDYB0Y_ETH_A, 0x0008 }, },
+            { "switch-b", { GW_ETH_B, SPEEDYB0Y_ETH_B, 0x0008 }, }
+        },
+    },
+    { "xquotes", XQUOTES_ID,
+        2, {
+            { "switch-a", { XQUOTES_ETH_A, SPEEDYB0Y_ETH_A, 0x0008 }, },
+            { "switch-b", { XQUOTES_ETH_B, SPEEDYB0Y_ETH_B, 0x0008 }, }
+        },
+    },
+    { "xtrader", XTRADER_ID,
+        2, {
+            { "switch-a", { XTRADER_ETH_A, SPEEDYB0Y_ETH_A, 0x0008 }, },
+            { "switch-b", { XTRADER_ETH_B, SPEEDYB0Y_ETH_B, 0x0008 }, }
+        },
+    },
+    { "pc2", PC2_ID,
+        2, {
+            { "switch-a", { PC2_ETH_A, SPEEDYB0Y_ETH_A, 0x0008 }, },
+            { "switch-b", { PC2_ETH_B, SPEEDYB0Y_ETH_B, 0x0008 }, }
+        },
+    },
+#endif
 };
 
 static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
