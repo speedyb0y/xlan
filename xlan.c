@@ -103,7 +103,7 @@ typedef struct xlan_itfc_s {
 #define XQUOTES_ETH_A   "\x00\x50\x50\x50\x50\xAA"
 #define XQUOTES_ETH_B   "\x00\x50\x50\x50\x50\xBB"
 
-#define itfcsN = (sizeof(itfcs)/sizeof(*itfcs))
+#define itfcsN (sizeof(itfcs)/sizeof(*itfcs))
 
 static xlan_itfc_s itfcs[] = {
 #if HOST == HOST_GW || HOST == HOST_XQUOTES
