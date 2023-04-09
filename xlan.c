@@ -53,14 +53,6 @@ typedef struct ethhdr ethhdr_s;
 #define BE64(x) ((u64)__builtin_bswap64((u64)(x)))
 #endif
 
-#define CACHE_LINE_SIZE 64
-
-#define _MAC(x) BE16((x)[0]), BE16((x)[1]), BE16((x)[2])
-#define _IP4(x) BE32(x)
-
-#define popcount32(x) __builtin_popcount((uint)(x))
-#define popcount64(x) __builtin_popcountll((uintll)(x))
-
 // MAX
 #define XLAN_PATHS_N 4
 
