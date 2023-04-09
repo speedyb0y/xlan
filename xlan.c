@@ -138,21 +138,24 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
         xlan_itfc_s* const itfc = &itfcs[i];
 
         if (itfc->hash == hash) {
+            
+            if (itfc->dev) {
 
-            // RETIRA O ETHERNET HEADER
-            void* const ip = PTR(eth) + sizeof(*eth);
+                // RETIRA O ETHERNET HEADER
+                void* const ip = PTR(eth) + sizeof(*eth);
 
-            skb->mac_len          = 0;
-            skb->data             = ip;
+                skb->mac_len          = 0;
+                skb->data             = ip;
 #ifdef NET_SKBUFF_DATA_USES_OFFSET
-            skb->mac_header       = ip - SKB_HEAD(skb);
-            skb->network_header   = ip - SKB_HEAD(skb);
+                skb->mac_header       = ip - SKB_HEAD(skb);
+                skb->network_header   = ip - SKB_HEAD(skb);
 #else
-            skb->mac_header       = ip;
-            skb->network_header   = ip;
+                skb->mac_header       = ip;
+                skb->network_header   = ip;
 #endif
-            skb->len              = SKB_TAIL(skb) - ip;
-            skb->dev              = itfc->dev;
+                skb->len              = SKB_TAIL(skb) - ip;
+                skb->dev              = itfc->dev;
+            }
 
             break;
         }
