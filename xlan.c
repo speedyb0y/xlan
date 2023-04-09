@@ -286,15 +286,21 @@ static void xlan_setup (net_device_s* const dev) {
     dev->max_mtu         = ETH_MAX_MTU;
     dev->mtu             = ETH_MAX_MTU; // NOTE: TEM QUE SER O DA MENOR INTERFACE
     dev->tx_queue_len    = 0; // DEFAULT_TX_QUEUE_LEN
-    dev->flags           = IFF_NOARP; // IFF_BROADCAST | IFF_MULTICAST
+    dev->flags           = IFF_POINTOPOINT
+                         | IFF_NOARP; // IFF_BROADCAST | IFF_MULTICAST
     dev->priv_flags      = IFF_NO_QUEUE
                          | IFF_NO_RX_HANDLER
                          | IFF_LIVE_ADDR_CHANGE
                          | IFF_LIVE_RENAME_OK
         ;
     dev->features        = // TODO: TEM QUE TER AS MESMAS FEATURES DAS INTERFACES
-    dev->hw_features     = NETIF_F_RXCSUM
-                         | NETIF_F_HW_CSUM
+    dev->hw_features     = 0
+        // | NETIF_F_HW_CSUM
+        // | NETIF_F_RXCSUM
+        // | NETIF_F_SG
+        // | NETIF_F_TSO
+        // | NETIF_F_TSO6
+        // | NETIF_F_RXALL
         ;
 }
 
