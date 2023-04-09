@@ -293,7 +293,7 @@ static void xlan_setup (net_device_s* const dev) {
                          | IFF_NOARP; // IFF_BROADCAST | IFF_MULTICAST
     dev->priv_flags      = IFF_NO_QUEUE
                          | IFF_NO_RX_HANDLER
-                         | IFF_LIVE_ADDR_CHANGE
+                         //| IFF_LIVE_ADDR_CHANGE
                          //| IFF_LIVE_RENAME_OK
         ;
     dev->features        = // TODO: TEM QUE TER AS MESMAS FEATURES DAS INTERFACES
