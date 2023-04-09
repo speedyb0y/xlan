@@ -88,8 +88,8 @@ static xlan_itfc_s itfcs[] = {
         .hash = SPEEDYB0Y,
         .pathsN = 2,
         .paths = {
-            { .dev = "lan-a", .eth = { .h_dest   = SPEEDYB0Y_A, .h_source = GW_A, .h_proto  = 0x0080 }, },
-            { .dev = "lan-b", .eth = { .h_dest   = SPEEDYB0Y_B, .h_source = GW_B, .h_proto  = 0x0080 }, }
+            { .dev = "lan-a", .eth = { .h_dest   = SPEEDYB0Y_A, .h_source = GW_A, .h_proto  = 0x0008 }, },
+            { .dev = "lan-b", .eth = { .h_dest   = SPEEDYB0Y_B, .h_source = GW_B, .h_proto  = 0x0008 }, }
         },
     },
 };
