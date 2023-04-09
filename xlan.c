@@ -108,33 +108,33 @@ typedef struct xlan_itfc_s {
 static xlan_itfc_s itfcs[] = {
 #if HOST == HOST_GW || HOST == HOST_XQUOTES
     { "speedyb0y", SPEEDYB0Y_ID, 0, {
-        { "lan-a", { SPEEDYB0Y_ETH_A, GW_ETH_A }, },
-        { "lan-b", { SPEEDYB0Y_ETH_B, GW_ETH_B }, }
+        { "lan-a", { SPEEDYB0Y_ETH_A, GW_ETH_A, 0 }, },
+        { "lan-b", { SPEEDYB0Y_ETH_B, GW_ETH_B, 0 }, }
     }},
     { "xtrader", XTRADER_ID, 0, {
-        { "lan-a", { XTRADER_ETH_A, GW_ETH_A }, },
-        { "lan-b", { XTRADER_ETH_B, GW_ETH_B }, }
+        { "lan-a", { XTRADER_ETH_A, GW_ETH_A, 0 }, },
+        { "lan-b", { XTRADER_ETH_B, GW_ETH_B, 0 }, }
     }},
     { "pc2", PC2_ID, 0, {
-        { "lan-a", { PC2_ETH_A, GW_ETH_A }, },
-        { "lan-b", { PC2_ETH_B, GW_ETH_B }, }
+        { "lan-a", { PC2_ETH_A, GW_ETH_A, 0 }, },
+        { "lan-b", { PC2_ETH_B, GW_ETH_B, 0 }, }
     }},
 #elif HOST == HOST_SPEEDYB0Y
     { "gw", GW_ID, 0, {
-        { "lan-a", { GW_ETH_A, SPEEDYB0Y_ETH_A }, },
-        { "lan-b", { GW_ETH_B, SPEEDYB0Y_ETH_B }, }
+        { "lan-a", { GW_ETH_A, SPEEDYB0Y_ETH_A, 0 }, },
+        { "lan-b", { GW_ETH_B, SPEEDYB0Y_ETH_B, 0 }, }
     }},
     { "xquotes", XQUOTES_ID, 0,{
-        { "lan-a", { XQUOTES_ETH_A, SPEEDYB0Y_ETH_A }, },
-        { "lan-b", { XQUOTES_ETH_B, SPEEDYB0Y_ETH_B }, }
+        { "lan-a", { XQUOTES_ETH_A, SPEEDYB0Y_ETH_A, 0 }, },
+        { "lan-b", { XQUOTES_ETH_B, SPEEDYB0Y_ETH_B, 0 }, }
     }},
     { "xtrader", XTRADER_ID, 0, {
-        { "lan-a", { XTRADER_ETH_A, SPEEDYB0Y_ETH_A }, },
-        { "lan-b", { XTRADER_ETH_B, SPEEDYB0Y_ETH_B }, }
+        { "lan-a", { XTRADER_ETH_A, SPEEDYB0Y_ETH_A, 0 }, },
+        { "lan-b", { XTRADER_ETH_B, SPEEDYB0Y_ETH_B, 0 }, }
     }},
     { "pc2", PC2_ID, 0, {
-        { "lan-a", { PC2_ETH_A, SPEEDYB0Y_ETH_A }, },
-        { "lan-b", { PC2_ETH_B, SPEEDYB0Y_ETH_B }, }
+        { "lan-a", { PC2_ETH_A, SPEEDYB0Y_ETH_A, 0 }, },
+        { "lan-b", { PC2_ETH_B, SPEEDYB0Y_ETH_B, 0 }, }
     }},
 #else
 #error
