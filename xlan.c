@@ -136,6 +136,8 @@ static xlan_itfc_s itfcs[] = {
         { "lan-a", { PC2_ETH_A, SPEEDYB0Y_ETH_A }, },
         { "lan-b", { PC2_ETH_B, SPEEDYB0Y_ETH_B }, }
     }},
+#else
+#error
 #endif
 };
 
