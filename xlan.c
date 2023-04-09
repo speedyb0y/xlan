@@ -107,49 +107,35 @@ typedef struct xlan_itfc_s {
 
 static xlan_itfc_s itfcs[] = {
 #if HOST == HOST_GW || HOST == HOST_XQUOTES
-    { "speedyb0y", SPEEDYB0Y_ID,
-        2, {
-            { "lan-a", { SPEEDYB0Y_ETH_A, GW_ETH_A, 0x0008 }, },
-            { "lan-b", { SPEEDYB0Y_ETH_B, GW_ETH_B, 0x0008 }, }
-        },
-    },
-    { "xtrader", XTRADER_ID,
-        2, {
-            { "lan-a", { XTRADER_ETH_A, GW_ETH_A, 0x0008 }, },
-            { "lan-b", { XTRADER_ETH_B, GW_ETH_B, 0x0008 }, }
-        },
-    },
-    { "pc2", PC2_ID,
-        2, {
-            { "lan-a", { PC2_ETH_A, GW_ETH_A, 0x0008 }, },
-            { "lan-b", { PC2_ETH_B, GW_ETH_B, 0x0008 }, }
-        },
-    },
+    { "speedyb0y", SPEEDYB0Y_ID, 0, {
+        { "lan-a", { SPEEDYB0Y_ETH_A, GW_ETH_A }, },
+        { "lan-b", { SPEEDYB0Y_ETH_B, GW_ETH_B }, }
+    }},
+    { "xtrader", XTRADER_ID, 0, {
+        { "lan-a", { XTRADER_ETH_A, GW_ETH_A }, },
+        { "lan-b", { XTRADER_ETH_B, GW_ETH_B }, }
+    }},
+    { "pc2", PC2_ID, 0, {
+        { "lan-a", { PC2_ETH_A, GW_ETH_A }, },
+        { "lan-b", { PC2_ETH_B, GW_ETH_B }, }
+    }},
 #elif HOST == HOST_SPEEDYB0Y
-    { "gw", GW_ID,
-        2, {
-            { "lan-a", { GW_ETH_A, SPEEDYB0Y_ETH_A, 0x0008 }, },
-            { "lan-b", { GW_ETH_B, SPEEDYB0Y_ETH_B, 0x0008 }, }
-        },
-    },
-    { "xquotes", XQUOTES_ID,
-        2, {
-            { "lan-a", { XQUOTES_ETH_A, SPEEDYB0Y_ETH_A, 0x0008 }, },
-            { "lan-b", { XQUOTES_ETH_B, SPEEDYB0Y_ETH_B, 0x0008 }, }
-        },
-    },
-    { "xtrader", XTRADER_ID,
-        2, {
-            { "lan-a", { XTRADER_ETH_A, SPEEDYB0Y_ETH_A, 0x0008 }, },
-            { "lan-b", { XTRADER_ETH_B, SPEEDYB0Y_ETH_B, 0x0008 }, }
-        },
-    },
-    { "pc2", PC2_ID,
-        2, {
-            { "lan-a", { PC2_ETH_A, SPEEDYB0Y_ETH_A, 0x0008 }, },
-            { "lan-b", { PC2_ETH_B, SPEEDYB0Y_ETH_B, 0x0008 }, }
-        },
-    },
+    { "gw", GW_ID, 0, {
+        { "lan-a", { GW_ETH_A, SPEEDYB0Y_ETH_A }, },
+        { "lan-b", { GW_ETH_B, SPEEDYB0Y_ETH_B }, }
+    }},
+    { "xquotes", XQUOTES_ID, 0,{
+        { "lan-a", { XQUOTES_ETH_A, SPEEDYB0Y_ETH_A }, },
+        { "lan-b", { XQUOTES_ETH_B, SPEEDYB0Y_ETH_B }, }
+    }},
+    { "xtrader", XTRADER_ID, 0, {
+        { "lan-a", { XTRADER_ETH_A, SPEEDYB0Y_ETH_A }, },
+        { "lan-b", { XTRADER_ETH_B, SPEEDYB0Y_ETH_B }, }
+    }},
+    { "pc2", PC2_ID, 0, {
+        { "lan-a", { PC2_ETH_A, SPEEDYB0Y_ETH_A }, },
+        { "lan-b", { PC2_ETH_B, SPEEDYB0Y_ETH_B }, }
+    }},
 #endif
 };
 
@@ -387,9 +373,14 @@ static int __init xlan_init (void) {
         *(xlan_itfc_s**)netdev_priv(dev) = itfc;
 
         // INITIALIZE PATHS
-        foreach (i, itfc->pathsN) {
+        uint i = 0; 
+        
+        do {
 
             xlan_path_s* const path = &itfc->paths[i];
+
+            if (path->dev == NULL)
+                break;
 
             net_device_s* dev = dev_get_by_name(&init_net, (const char*)path->dev);
 
@@ -414,7 +405,11 @@ static int __init xlan_init (void) {
             }
 
             path->dev = dev;
-        }
+            path->eth.h_proto = BE16(ETH_P_IP);
+
+        } while (++i != XLAN_PATHS_N);
+
+        itfc->pathsN = i;
     }
 
     return 0;
