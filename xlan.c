@@ -171,7 +171,15 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
         // NON LINEAR
         goto drop;
 
-    void* const ip = SKB_DATA(skb);
+#ifdef NET_SKBUFF_DATA_USES_OFFSET
+    void* const ip = SKB_HEAD(skb) + skb->network_header;
+#else
+    void* const ip = skb->network_header;
+#endif
+
+    if (PTR(ip) < SKB_HEAD(skb)
+     || PTR(ip) > SKB_TAIL(skb))
+        goto drop;
 
     // IP VERSION
     const int v4 = (*(u8*)ip & 0xF0) == 0x40;
