@@ -347,7 +347,7 @@ static void __exit xlan_exit (void) {
 
         if (itfc->dev) {
 
-            // UNHOOK INTERFACES
+            // UNHOOK PHYSICAL INTERFACES
             foreach (i, itfc->pathsN) {
 
                 xlan_path_s* const path = &itfc->paths[i];
