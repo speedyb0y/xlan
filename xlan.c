@@ -74,6 +74,13 @@ typedef struct xlan_itfc_s {
 
 static uint itfcsN = 1;
 
+#define HOST_GW         1
+#define HOST_WIFI       10
+#define HOST_XQUOTES    50
+#define HOST_SPEEDYB0Y  20
+#define HOST_PC2        30
+#define HOST_XTRADER    40
+
 #define GW_A "lan-a"
 #define GW_B "lan-b"
 
