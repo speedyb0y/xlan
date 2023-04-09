@@ -146,6 +146,8 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
 #endif
                 skb->len              = SKB_TAIL(skb) - PTR(ip);
                 skb->dev              = itfc->dev;
+
+                return RX_HANDLER_ANOTHER;
             }
 
             break;
@@ -153,7 +155,7 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
     }
 
 pass:
-    return RX_HANDLER_ANOTHER;
+    return RX_HANDLER_PASS;
 }
 
 static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
