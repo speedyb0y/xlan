@@ -113,7 +113,7 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
 #ifdef NET_SKBUFF_DATA_USES_OFFSET
     ethhdr_s* const eth = SKB_HEAD(skb) + skb->mac_header;
 #else
-    ethhdr_s* const eth = skb->mac_header;
+    ethhdr_s* const eth =                 skb->mac_header;
 #endif
 
     if (PTR(eth) < SKB_HEAD(skb)
@@ -125,7 +125,7 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
 
     foreach (i, itfcsN) {
 
-        xlan_itfc_s* const itfc = &itfcs[i];
+        const xlan_itfc_s* const itfc = &itfcs[i];
 
         if (itfc->hash == hash) {
             
@@ -165,7 +165,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
 #ifdef NET_SKBUFF_DATA_USES_OFFSET
     void* const ip = SKB_HEAD(skb) + skb->network_header;
 #else
-    void* const ip = skb->network_header;
+    void* const ip =                 skb->network_header;
 #endif
 
     if (PTR(ip) < SKB_HEAD(skb)
@@ -200,13 +200,17 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
     hash += hash >> 8;
 
     // THIS VIRTUAL INTERFACE
-    xlan_itfc_s* const itfc = *(xlan_itfc_s**)netdev_priv(dev);
+    const xlan_itfc_s* const itfc = *(xlan_itfc_s**)netdev_priv(dev);
 
     // CHOOSE A PATH
-    xlan_path_s* const path = &itfc->paths[hash % itfc->pathsN];
+    const xlan_path_s* const path = &itfc->paths[hash % itfc->pathsN];
+
+    // TODO: SOMENTE SE ELA ESTIVER ATIVA
+    if (path->dev == NULL)
+        goto drop;
 
     // COLOCA O CABECALHO
-    ethhdr_s* const eth = ip - sizeof(eth);
+    ethhdr_s* const eth = ip - sizeof(*eth);
 
     if (PTR(eth) < SKB_HEAD(skb))
         // SEM ESPACO PARA COLOCAR O MAC HEADER
