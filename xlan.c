@@ -53,7 +53,6 @@ typedef struct ethhdr ethhdr_s;
 #define BE64(x) ((u64)__builtin_bswap64((u64)(x)))
 #endif
 
-#define ETH_SIZE 14
 #define IP4_SIZE 20
 #define IP6_SIZE 40
 
@@ -225,7 +224,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
         // SEM ESPACO PARA COLOCAR O MAC HEADER
         goto drop;
 
-    memcpy(eth, path->eth, sizeof(path->eth));
+    memcpy(eth, &path->eth, sizeof(path->eth));
 
     if (!v4)
         eth->h_proto = BE16(ETH_P_IPV6);
