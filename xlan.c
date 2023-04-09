@@ -237,7 +237,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
     skb->mac_header       = PTR(eth);
 #endif
     skb->len              = SKB_TAIL(skb) - PTR(eth);
-    skb->dev              = path->itfc;
+    skb->dev              = path->dev;
 
     // -- THE FUNCTION CAN BE CALLED FROM AN INTERRUPT
     // -- WHEN CALLING THIS METHOD, INTERRUPTS MUST BE ENABLED
