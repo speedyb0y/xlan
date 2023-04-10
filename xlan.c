@@ -58,40 +58,39 @@ typedef struct ethhdr ethhdr_s;
 #define IP6_SIZE 40
 
 // MAX
-#define XLAN_PATHS_N 4
+#define XLAN_PORTS_N 4
 
 #define HOST HOST_GW
 
-#define HOSTS_N 80
-
-#define HOST_GW          1
-#define HOST_SWITCH      5
-#define HOST_WIFI       10
-#define HOST_SPEEDYB0Y  20
-#define HOST_PC2        30
-#define HOST_XTRADER    40
-#define HOST_XQUOTES    50
-#define HOST_TEST       70
+enum HOSTS {
+    HOST_GW         = 1,
+    HOST_SWITCH     = 2,
+    HOST_WIFI       = 3,
+    HOST_PC2        = 4,
+    HOST_SPEEDYB0Y  = 5,
+    HOST_XTRADER    = 6,
+    HOST_XQUOTES    = 7,
+    HOST_TEST       = 8,
+    HOSTS_N
+};
 
 // PHYSICAL INTERFACES
 // TODO: IDENTIFY THEM BY MAC
 static uint portsN;
-static net_device_s* ports[XLAN_PATHS_N];
+static net_device_s* ports[XLAN_PORTS_N];
 
-#define ETH_MAC_CODE 0x00256200U
+#define XLAN_MAC_CODE 0x00256200U
 
 #define XLAN_ETH_ALIGN ???
-
-ASSERT(sizeof(eth_s) == (XLAN_ETH_ALIGN + sizeof(ethhdr_s)));
 
 // PARA COLOCAR NO HEADER
 // hid = 20 ; pid = 2 ; '0x%04X' % ((0x0101 * ((hid // 10) << 4 | (hid % 10)) )) , hex(0xAAAA + 0x1111 * pid )
 typedef struct eth_s {  // 00:00:HH:HH:PP:PP
     u8 _align[XLAN_ETH_ALIGN];
-    u32 dstCode; 
+    u32 dstCode; // XLAN_MAC_CODE
      u8 dstHost;
      u8 dstPort;
-    u32 srcCode; // ETH_MAC_CODE
+    u32 srcCode; // XLAN_MAC_CODE
      u8 srcHost;
      u8 srcPort;
     u16 protocol;
@@ -133,7 +132,7 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
         goto pass;
 
     // IDENTIFY
-    if (eth->srcCode != BE32(ETH_MAC_CODE))
+    if (eth->srcCode != BE32(XLAN_MAC_CODE))
         goto pass;
     
     // TODO: SE A INTERFACE XLAN ESTIVER DOWN, PASS OU DROP?
@@ -320,47 +319,75 @@ static void xlan_setup (net_device_s* const dev) {
 
 static int evento () {
 
-    // SE FOR ALGUM
+    // REGISTER / CHANGE ADDR
+    // TODO: UNREGISTER
+    // TODO: CHANGE ADDR FROM OUR TO SOMETHING ELSE
 
-    // COLOCA 
+    const void* const addr = dev->;
 
-    if (1) {
-        // É NOSSO MAC
-        if (1) {
-            // NAO ESTA HOOKADA
+    if (*(u32*)addr != BE32(XLAN_MAC_CODE))
+        // NÃO É NOSSO MAC
+        goto done;
 
-            net_device_s* dev = dev_get_by_name(&init_net, (const char*)path->dev);
-
-            // TODO: PODE USAR O rx_handler_data COMO REF COUNT
-            if (dev) {
-
-                rtnl_lock();
-
-                const int ok =
-                        // JÁ ESTA HOOKADA
-                        rcu_dereference(dev->rx_handler) == xlan_in
-                        // ...OU CONSEGUIU HOOKAR
-                    || netdev_rx_handler_register(dev, xlan_in, NULL) ==  0
-                ;
-
-                rtnl_unlock();
-
-                if (!ok) {
-                    dev_put(dev);
-                    dev = NULL;
-                }
-            }
-
-            portsN++;            
-        }
+    if (*(u8*)(addr + sizeof(u32)) != HOST) {
+        printk("XLAN: HOST MISMATCH\n");
+        goto done;
     }
 
 
+    const uint pid = *(u8*)(addr + sizeof(u32) + sizeof(u8));
+
+    if (pid >= XLAN_PORTS_N) {
+        printk("XLAN: BAD PORT\n");
+        goto done;
+    }
+
+
+    int hook;
+
+    rtnl_lock();
+
+    if (rcu_dereference(dev->rx_handler) == xlan_in)
+        hook =  0; // JÁ ESTA HOOKADA
+    elif (netdev_rx_handler_register(dev, xlan_in, NULL) == 0)
+        hook =  1; // HOOKOU
+    else // NÃO CONSEGUIU HOOKAR
+        hook = -1;
+
+    rtnl_unlock();
+
+    switch (hook) {
+        case 0:
+            break;
+
+        case 1:
+            break;
+
+        case -1:
+            dev_put(dev);
+            dev = NULL;
+            break;
+    }
+
+    if (ports[pid])
+
+    if (1) {
+        // NAO ESTA HOOKADA
+
+
+        portsN++;            
+    }
+}
+
+done:
+    return 0;
 }
 
 static int __init xlan_init (void) {
 
     printk("XLAN: INIT\n");
+
+    ASSERT(sizeof(eth_s) == (XLAN_ETH_ALIGN + ETH_SIZE));
 
     // CREATE THE VIRTUAL INTERFACE
     if ((xlan = alloc_netdev(0, "xlan", NET_NAME_USER, xlan_setup)))
@@ -372,7 +399,7 @@ static int __init xlan_init (void) {
         return -1;
     }
 
-    // ENCONTRA OS NOSSOS MACS
+    // ENCONTRARÁ PELOS NOSSOS MACS
     portsN = 0;
 
     // COLOCA A PARADA DE EVENTOS
@@ -396,7 +423,7 @@ static int __init xlan_init (void) {
             path->dev = dev;
             path->eth.h_proto = BE16(ETH_P_IP);
 
-        } while (++i != XLAN_PATHS_N);
+        } while (++i != XLAN_PORTS_N);
 
         itfc->pathsN = i;
     }
