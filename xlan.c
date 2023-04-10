@@ -176,27 +176,50 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
         goto drop;
 
     // IP VERSION
-    const int v4 = (*(u8*)ip & 0xF0) == 0x40;
+    const int v4 = *(u8*)ip >> 4 == 4;
 
     // COMPUTE HASH
     u64 hash;
 
-    if (v4) {
-        if (skb->len >= (IP4_SIZE + 4)) {
-            hash  = *(u64*)(ip + 12); // SRC ADDR, DST ADDR
-            hash += *(u32*)(ip + 20); // SRC PORT, DST PORT
-            hash += *( u8*)(ip +  9); //  PROTOCOL
+    switch (skb->protocol) {
+
+        case BE16(ETH_P_IP):
+            
+            switch ((hash = *(u8*)(ip +  9))) {
+                case IPPROTO_TCP:
+                case IPPROTO_UDP:
+                case IPPROTO_UDPLITE:
+                case IPPROTO_SCTP:
+                case IPPROTO_TCCP:
+                    hash += *(u64*)(ip + 12); // SRC ADDR, DST ADDR
+                    hash += *(u32*)(ip + 20); // SRC PORT, DST PORT
+                    if (skb->len < (IP4_SIZE + 2))
+                        goto drop;
+                    break;
+                default:
+                    hash += *(u64*)(ip + 12); // SRC ADDR, DST ADDR
+                    if (skb->len < IP4_SIZE)
+                        goto drop;
+            }
+
+            break;
+
+        case BE16(ETH_P_IPV6):
+
+        } elif (skb->len >= (IP6_SIZE + 4)) {
+            hash  = *(u64*)(ip +  8); // SRC ADDR
+            hash += *(u64*)(ip + 16); // SRC ADDR
+            hash += *(u64*)(ip + 24); // DST ADDR
+            hash += *(u64*)(ip + 32); // DST ADDR
+            hash += *(u32*)(ip + 40); // SRC PORT, DST PORT
+            hash += *( u8*)(ip +  5); //  PROTOCOL
         } else
             hash = 0;
-    } elif (skb->len >= (IP6_SIZE + 4)) {
-        hash  = *(u64*)(ip +  8); // SRC ADDR
-        hash += *(u64*)(ip + 16); // SRC ADDR
-        hash += *(u64*)(ip + 24); // DST ADDR
-        hash += *(u64*)(ip + 32); // DST ADDR
-        hash += *(u32*)(ip + 40); // SRC PORT, DST PORT
-        hash += *( u8*)(ip +  5); //  PROTOCOL
-    } else
-        hash = 0;
+
+        default:
+            // UNSUPORTED
+            goto drop;
+    }
 
     hash += hash >> 32;
     hash += hash >> 16;
@@ -209,10 +232,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
         dstHost = *(u8*)(ip + IP4_SIZE - 1);
     else {
         dstHost = *(u8*)(ip + IP6_SIZE - 1);
-
-        (hid >> 4) | (hid & 0x0F) // 16
-pid = 2 ; '0x%012X' % ((0x000101010100 * ((20 // 10) << 4 | (20 % 10)) ) | (0xAA + 0x11 * pid ))
-        ??
+        dstHost = (dstHost >> 4)*10 + (dstHost & 0xF);
     }
 
     // CHOOSE MY INTERFACE
