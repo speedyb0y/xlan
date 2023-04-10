@@ -57,36 +57,40 @@ typedef struct ethhdr ethhdr_s;
 #define IP4_SIZE 20
 #define IP6_SIZE 40
 
-// MAX
-#define XLAN_PORTS_N 4
+// TOTAL SWITCH PORTS
+#define XLAN_PORTS_N 8
 
+// MAX PORTS PER HOST
+#define XLAN_HOST_PORTS_N 4
+
+// THIS HOST
 #define HOST HOST_GW
 
 enum HOSTS {
-    HOST_GW         = 1,
-    HOST_SWITCH     = 2,
-    HOST_WIFI       = 3,
-    HOST_PC2        = 4,
-    HOST_SPEEDYB0Y  = 5,
-    HOST_XTRADER    = 6,
-    HOST_XQUOTES    = 7,
-    HOST_TEST       = 8,
+    HOST_GW         =  1,
+    HOST_XQUOTES    =  1,
+    HOST_WIFI       = 10,
+    HOST_SPEEDYB0Y  = 20,
+    HOST_PC2        = 30,
+    HOST_XTRADER    = 40,
+    HOST_TEST       = 70,
     HOSTS_N
 };
 
 // PHYSICAL INTERFACES
 // TODO: IDENTIFY THEM BY MAC
 static uint portsN;
-static net_device_s* ports[XLAN_PORTS_N];
+static net_device_s* ports[XLAN_HOST_PORTS_N];
 
+//
 #define XLAN_MAC_CODE 0x00256200U
 
-#define XLAN_ETH_ALIGN ???
+//
+#define XLAN_ETH_ALIGN sizeof(u16)
 
 // PARA COLOCAR NO HEADER
 // hid = 20 ; pid = 2 ; '0x%04X' % ((0x0101 * ((hid // 10) << 4 | (hid % 10)) )) , hex(0xAAAA + 0x1111 * pid )
-typedef struct eth_s {  // 00:00:HH:HH:PP:PP
-    u8 _align[XLAN_ETH_ALIGN];
+typedef struct eth_s {
     u32 dstCode; // XLAN_MAC_CODE
      u8 dstHost;
      u8 dstPort;
@@ -94,15 +98,17 @@ typedef struct eth_s {  // 00:00:HH:HH:PP:PP
      u8 srcHost;
      u8 srcPort;
     u16 protocol;
-} eth_s;
+    u16 _align;
+} __attribute__((packed)) eth_s;
 
 // NUMBER OF PATHS OF EACH HOST
 static const u8 hostN[HOSTS_N] = {
-    [HOST_SWITCH]    = 1,
     [HOST_GW]        = 2,
+    [HOST_WIFI]      = 1,
+    [HOST_PC2]       = 1,
     [HOST_SPEEDYB0Y] = 2,
-    [HOST_XTRADER]   = 2,
-    [HOST_PC2]       = 2,
+    [HOST_XTRADER]   = 1,
+    [HOST_TEST]      = 1,
 };
 
 static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
@@ -345,7 +351,7 @@ static int xlan_notify_phys (struct notifier_block* const nb, const unsigned lon
         goto done;
     }
 
-    if (pid >= XLAN_PORTS_N) {
+    if (pid >= XLAN_HOST_PORTS_N) {
         printk("XLAN: BAD PORT\n");
         goto done;
     }
@@ -386,7 +392,7 @@ static int __init xlan_init (void) {
 
     printk("XLAN: INIT\n");
 
-    ASSERT(sizeof(eth_s) == (XLAN_ETH_ALIGN + ETH_SIZE));
+    ASSERT(sizeof(eth_s) == (ETH_SIZE + XLAN_ETH_ALIGN));
 
     // CREATE THE VIRTUAL INTERFACE
     if ((xdev = alloc_netdev(0, "xlan", NET_NAME_USER, xlan_setup)))
