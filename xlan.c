@@ -64,23 +64,34 @@ typedef struct ethhdr ethhdr_s;
 #define XLAN_HOST_PORTS_N 4
 
 // THIS HOST
-#define HOST HOST_GW
+#define HOST GW
 
-enum HOSTS {
-    HOST_GW         =  1,
-    HOST_XQUOTES    =  1,
-    HOST_WIFI       = 10,
-    HOST_SPEEDYB0Y  = 20,
-    HOST_PC2        = 30,
-    HOST_XTRADER    = 40,
-    HOST_TEST       = 70,
+#define HOST_ID(h)
+#define HOST_PORTS_Q(h)
+
+enum HOSTS_IDS {
+    HOST_ID_GW         =  1,
+    HOST_ID_XQUOTES    =  1,
+    HOST_ID_WIFI       = 10,
+    HOST_ID_SPEEDYB0Y  = 20,
+    HOST_ID_PC2        = 30,
+    HOST_ID_XTRADER    = 40,
+    HOST_ID_TEST       = 70,
     HOSTS_N
+};
+
+enum HOSTS_PORTS_Q {
+    HOST_PORTS_Q_GW        = 2,
+    HOST_PORTS_Q_WIFI      = 1,
+    HOST_PORTS_Q_PC2       = 1,
+    HOST_PORTS_Q_SPEEDYB0Y = 2,
+    HOST_PORTS_Q_XTRADER   = 1,
+    HOST_PORTS_Q_TEST      = 1,
 };
 
 // PHYSICAL INTERFACES
 // TODO: IDENTIFY THEM BY MAC
-static uint portsN;
-static net_device_s* ports[XLAN_HOST_PORTS_N];
+static net_device_s* ports[MY_PORTS_N];
 
 //
 #define XLAN_MAC_CODE 0x00256200U
@@ -176,9 +187,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
         goto drop;
 
     // COMPUTE HASH
-    u64 hash;
-
-    uint min;
+    u64 hash; uint hsize;
 
     // IP VERSION
     switch ((hash = *(u8*)ip >> 4)) {
@@ -194,11 +203,11 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
                 case 4 + IPPROTO_TCCP:
                     hash += *(u64*)(ip + 12); // SRC ADDR, DST ADDR
                     hash += *(u32*)(ip + 20); // SRC PORT, DST PORT
-                    min = IP4_SIZE + 2;
+                    hsize = IP4_SIZE + 2*sizeof(u16);
                     break;
                 default:
                     hash += *(u64*)(ip + 12); // SRC ADDR, DST ADDR
-                    min = IP4_SIZE;
+                    hsize = IP4_SIZE;
             }
 
             break;
@@ -217,14 +226,14 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
                     hash += *(u64*)(ip + 24); // DST ADDR
                     hash += *(u64*)(ip + 32); // DST ADDR
                     hash += *(u32*)(ip + 40); // SRC PORT, DST PORT
-                    min = IP6_SIZE + 4;
+                    hsize = IP6_SIZE + 2*sizeof(u16);
                     break;
                 default:
                     hash += *(u64*)(ip +  8); // SRC ADDR
                     hash += *(u64*)(ip + 16); // SRC ADDR
                     hash += *(u64*)(ip + 24); // DST ADDR
                     hash += *(u64*)(ip + 32); // DST ADDR
-                    min = IP6_SIZE;
+                    hsize = IP6_SIZE;
             }
 
             break;
@@ -234,14 +243,14 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
             goto drop;
     }
 
-    if (skb->len < min)
+    if (skb->len < hsize)
         goto drop;
 
     hash += hash >> 32;
     hash += hash >> 16;
     hash += hash >> 8;
 
-    // IDENTIFY HOSY BY IP DESTINATION
+    // IDENTIFY HOST BY IP DESTINATION
     uint dstHost;
     
     if (v4)
@@ -254,8 +263,8 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
     // CHOOSE MY INTERFACE
     // CHOOSE THEIR INTERFACE
     // TOOD: o caso do ipv6, vai ter que transformar o valor de volta pois esta em hexadecimal
-    const uint srcPort = hash %  XLAN_HOST_PORTS_N;
-                         hash /= XLAN_HOST_PORTS_N;
+    const uint srcPort = hash %  MY_PORTS_N;
+                         hash /= MY_PORTS_N;
     const uint dstPort = hash % hostPortsQ[dstHost];
 
     net_device_s* const dev = ports[srcPort];
