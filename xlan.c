@@ -59,20 +59,9 @@ typedef struct ethhdr ethhdr_s;
 // MAX
 #define XLAN_PATHS_N 4
 
-typedef struct xlan_path_s {
-    void* dev; // REAL INTERFACE
-    ethhdr_s eth;
-} xlan_path_s;
-
-// TODO: TEM QUE ENTRAR NA PARADA PRIVATE
-typedef struct xlan_itfc_s {
-    void* dev; // VIRTUAL INTERFACE
-    u32 hash; // PARA IDENTIFICAR AO ENTRAR
-    u32 pathsN;
-    xlan_path_s paths[XLAN_PATHS_N];
-} xlan_itfc_s;
-
 #define HOST HOST_GW
+
+#define HOSTS_N 80
 
 #define HOST_GW          1
 #define HOST_SWITCH      5
@@ -83,33 +72,30 @@ typedef struct xlan_itfc_s {
 #define HOST_XQUOTES    50
 #define HOST_TEST       70
 
-#define GW_ID        0x01010100U
-#define SWITCH_ID    0x05050500U
-#define WIFI_ID      0x10101000U
-#define SPEEDYB0Y_ID 0x20202000U
-#define PC2_ID       0x30303000U
-#define XTRADER_ID   0x40404000U
-#define XQUOTES_ID   0x50505000U
-#define TEST_ID      0x70707000U
+// PHYSICAL INTERFACES
+// TODO: IDENTIFY THEM BY MAC
+static uint pathsN;
+static net_device_s* pathsDev[XLAN_PATHS_N];
 
-#define SWITCH_ETH      "\x50\xD4\xF7\x48\xC2\xEE"
+// hid = 20 ; pid = 2 ; '0x%04X' % ((0x0101 * ((hid // 10) << 4 | (hid % 10)) )) , hex(0xAAAA + 0x1111 * pid )
 
-#define WIFI_ETH        "\x00\x10\x10\x10\x10\x00"
+struct eth_s {
+    u16 dnode[3]; // 00:00:HH:HH:PP:PP
+    u16 snode[3];
+    u16 protocol;
+};
 
-#define GW_ETH_A        "\x00\x01\x01\x01\x01\xAA"
-#define GW_ETH_B        "\x00\x01\x01\x01\x01\xBB"
-
-#define SPEEDYB0Y_ETH_A "\x00\x20\x20\x20\x20\xAA"
-#define SPEEDYB0Y_ETH_B "\x00\x20\x20\x20\x20\xBB"
-
-#define PC2_ETH_A       "\x00\x30\x30\x30\x30\xAA"
-#define PC2_ETH_B       "\x00\x30\x30\x30\x30\xBB"
-
-#define XTRADER_ETH_A   "\x00\x40\x40\x40\x40\xAA"
-#define XTRADER_ETH_B   "\x00\x40\x40\x40\x40\xBB"
-
-#define XQUOTES_ETH_A   "\x00\x50\x50\x50\x50\xAA"
-#define XQUOTES_ETH_B   "\x00\x50\x50\x50\x50\xBB"
+// HOST_ID -> MACS[]
+static uint hostMACsN[HOSTS_N]; // TODO: CONTA QUANTOS CADA UM TEM
+static const u8 hostMACs[ETH_ALEN][HOSTS_N][XLAN_PATHS_N] = {
+    [HOST_SWITCH]    = { , 0x50, 0xD4, 0xF7, 0x48, 0xC2, 0xEE }, 
+    [WIFI_ETH]       = { , 0x00, 0x10, 0x10, 0x10, 0x10, 0x00 },
+    [GW_ETH_B]       = { , 0x00, 0x01, 0x01, 0x01, 0x01, 0xAA, , 0x00, 0x01, 0x01, 0x01, 0x01, 0xBB, },
+    [HOST_SPEEDYB0Y] = { , 0x00, 0x20, 0x20, 0x20, 0x20, 0xAA, , 0x00, 0x20, 0x20, 0x20, 0x20, 0xBB, },
+    [HOST_PC2]       = { , 0x00, 0x30, 0x30, 0x30, 0x30, 0xAA, , 0x00, 0x30, 0x30, 0x30, 0x30, 0xBB },
+    [HOST_XTRADER]   = { , 0x00, 0x40, 0x40, 0x40, 0x40, 0xAA, , 0x00, 0x40, 0x40, 0x40, 0x40, 0xBB },
+    [HOST_XQUOTES]   = { , 0x00, 0x50, 0x50, 0x50, 0x50, 0xAA, , 0x00, 0x50, 0x50, 0x50, 0x50, 0xBB },
+};
 
 #define itfcsN (sizeof(itfcs)/sizeof(*itfcs))
 
@@ -268,8 +254,10 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
     // THIS VIRTUAL INTERFACE
     const xlan_itfc_s* const itfc = *(xlan_itfc_s**)netdev_priv(dev);
 
+    
+
     // CHOOSE A PATH
-    const xlan_path_s* const path = &itfc->paths[hash % itfc->pathsN];
+    const xlan_path_s* const path = &hostMACs[hash % hostMACsN[hid];
 
     // TODO: SOMENTE SE ELA ESTIVER ATIVA
     if (path->dev == NULL)
@@ -282,10 +270,11 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
         // SEM ESPACO PARA COLOCAR O MAC HEADER
         goto drop;
 
-    memcpy(eth, &path->eth, sizeof(*eth));
-
-    if (!v4)
-        eth->h_proto = BE16(ETH_P_IPV6);
+    eth->h_dest = ;
+    eth->h_source = ;
+    eth->h_proto = v4 ? 
+        BE16(ETH_P_IP) :
+        BE16(ETH_P_IPV6);
     
     skb->mac_len          = sizeof(*eth);
     skb->data             = PTR(eth);
