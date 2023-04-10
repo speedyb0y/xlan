@@ -124,11 +124,7 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
     if (skb_linearize(skb))
         goto pass;
 
-#ifdef NET_SKBUFF_DATA_USES_OFFSET
-    eth_s* const eth = SKB_HEAD(skb) + skb->mac_header;
-#else
-    eth_s* const eth =                 skb->mac_header;
-#endif
+    eth_s* const eth = skb_mac_header(skb);
 
     if (PTR(eth) < SKB_HEAD(skb)
     || (PTR(eth) + ETH_SIZE) >= SKB_TAIL(skb))
@@ -173,11 +169,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
         // NON LINEAR
         goto drop;
 
-#ifdef NET_SKBUFF_DATA_USES_OFFSET
-    void* const ip = SKB_HEAD(skb) + skb->network_header;
-#else
-    void* const ip =                 skb->network_header;
-#endif
+    void* const ip = skb_network_header(skb);
 
     if (PTR(ip) < SKB_HEAD(skb)
      || PTR(ip) > SKB_TAIL(skb))
@@ -234,19 +226,21 @@ pid = 2 ; '0x%012X' % ((0x000101010100 * ((20 // 10) << 4 | (20 % 10)) ) | (0xAA
     // TODO: CHOSE THEIR INTERFACE
 
     // COLOCA O CABECALHO
-    ethhdr_s* const eth = ip - sizeof(*eth);
+    eth_s* const eth = PTR(ip) - ETH_SIZE;
 
     if (PTR(eth) < SKB_HEAD(skb))
         // SEM ESPACO PARA COLOCAR O MAC HEADER
         goto drop;
 
-    eth->h_dest = ;
-    eth->h_source = ;
-    eth->h_proto = v4 ? 
-        BE16(ETH_P_IP) :
-        BE16(ETH_P_IPV6);
-    
-    skb->mac_len          = sizeof(*eth);
+    eth->dstCode  = BE32(XLAN_MAC_CODE); // XLAN_MAC_CODE
+    eth->dstHost  = hid;
+    eth->dstPort  = dstPort;
+    eth->srcCode  = BE32(XLAN_MAC_CODE); // XLAN_MAC_CODE
+    eth->srcHost  = HOST;
+    eth->srcPort  = srcPort;
+    eth->protocol = skb->protocol;
+
+    skb->mac_len          = ETH_SIZE;
     skb->data             = PTR(eth);
 #ifdef NET_SKBUFF_DATA_USES_OFFSET
     skb->mac_header       = PTR(eth) - SKB_HEAD(skb);
