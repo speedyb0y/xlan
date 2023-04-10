@@ -28,6 +28,7 @@ typedef struct net_device net_device_s;
 typedef struct net net_s;
 typedef struct header_ops header_ops_s;
 typedef struct net_device_ops net_device_ops_s;
+typedef struct ethhdr ethhdr_s;
 
 #define SKB_HEAD(skb) PTR((skb)->head)
 #define SKB_DATA(skb) PTR((skb)->data)
@@ -74,29 +75,25 @@ typedef struct net_device_ops net_device_ops_s;
 
 // PHYSICAL INTERFACES
 // TODO: IDENTIFY THEM BY MAC
-#define pathsN (sizeof(pathsDev)/sizeof(*pathsDev))
+static uint portsN;
+static net_device_s* ports[XLAN_PATHS_N];
 
-static net_device_s* pathsDev = {
-#if HOST == HOST_GW || HOST_XQUOTES
-    (net_device_s*)"lan-a",
-    (net_device_s*)"lan-b",
-#else
-#error
-#endif
-};
+#define ETH_MAC_CODE 0x00256200U
 
-#define ETH_MAC_CODE 0x0025
+#define XLAN_ETH_ALIGN ???
+
+ASSERT(sizeof(eth_s) == (XLAN_ETH_ALIGN + sizeof(ethhdr_s)));
 
 // PARA COLOCAR NO HEADER
 // hid = 20 ; pid = 2 ; '0x%04X' % ((0x0101 * ((hid // 10) << 4 | (hid % 10)) )) , hex(0xAAAA + 0x1111 * pid )
 typedef struct eth_s {  // 00:00:HH:HH:PP:PP
-    u16 _align;
-    u16 dstCode; 
-    u16 dstID;
-    u16 dstP;
-    u16 srcCode; // ETH_MAC_CODE
-    u16 srcID;
-    u16 srcP;
+    u8 _align[XLAN_ETH_ALIGN];
+    u32 dstCode; 
+     u8 dstHost;
+     u8 dstPort;
+    u32 srcCode; // ETH_MAC_CODE
+     u8 srcHost;
+     u8 srcPort;
     u16 protocol;
 } eth_s;
 
@@ -126,17 +123,17 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
         goto pass;
 
 #ifdef NET_SKBUFF_DATA_USES_OFFSET
-    eth_s* const eth = SKB_HEAD(skb) + skb->mac_header - offsetof(eth_s, dstCode);
+    eth_s* const eth = SKB_HEAD(skb) + skb->mac_header - XLAN_ETH_ALIGN;
 #else
-    eth_s* const eth =                 skb->mac_header - offsetof(eth_s, dstCode);
+    eth_s* const eth =                 skb->mac_header - XLAN_ETH_ALIGN;
 #endif
 
-    if ((PTR(eth) + offsetof(eth_s, dstCode)) < SKB_HEAD(skb)
-     || (PTR(eth) +   sizeof(eth_s))          > SKB_TAIL(skb))
+    if ((PTR(eth) + XLAN_ETH_ALIGN) < SKB_HEAD(skb)
+     || (PTR(eth) +   sizeof(*eth)) > SKB_TAIL(skb))
         goto pass;
 
     // IDENTIFY
-    if (eth->srcCode != BE16(ETH_MAC_CODE))
+    if (eth->srcCode != BE32(ETH_MAC_CODE))
         goto pass;
     
     // TODO: SE A INTERFACE XLAN ESTIVER DOWN, PASS OU DROP?
@@ -321,41 +318,16 @@ static void xlan_setup (net_device_s* const dev) {
         ;
 }
 
-static int __init xlan_init (void) {
+static int evento () {
 
-    printk("XLAN: INIT\n");
+    // SE FOR ALGUM
 
-    foreach (i, itfcsN) {
+    // COLOCA 
 
-        xlan_itfc_s* const itfc = &itfcs[i];
-
-        // CREATE THE VIRTUAL INTERFACE
-        net_device_s* dev = alloc_netdev(sizeof(xlan_itfc_s*), (const char*)itfc->dev, NET_NAME_USER, xlan_setup);
-
-        if (dev) {
-
-            // MAKE IT VISIBLE IN THE SYSTEM
-            if (register_netdev(dev)) {
-                free_netdev(dev);
-                dev = NULL;
-            }
-        }
-
-        if ((itfc->dev = dev) == NULL)
-            continue;
-
-        //
-        *(xlan_itfc_s**)netdev_priv(dev) = itfc;
-
-        // INITIALIZE PATHS
-        uint i = 0; 
-        
-        do {
-
-            xlan_path_s* const path = &itfc->paths[i];
-
-            if (path->dev == NULL)
-                break;
+    if (1) {
+        // É NOSSO MAC
+        if (1) {
+            // NAO ESTA HOOKADA
 
             net_device_s* dev = dev_get_by_name(&init_net, (const char*)path->dev);
 
@@ -379,6 +351,48 @@ static int __init xlan_init (void) {
                 }
             }
 
+            portsN++;            
+        }
+    }
+
+
+}
+
+static int __init xlan_init (void) {
+
+    printk("XLAN: INIT\n");
+
+    // CREATE THE VIRTUAL INTERFACE
+    if ((xlan = alloc_netdev(0, "xlan", NET_NAME_USER, xlan_setup)))
+        return -1;
+
+    // MAKE IT VISIBLE IN THE SYSTEM
+    if (register_netdev(xlan)) {
+        free_netdev(xlan);
+        return -1;
+    }
+
+    // ENCONTRA OS NOSSOS MACS
+    portsN = 0;
+
+    // COLOCA A PARADA DE EVENTOS
+
+    foreach (i, itfcsN) {
+
+        xlan_itfc_s* const itfc = &itfcs[i];
+
+        // INITIALIZE PATHS
+        uint i = 0; 
+        
+        do {
+
+            xlan_path_s* const path = &itfc->paths[i];
+
+            if (path->dev == NULL)
+                break;
+
+
+
             path->dev = dev;
             path->eth.h_proto = BE16(ETH_P_IP);
 
@@ -394,36 +408,30 @@ static void __exit xlan_exit (void) {
 
     printk("XLAN: EXIT\n");
 
-    foreach (i, itfcsN) {
+    // PARA DE MONITORAR OS EVENTOS
 
-        xlan_itfc_s* const itfc = &itfcs[i];
+    // UNHOOK PHYSICAL INTERFACES
+    foreach (i, portsN) {
 
-        if (itfc->dev) {
+        net_device_s* const dev = ports[i];
 
-            // UNHOOK PHYSICAL INTERFACES
-            foreach (i, itfc->pathsN) {
+        if (dev) {
 
-                net_device_s* const dev = itfc->paths[i].dev;
+            rtnl_lock();
 
-                if (dev) {
+            if (rcu_dereference(dev->rx_handler) == xlan_in)
+                netdev_rx_handler_unregister(dev);
 
-                    rtnl_lock();
+            rtnl_unlock();
 
-                    if (rcu_dereference(dev->rx_handler) == xlan_in)
-                        netdev_rx_handler_unregister(dev);
-
-                    rtnl_unlock();
-
-                    dev_put(dev);
-                }
-            }
-
-            // DESTROY VIRTUAL INTERFACE
-            unregister_netdev(itfc->dev);
-
-            free_netdev(itfc->dev);
+            dev_put(dev);
         }
     }
+
+    // DESTROY VIRTUAL INTERFACE
+    unregister_netdev(itfc->dev);
+
+    free_netdev(itfc->dev);
 }
 
 module_init(xlan_init);
