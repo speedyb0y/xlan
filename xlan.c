@@ -75,6 +75,7 @@ typedef struct xlan_itfc_s {
 #define HOST HOST_GW
 
 #define HOST_GW          1
+#define HOST_SWITCH      5
 #define HOST_WIFI       10
 #define HOST_SPEEDYB0Y  20
 #define HOST_PC2        30
