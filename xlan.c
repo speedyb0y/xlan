@@ -85,22 +85,28 @@ static net_device_s* pathsDev = {
 #endif
 };
 
+#define ETH_MAC_CODE 0x0025
+
 // PARA COLOCAR NO HEADER
 // hid = 20 ; pid = 2 ; '0x%04X' % ((0x0101 * ((hid // 10) << 4 | (hid % 10)) )) , hex(0xAAAA + 0x1111 * pid )
-typedef struct eth_s {
+typedef struct eth_s {  // 00:00:HH:HH:PP:PP
     u16 _align;
-    u16 dstZ; // 00:00:HH:HH:PP:PP
+    u16 dstCode; 
     u16 dstID;
     u16 dstP;
-    u16 srcZ;
+    u16 srcCode; // ETH_MAC_CODE
     u16 srcID;
     u16 srcP;
     u16 protocol;
 } eth_s;
 
-// HOST_ID -> MACS[]
-static const uint hostMACsN[HOSTS_N] = {
-    
+// NUMBER OF PATHS OF EACH HOST
+static const u8 hostN[HOSTS_N] = {
+    [HOST_SWITCH]    = 1,
+    [HOST_GW]        = 2,
+    [HOST_SPEEDYB0Y] = 2,
+    [HOST_XTRADER]   = 2,
+    [HOST_PC2]       = 2,
 };
 
 static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
@@ -120,48 +126,39 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
         goto pass;
 
 #ifdef NET_SKBUFF_DATA_USES_OFFSET
-    ethhdr_s* const eth = SKB_HEAD(skb) + skb->mac_header;
+    eth_s* const eth = SKB_HEAD(skb) + skb->mac_header - offsetof(eth_s, dstCode);
 #else
-    ethhdr_s* const eth =                 skb->mac_header;
+    eth_s* const eth =                 skb->mac_header - offsetof(eth_s, dstCode);
 #endif
 
-    if (PTR(eth) < SKB_HEAD(skb)
-     || PTR(eth) > SKB_TAIL(skb))
+    if ((PTR(eth) + offsetof(eth_s, dstCode)) < SKB_HEAD(skb)
+     || (PTR(eth) + offsetof(eth_s, dstCode)) > SKB_TAIL(skb))
         goto pass;
 
     // IDENTIFY
-    const u32 hash = *(u32*)&eth->h_source;
+    if (eth->srcCode != BE16(ETH_MAC_CODE))
+        goto pass;
+    
+    // TODO: SE A INTERFACE XLAN ESTIVER DOWN, PASS OU DROP?
+    if (0)
+        goto pass;
 
-    foreach (i, itfcsN) {
+    // RETIRA O ETHERNET HEADER
+    void* const ip = PTR(eth) + sizeof(*eth);
 
-        const xlan_itfc_s* const itfc = &itfcs[i];
-
-        if (itfc->hash == hash) {
-            
-            if (itfc->dev) {
-                // TODO: SE A INTERFACE ESTIVER DOWN, PASS
-
-                // RETIRA O ETHERNET HEADER
-                void* const ip = PTR(eth) + sizeof(*eth);
-
-                skb->mac_len          = 0;
-                skb->data             = PTR(ip);
+    skb->mac_len          = 0;
+    skb->data             = PTR(ip);
 #ifdef NET_SKBUFF_DATA_USES_OFFSET
-                skb->mac_header       = PTR(ip) - SKB_HEAD(skb);
-                skb->network_header   = PTR(ip) - SKB_HEAD(skb);
+    skb->mac_header       = PTR(ip) - SKB_HEAD(skb);
+    skb->network_header   = PTR(ip) - SKB_HEAD(skb);
 #else
-                skb->mac_header       = PTR(ip);
-                skb->network_header   = PTR(ip);
+    skb->mac_header       = PTR(ip);
+    skb->network_header   = PTR(ip);
 #endif
-                skb->len              = SKB_TAIL(skb) - PTR(ip);
-                skb->dev              = itfc->dev;
+    skb->len              = SKB_TAIL(skb) - PTR(ip);
+    skb->dev              = itfc->dev;
 
-                return RX_HANDLER_ANOTHER;
-            }
-
-            break;
-        }
-    }
+    return RX_HANDLER_ANOTHER;
 
 pass:
     return RX_HANDLER_PASS;
