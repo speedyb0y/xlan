@@ -215,7 +215,6 @@ pid = 2 ; '0x%012X' % ((0x000101010100 * ((20 // 10) << 4 | (20 % 10)) ) | (0xAA
         ??
     }
 
-
     // CHOOSE MY INTERFACE
     // CHOOSE THEIR INTERFACE
     // TOOD: o caso do ipv6, vai ter que transformar o valor de volta pois esta em hexadecimal
@@ -223,12 +222,13 @@ pid = 2 ; '0x%012X' % ((0x000101010100 * ((20 // 10) << 4 | (20 % 10)) ) | (0xAA
                          hash /= XLAN_HOST_PORTS_N;
     const uint dstPort = hash % hostPortsQ[dstHost];
 
+    net_device_s* const dev = ports[srcPort];
+
     // TODO: SOMENTE SE ELA ESTIVER ATIVA
     if (dev == NULL)
         goto drop;
 
-
-    // COLOCA O CABECALHO
+    // INSERT ETHERNET HEADER
     eth_s* const eth = PTR(ip) - ETH_SIZE;
 
     if (PTR(eth) < SKB_HEAD(skb))
