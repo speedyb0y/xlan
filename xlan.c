@@ -175,51 +175,67 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
      || PTR(ip) > SKB_TAIL(skb))
         goto drop;
 
-    // IP VERSION
-    const int v4 = *(u8*)ip >> 4 == 4;
-
     // COMPUTE HASH
     u64 hash;
 
-    switch (skb->protocol) {
+    uint min;
 
-        case BE16(ETH_P_IP):
+    // IP VERSION
+    switch ((hash = *(u8*)ip >> 4)) {
+
+        case 4: // TODO: VER DENTRO DAS MENSAGENS ICMP E GERAR O MESMO HASH DESSES AQUI
             
-            switch ((hash = *(u8*)(ip +  9))) {
-                case IPPROTO_TCP:
-                case IPPROTO_UDP:
-                case IPPROTO_UDPLITE:
-                case IPPROTO_SCTP:
-                case IPPROTO_TCCP:
+            // IP PROTOCOL
+            switch ((hash += *(u8*)(ip + 9))) {
+                case 4 + IPPROTO_TCP:
+                case 4 + IPPROTO_UDP:
+                case 4 + IPPROTO_UDPLITE:
+                case 4 + IPPROTO_SCTP:
+                case 4 + IPPROTO_TCCP:
                     hash += *(u64*)(ip + 12); // SRC ADDR, DST ADDR
                     hash += *(u32*)(ip + 20); // SRC PORT, DST PORT
-                    if (skb->len < (IP4_SIZE + 2))
-                        goto drop;
+                    min = IP4_SIZE + 2;
                     break;
                 default:
                     hash += *(u64*)(ip + 12); // SRC ADDR, DST ADDR
-                    if (skb->len < IP4_SIZE)
-                        goto drop;
+                    min = IP4_SIZE;
             }
 
             break;
 
-        case BE16(ETH_P_IPV6):
+        case 6:
 
-        } elif (skb->len >= (IP6_SIZE + 4)) {
-            hash  = *(u64*)(ip +  8); // SRC ADDR
-            hash += *(u64*)(ip + 16); // SRC ADDR
-            hash += *(u64*)(ip + 24); // DST ADDR
-            hash += *(u64*)(ip + 32); // DST ADDR
-            hash += *(u32*)(ip + 40); // SRC PORT, DST PORT
-            hash += *( u8*)(ip +  5); //  PROTOCOL
-        } else
-            hash = 0;
+            // IP PROTOCOL
+            switch ((hash += *(u8*)(ip + 5))) {
+                case 6 + IPPROTO_TCP:
+                case 6 + IPPROTO_UDP:
+                case 6 + IPPROTO_UDPLITE:
+                case 6 + IPPROTO_SCTP:
+                case 6 + IPPROTO_TCCP:
+                    hash += *(u64*)(ip +  8); // SRC ADDR
+                    hash += *(u64*)(ip + 16); // SRC ADDR
+                    hash += *(u64*)(ip + 24); // DST ADDR
+                    hash += *(u64*)(ip + 32); // DST ADDR
+                    hash += *(u32*)(ip + 40); // SRC PORT, DST PORT
+                    min = IP6_SIZE + 4;
+                    break;
+                default:
+                    hash += *(u64*)(ip +  8); // SRC ADDR
+                    hash += *(u64*)(ip + 16); // SRC ADDR
+                    hash += *(u64*)(ip + 24); // DST ADDR
+                    hash += *(u64*)(ip + 32); // DST ADDR
+                    min = IP6_SIZE;
+            }
+
+            break;
 
         default:
             // UNSUPORTED
             goto drop;
     }
+
+    if (skb->len < min)
+        goto drop;
 
     hash += hash >> 32;
     hash += hash >> 16;
