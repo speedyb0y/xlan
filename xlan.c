@@ -439,9 +439,9 @@ static void __exit xlan_exit (void) {
     }
 
     // DESTROY VIRTUAL INTERFACE
-    unregister_netdev(itfc->dev);
+    unregister_netdev(xdev);
 
-    free_netdev(itfc->dev);
+    free_netdev(xdev);
 }
 
 module_init(xlan_init);
