@@ -344,21 +344,20 @@ static int evento () {
         goto done;
     }
 
-    //
-    rtnl_lock();
-
-    if (rcu_dereference(dev->rx_handler) != xlan_in        
-        && netdev_rx_handler_register(dev, xlan_in, NULL) != 0)
-        // NÃO ESTÁ HOOKADA
-        // E NEM CONSEGUIU HOOKAR    
-        dev = NULL;
-
-    rtnl_unlock();
-
     net_device_s* const old = ports[pid];
 
     if (old != dev) {
         
+        rtnl_lock();
+
+        if (rcu_dereference(dev->rx_handler) != xlan_in        
+            && netdev_rx_handler_register(dev, xlan_in, NULL) != 0)
+            // NÃO ESTÁ HOOKADA
+            // E NEM CONSEGUIU HOOKAR    
+            dev = NULL;
+
+        rtnl_unlock();
+
         if (old)
             dev_put(old);
 
@@ -368,7 +367,6 @@ static int evento () {
             dev_get(dev);
         }
     }
-}
 
 done:
     return 0;
