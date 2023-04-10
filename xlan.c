@@ -132,7 +132,7 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
 #endif
 
     if ((PTR(eth) + offsetof(eth_s, dstCode)) < SKB_HEAD(skb)
-     || (PTR(eth) + offsetof(eth_s, dstCode)) > SKB_TAIL(skb))
+     || (PTR(eth) +   sizeof(eth_s))          > SKB_TAIL(skb))
         goto pass;
 
     // IDENTIFY
@@ -207,17 +207,28 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
     hash += hash >> 16;
     hash += hash >> 8;
 
-    // THIS VIRTUAL INTERFACE
-    const xlan_itfc_s* const itfc = *(xlan_itfc_s**)netdev_priv(dev);
-
+    // IDENTIFY HID BY IP DESTINATION
+    // TOOD: o caso do ipv6, vai ter que transformar o valor de volta pois esta em hexadecimal
+    uint hid;
     
+    if (v4)
+        hid = *(u8*)(ip + 19);
+    else {
+        hid = *(u8*)(ip + 39);
 
-    // CHOOSE A PATH
-    const xlan_path_s* const path = &hostMACs[hash % hostMACsN[hid];
+        (hid >> 4) | (hid & 0x0F) // 16
+pid = 2 ; '0x%012X' % ((0x000101010100 * ((20 // 10) << 4 | (20 % 10)) ) | (0xAA + 0x11 * pid ))
+        ??
+    }
+
+    // CHOSE MY INTERFACE
+    net_device_s* const dev = &hostMACs[hash % hostMACsN[hid];
 
     // TODO: SOMENTE SE ELA ESTIVER ATIVA
-    if (path->dev == NULL)
+    if (dev == NULL)
         goto drop;
+
+    // TODO: CHOSE THEIR INTERFACE
 
     // COLOCA O CABECALHO
     ethhdr_s* const eth = ip - sizeof(*eth);
@@ -240,7 +251,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
     skb->mac_header       = PTR(eth);
 #endif
     skb->len              = SKB_TAIL(skb) - PTR(eth);
-    skb->dev              = path->dev;
+    skb->dev              = dev;
 
     // -- THE FUNCTION CAN BE CALLED FROM AN INTERRUPT
     // -- WHEN CALLING THIS METHOD, INTERRUPTS MUST BE ENABLED
