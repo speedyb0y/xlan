@@ -114,42 +114,42 @@ typedef struct xlan_itfc_s {
 
 static xlan_itfc_s itfcs[] = { // TODO: FIXME: MOSTLY READ
 #if HOST == HOST_GW || HOST == HOST_XQUOTES
-    { "speedyb0y",   SPEEDYB0Y_ID, 0, {
-        { "lan-a", { SPEEDYB0Y_ETH_A,   GW_ETH_A, 0 }, },
-        { "lan-b", { SPEEDYB0Y_ETH_B,   GW_ETH_B, 0 }, }
+    { "lan-speedyb0y", SPEEDYB0Y_ID, 0, {
+        { "lan-a", {   SPEEDYB0Y_ETH_A, GW_ETH_A, 0 }, },
+        { "lan-b", {   SPEEDYB0Y_ETH_B, GW_ETH_B, 0 }, }
     }},
-    { "wifi",        WIFI_ID, 0, {
+    { "lan-wifi",    WIFI_ID, 0, {
         { "lan-a", { WIFI_ETH,          GW_ETH_A, 0 }, },
     }},
-    { "xtrader",     XTRADER_ID, 0, {
+    { "lan-xtrader", XTRADER_ID, 0, {
         { "lan-a", { XTRADER_ETH_A,     GW_ETH_A, 0 }, },
         { "lan-b", { XTRADER_ETH_B,     GW_ETH_B, 0 }, }
     }},
-    { "pc2",         PC2_ID, 0, {
+    { "lan-pc2",     PC2_ID, 0, {
         { "lan-a", { PC2_ETH_A,         GW_ETH_A, 0 }, },
         { "lan-b", { PC2_ETH_B,         GW_ETH_B, 0 }, }
     }},
-    { "switch",      SWITCH_ID, 0, {
+    { "lan-switch",  SWITCH_ID, 0, {
         { "lan-a", { SWITCH_ETH,        GW_ETH_A, 0 }, },
     }},
 #elif HOST == HOST_SPEEDYB0Y
-    { "gw",          GW_ID, 0, {
+    { "lan-gw",      GW_ID, 0, {
         { "lan-a", { GW_ETH_A,      SPEEDYB0Y_ETH_A, 0 }, },
         { "lan-b", { GW_ETH_B,      SPEEDYB0Y_ETH_B, 0 }, }
     }},
-    { "xquotes",     XQUOTES_ID, 0,{
+    { "lan-xquotes", XQUOTES_ID, 0,{
         { "lan-a", { XQUOTES_ETH_A, SPEEDYB0Y_ETH_A, 0 }, },
         { "lan-b", { XQUOTES_ETH_B, SPEEDYB0Y_ETH_B, 0 }, }
     }},
-    { "xtrader",     XTRADER_ID, 0, {
+    { "lan-xtrader", XTRADER_ID, 0, {
         { "lan-a", { XTRADER_ETH_A, SPEEDYB0Y_ETH_A, 0 }, },
         { "lan-b", { XTRADER_ETH_B, SPEEDYB0Y_ETH_B, 0 }, }
     }},
-    { "pc2",         PC2_ID, 0, {
+    { "lan-pc2",     PC2_ID, 0, {
         { "lan-a", { PC2_ETH_A,     SPEEDYB0Y_ETH_A, 0 }, },
         { "lan-b", { PC2_ETH_B,     SPEEDYB0Y_ETH_B, 0 }, }
     }},
-    { "switch",      SWITCH_ID, 0, {
+    { "lan-switch",  SWITCH_ID, 0, {
         { "lan-a", { SWITCH_ETH,    SPEEDYB0Y_ETH_A, 0 }, },
     }},
 #else
