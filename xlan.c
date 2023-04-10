@@ -204,12 +204,12 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
 
     // IDENTIFY HID BY IP DESTINATION
     // TOOD: o caso do ipv6, vai ter que transformar o valor de volta pois esta em hexadecimal
-    uint hid;
+    uint dstHost;
     
     if (v4)
-        hid = *(u8*)(ip + 19);
+        dstHost = *(u8*)(ip + IP4_SIZE - 1);
     else {
-        hid = *(u8*)(ip + 39);
+        dstHost = *(u8*)(ip + IP6_SIZE - 1);
 
         (hid >> 4) | (hid & 0x0F) // 16
 pid = 2 ; '0x%012X' % ((0x000101010100 * ((20 // 10) << 4 | (20 % 10)) ) | (0xAA + 0x11 * pid ))
@@ -233,7 +233,7 @@ pid = 2 ; '0x%012X' % ((0x000101010100 * ((20 // 10) << 4 | (20 % 10)) ) | (0xAA
         goto drop;
 
     eth->dstCode  = BE32(XLAN_MAC_CODE); // XLAN_MAC_CODE
-    eth->dstHost  = hid;
+    eth->dstHost  = dstHost;
     eth->dstPort  = dstPort;
     eth->srcCode  = BE32(XLAN_MAC_CODE); // XLAN_MAC_CODE
     eth->srcHost  = HOST;
