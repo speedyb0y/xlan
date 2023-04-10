@@ -99,7 +99,7 @@ typedef struct eth_s {
 } __attribute__((packed)) eth_s;
 
 // NUMBER OF PATHS OF EACH HOST
-static const u8 hostN[HOSTS_N] = {
+static const u8 hostPortsQ[HOSTS_N] = {
     [HOST_GW]        = 2,
     [HOST_WIFI]      = 1,
     [HOST_PC2]       = 1,
@@ -202,8 +202,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
     hash += hash >> 16;
     hash += hash >> 8;
 
-    // IDENTIFY HID BY IP DESTINATION
-    // TOOD: o caso do ipv6, vai ter que transformar o valor de volta pois esta em hexadecimal
+    // IDENTIFY HOSY BY IP DESTINATION
     uint dstHost;
     
     if (v4)
@@ -216,14 +215,18 @@ pid = 2 ; '0x%012X' % ((0x000101010100 * ((20 // 10) << 4 | (20 % 10)) ) | (0xAA
         ??
     }
 
-    // CHOSE MY INTERFACE
-    net_device_s* const dev = &hostMACs[hash % hostMACsN[hid];
+
+    // CHOOSE MY INTERFACE
+    // CHOOSE THEIR INTERFACE
+    // TOOD: o caso do ipv6, vai ter que transformar o valor de volta pois esta em hexadecimal
+    const uint srcPort = hash %  XLAN_HOST_PORTS_N;
+                         hash /= XLAN_HOST_PORTS_N;
+    const uint dstPort = hash % hostPortsQ[dstHost];
 
     // TODO: SOMENTE SE ELA ESTIVER ATIVA
     if (dev == NULL)
         goto drop;
 
-    // TODO: CHOSE THEIR INTERFACE
 
     // COLOCA O CABECALHO
     eth_s* const eth = PTR(ip) - ETH_SIZE;
