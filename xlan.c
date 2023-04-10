@@ -28,7 +28,6 @@ typedef struct net_device net_device_s;
 typedef struct net net_s;
 typedef struct header_ops header_ops_s;
 typedef struct net_device_ops net_device_ops_s;
-typedef struct ethhdr ethhdr_s;
 
 #define SKB_HEAD(skb) PTR((skb)->head)
 #define SKB_DATA(skb) PTR((skb)->data)
@@ -53,6 +52,7 @@ typedef struct ethhdr ethhdr_s;
 #define BE64(x) ((u64)__builtin_bswap64((u64)(x)))
 #endif
 
+#define ETH_SIZE 14
 #define IP4_SIZE 20
 #define IP6_SIZE 40
 
@@ -74,74 +74,33 @@ typedef struct ethhdr ethhdr_s;
 
 // PHYSICAL INTERFACES
 // TODO: IDENTIFY THEM BY MAC
-static uint pathsN;
-static net_device_s* pathsDev[XLAN_PATHS_N];
+#define pathsN (sizeof(pathsDev)/sizeof(*pathsDev))
 
-// hid = 20 ; pid = 2 ; '0x%04X' % ((0x0101 * ((hid // 10) << 4 | (hid % 10)) )) , hex(0xAAAA + 0x1111 * pid )
-
-struct eth_s {
-    u16 dnode[3]; // 00:00:HH:HH:PP:PP
-    u16 snode[3];
-    u16 protocol;
-};
-
-// HOST_ID -> MACS[]
-static uint hostMACsN[HOSTS_N]; // TODO: CONTA QUANTOS CADA UM TEM
-static const u8 hostMACs[ETH_ALEN][HOSTS_N][XLAN_PATHS_N] = {
-    [HOST_SWITCH]    = { , 0x50, 0xD4, 0xF7, 0x48, 0xC2, 0xEE }, 
-    [WIFI_ETH]       = { , 0x00, 0x10, 0x10, 0x10, 0x10, 0x00 },
-    [GW_ETH_B]       = { , 0x00, 0x01, 0x01, 0x01, 0x01, 0xAA, , 0x00, 0x01, 0x01, 0x01, 0x01, 0xBB, },
-    [HOST_SPEEDYB0Y] = { , 0x00, 0x20, 0x20, 0x20, 0x20, 0xAA, , 0x00, 0x20, 0x20, 0x20, 0x20, 0xBB, },
-    [HOST_PC2]       = { , 0x00, 0x30, 0x30, 0x30, 0x30, 0xAA, , 0x00, 0x30, 0x30, 0x30, 0x30, 0xBB },
-    [HOST_XTRADER]   = { , 0x00, 0x40, 0x40, 0x40, 0x40, 0xAA, , 0x00, 0x40, 0x40, 0x40, 0x40, 0xBB },
-    [HOST_XQUOTES]   = { , 0x00, 0x50, 0x50, 0x50, 0x50, 0xAA, , 0x00, 0x50, 0x50, 0x50, 0x50, 0xBB },
-};
-
-#define itfcsN (sizeof(itfcs)/sizeof(*itfcs))
-
-static xlan_itfc_s itfcs[] = { // TODO: FIXME: MOSTLY READ
-#if HOST == HOST_GW || HOST == HOST_XQUOTES
-    { "lan-speedyb0y", SPEEDYB0Y_ID, 0, {
-        { "lan-a", {   SPEEDYB0Y_ETH_A, GW_ETH_A, 0 }, },
-        { "lan-b", {   SPEEDYB0Y_ETH_B, GW_ETH_B, 0 }, }
-    }},
-    { "lan-wifi",    WIFI_ID, 0, {
-        { "lan-a", { WIFI_ETH,          GW_ETH_A, 0 }, },
-    }},
-    { "lan-xtrader", XTRADER_ID, 0, {
-        { "lan-a", { XTRADER_ETH_A,     GW_ETH_A, 0 }, },
-        { "lan-b", { XTRADER_ETH_B,     GW_ETH_B, 0 }, }
-    }},
-    { "lan-pc2",     PC2_ID, 0, {
-        { "lan-a", { PC2_ETH_A,         GW_ETH_A, 0 }, },
-        { "lan-b", { PC2_ETH_B,         GW_ETH_B, 0 }, }
-    }},
-    { "lan-switch",  SWITCH_ID, 0, {
-        { "lan-a", { SWITCH_ETH,        GW_ETH_A, 0 }, },
-    }},
-#elif HOST == HOST_SPEEDYB0Y
-    { "lan-gw",      GW_ID, 0, {
-        { "lan-a", { GW_ETH_A,      SPEEDYB0Y_ETH_A, 0 }, },
-        { "lan-b", { GW_ETH_B,      SPEEDYB0Y_ETH_B, 0 }, }
-    }},
-    { "lan-xquotes", XQUOTES_ID, 0,{
-        { "lan-a", { XQUOTES_ETH_A, SPEEDYB0Y_ETH_A, 0 }, },
-        { "lan-b", { XQUOTES_ETH_B, SPEEDYB0Y_ETH_B, 0 }, }
-    }},
-    { "lan-xtrader", XTRADER_ID, 0, {
-        { "lan-a", { XTRADER_ETH_A, SPEEDYB0Y_ETH_A, 0 }, },
-        { "lan-b", { XTRADER_ETH_B, SPEEDYB0Y_ETH_B, 0 }, }
-    }},
-    { "lan-pc2",     PC2_ID, 0, {
-        { "lan-a", { PC2_ETH_A,     SPEEDYB0Y_ETH_A, 0 }, },
-        { "lan-b", { PC2_ETH_B,     SPEEDYB0Y_ETH_B, 0 }, }
-    }},
-    { "lan-switch",  SWITCH_ID, 0, {
-        { "lan-a", { SWITCH_ETH,    SPEEDYB0Y_ETH_A, 0 }, },
-    }},
+static net_device_s* pathsDev = {
+#if HOST == HOST_GW || HOST_XQUOTES
+    (net_device_s*)"lan-a",
+    (net_device_s*)"lan-b",
 #else
 #error
 #endif
+};
+
+// PARA COLOCAR NO HEADER
+// hid = 20 ; pid = 2 ; '0x%04X' % ((0x0101 * ((hid // 10) << 4 | (hid % 10)) )) , hex(0xAAAA + 0x1111 * pid )
+typedef struct eth_s {
+    u16 _align;
+    u16 dstZ; // 00:00:HH:HH:PP:PP
+    u16 dstID;
+    u16 dstP;
+    u16 srcZ;
+    u16 srcID;
+    u16 srcP;
+    u16 protocol;
+} eth_s;
+
+// HOST_ID -> MACS[]
+static const uint hostMACsN[HOSTS_N] = {
+    
 };
 
 static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
