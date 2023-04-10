@@ -317,11 +317,17 @@ static void xlan_setup (net_device_s* const dev) {
         ;
 }
 
-static int evento () {
+static int xlan_notify_phys (struct notifier_block* const nb, const unsigned long event, void* const info) {
 
-    // REGISTER / CHANGE ADDR
+    net_device_s* const dev = netdev_notifier_info_to_dev(info);
 
     if (dev == xdev)
+        // IGNORA EVENTOS DELA MESMA
+        goto done;
+
+    if (event != NETDEV_REGISTER
+     && event != NETDEV_CHANGEADDR)
+        //
         goto done;
 
     const void* const addr = dev->;
@@ -369,8 +375,12 @@ static int evento () {
     }
 
 done:
-    return 0;
+    return NOTIFY_OK;
 }
+
+static notifier_block_s notifyDevs = {
+    .notifier_call = xlan_notify_phys
+};
 
 static int __init xlan_init (void) {
 
@@ -389,9 +399,11 @@ static int __init xlan_init (void) {
     }
 
     // ENCONTRARÁ PELOS NOSSOS MACS
-    portsN = 0;
+    // NOTE: OTHERWISE DIVISION BY ZERO
+    portsN = 1;
 
-    // TODO: COLOCA A PARADA DE EVENTOS
+    // COLOCA A PARADA DE EVENTOS
+    register_netdevice_notifier(&notifyDevs);
 
     return 0;
 }
@@ -401,6 +413,7 @@ static void __exit xlan_exit (void) {
     printk("XLAN: EXIT\n");
 
     // PARA DE MONITORAR OS EVENTOS
+    unregister_netdevice_notifier(&notifyDevs);
 
     // UNHOOK PHYSICAL INTERFACES
     foreach (i, portsN) {
