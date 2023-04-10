@@ -83,10 +83,17 @@ typedef struct xlan_itfc_s {
 #define HOST_TEST       70
 
 #define GW_ID        0x01010100U
+#define SWITCH_ID    0x05050500U
+#define WIFI_ID      0x10101000U
 #define SPEEDYB0Y_ID 0x20202000U
 #define PC2_ID       0x30303000U
 #define XTRADER_ID   0x40404000U
 #define XQUOTES_ID   0x50505000U
+#define TEST_ID      0x70707000U
+
+#define SWITCH_ETH      "\x50\xD4\xF7\x48\xC2\xEE"
+
+#define WIFI_ETH        "\x00\x10\x10\x10\x10\x00"
 
 #define GW_ETH_A        "\x00\x01\x01\x01\x01\xAA"
 #define GW_ETH_B        "\x00\x01\x01\x01\x01\xBB"
@@ -107,34 +114,43 @@ typedef struct xlan_itfc_s {
 
 static xlan_itfc_s itfcs[] = { // TODO: FIXME: MOSTLY READ
 #if HOST == HOST_GW || HOST == HOST_XQUOTES
-    { "speedyb0y", SPEEDYB0Y_ID, 0, {
-        { "lan-a", { SPEEDYB0Y_ETH_A, GW_ETH_A, 0 }, },
-        { "lan-b", { SPEEDYB0Y_ETH_B, GW_ETH_B, 0 }, }
+    { "speedyb0y",   SPEEDYB0Y_ID, 0, {
+        { "lan-a", { SPEEDYB0Y_ETH_A,   GW_ETH_A, 0 }, },
+        { "lan-b", { SPEEDYB0Y_ETH_B,   GW_ETH_B, 0 }, }
     }},
-    { "xtrader", XTRADER_ID, 0, {
-        { "lan-a", { XTRADER_ETH_A, GW_ETH_A, 0 }, },
-        { "lan-b", { XTRADER_ETH_B, GW_ETH_B, 0 }, }
+    { "wifi",        WIFI_ID, 0, {
+        { "lan-a", { WIFI_ETH,          GW_ETH_A, 0 }, },
     }},
-    { "pc2", PC2_ID, 0, {
-        { "lan-a", { PC2_ETH_A, GW_ETH_A, 0 }, },
-        { "lan-b", { PC2_ETH_B, GW_ETH_B, 0 }, }
+    { "xtrader",     XTRADER_ID, 0, {
+        { "lan-a", { XTRADER_ETH_A,     GW_ETH_A, 0 }, },
+        { "lan-b", { XTRADER_ETH_B,     GW_ETH_B, 0 }, }
+    }},
+    { "pc2",         PC2_ID, 0, {
+        { "lan-a", { PC2_ETH_A,         GW_ETH_A, 0 }, },
+        { "lan-b", { PC2_ETH_B,         GW_ETH_B, 0 }, }
+    }},
+    { "switch",      SWITCH_ID, 0, {
+        { "lan-a", { SWITCH_ETH,        GW_ETH_A, 0 }, },
     }},
 #elif HOST == HOST_SPEEDYB0Y
-    { "gw", GW_ID, 0, {
-        { "lan-a", { GW_ETH_A, SPEEDYB0Y_ETH_A, 0 }, },
-        { "lan-b", { GW_ETH_B, SPEEDYB0Y_ETH_B, 0 }, }
+    { "gw",          GW_ID, 0, {
+        { "lan-a", { GW_ETH_A,      SPEEDYB0Y_ETH_A, 0 }, },
+        { "lan-b", { GW_ETH_B,      SPEEDYB0Y_ETH_B, 0 }, }
     }},
-    { "xquotes", XQUOTES_ID, 0,{
+    { "xquotes",     XQUOTES_ID, 0,{
         { "lan-a", { XQUOTES_ETH_A, SPEEDYB0Y_ETH_A, 0 }, },
         { "lan-b", { XQUOTES_ETH_B, SPEEDYB0Y_ETH_B, 0 }, }
     }},
-    { "xtrader", XTRADER_ID, 0, {
+    { "xtrader",     XTRADER_ID, 0, {
         { "lan-a", { XTRADER_ETH_A, SPEEDYB0Y_ETH_A, 0 }, },
         { "lan-b", { XTRADER_ETH_B, SPEEDYB0Y_ETH_B, 0 }, }
     }},
-    { "pc2", PC2_ID, 0, {
-        { "lan-a", { PC2_ETH_A, SPEEDYB0Y_ETH_A, 0 }, },
-        { "lan-b", { PC2_ETH_B, SPEEDYB0Y_ETH_B, 0 }, }
+    { "pc2",         PC2_ID, 0, {
+        { "lan-a", { PC2_ETH_A,     SPEEDYB0Y_ETH_A, 0 }, },
+        { "lan-b", { PC2_ETH_B,     SPEEDYB0Y_ETH_B, 0 }, }
+    }},
+    { "switch",      SWITCH_ID, 0, {
+        { "lan-a", { SWITCH_ETH,    SPEEDYB0Y_ETH_A, 0 }, },
     }},
 #else
 #error
