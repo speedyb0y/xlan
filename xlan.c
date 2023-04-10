@@ -85,9 +85,6 @@ static net_device_s* ports[XLAN_HOST_PORTS_N];
 //
 #define XLAN_MAC_CODE 0x00256200U
 
-//
-#define XLAN_ETH_ALIGN sizeof(u16)
-
 // PARA COLOCAR NO HEADER
 // hid = 20 ; pid = 2 ; '0x%04X' % ((0x0101 * ((hid // 10) << 4 | (hid % 10)) )) , hex(0xAAAA + 0x1111 * pid )
 typedef struct eth_s {
@@ -128,25 +125,29 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
         goto pass;
 
 #ifdef NET_SKBUFF_DATA_USES_OFFSET
-    eth_s* const eth = SKB_HEAD(skb) + skb->mac_header - XLAN_ETH_ALIGN;
+    eth_s* const eth = SKB_HEAD(skb) + skb->mac_header;
 #else
-    eth_s* const eth =                 skb->mac_header - XLAN_ETH_ALIGN;
+    eth_s* const eth =                 skb->mac_header;
 #endif
 
-    if ((PTR(eth) + XLAN_ETH_ALIGN) < SKB_HEAD(skb)
-     || (PTR(eth) +   sizeof(*eth)) > SKB_TAIL(skb))
+    if (PTR(eth) < SKB_HEAD(skb)
+    || (PTR(eth) + ETH_SIZE) >= SKB_TAIL(skb))
         goto pass;
 
-    // IDENTIFY
     if (eth->srcCode != BE32(XLAN_MAC_CODE))
+        // NOT FROM XVLAN
         goto pass;
     
+    if (eth->srcPort == 0)
+        // NOT A SWITCH PORT
+        goto pass;
+
     // TODO: SE A INTERFACE XLAN ESTIVER DOWN, PASS OU DROP?
     if (0)
         goto pass;
 
-    // RETIRA O ETHERNET HEADER
-    void* const ip = PTR(eth) + sizeof(*eth);
+    // PULA O ETHERNET HEADER
+    void* const ip = PTR(eth) + ETH_SIZE;
 
     skb->mac_len          = 0;
     skb->data             = PTR(ip);
@@ -392,7 +393,7 @@ static int __init xlan_init (void) {
 
     printk("XLAN: INIT\n");
 
-    ASSERT(sizeof(eth_s) == (ETH_SIZE + XLAN_ETH_ALIGN));
+    ASSERT(offsetof(eth_s, _align) == ETH_SIZE);
 
     // CREATE THE VIRTUAL INTERFACE
     if ((xdev = alloc_netdev(0, "xlan", NET_NAME_USER, xlan_setup)))
