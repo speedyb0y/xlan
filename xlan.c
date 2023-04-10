@@ -364,7 +364,7 @@ static int evento () {
         if ((ports[pid] = dev)) {            
             if (portsN <= pid)
                 portsN = pid + 1;            
-            dev_get(dev);
+            dev_hold(dev);
         }
     }
 
