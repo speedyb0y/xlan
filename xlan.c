@@ -320,8 +320,9 @@ static void xlan_setup (net_device_s* const dev) {
 static int evento () {
 
     // REGISTER / CHANGE ADDR
-    // TODO: UNREGISTER
-    // TODO: CHANGE ADDR FROM OUR TO SOMETHING ELSE
+
+    if (dev == xdev)
+        goto done;
 
     const void* const addr = dev->;
 
@@ -397,12 +398,12 @@ static int __init xlan_init (void) {
     ASSERT(sizeof(eth_s) == (XLAN_ETH_ALIGN + ETH_SIZE));
 
     // CREATE THE VIRTUAL INTERFACE
-    if ((xlan = alloc_netdev(0, "xlan", NET_NAME_USER, xlan_setup)))
+    if ((xdev = alloc_netdev(0, "xlan", NET_NAME_USER, xlan_setup)))
         return -1;
 
     // MAKE IT VISIBLE IN THE SYSTEM
-    if (register_netdev(xlan)) {
-        free_netdev(xlan);
+    if (register_netdev(xdev)) {
+        free_netdev(xdev);
         return -1;
     }
 
