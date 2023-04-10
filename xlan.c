@@ -326,9 +326,9 @@ static int evento () {
 
     const void* const addr = dev->;
 
-    const uint code = *(u32*)addr;
-    const uint hid  = *(u8*)(addr + sizeof(u32));
-    const uint pid  = *(u8*)(addr + sizeof(u32) + sizeof(u8));
+    const uint code = *(u32*) addr;
+    const uint hid  = *( u8*)(addr + sizeof(u32));
+    const uint pid  = *( u8*)(addr + sizeof(u32) + sizeof(u8));
 
     if (code != BE32(XLAN_MAC_CODE))
         // NÃO É NOSSO MAC
@@ -344,33 +344,16 @@ static int evento () {
         goto done;
     }
 
-    int hook;
-
+    //
     rtnl_lock();
 
-    if (rcu_dereference(dev->rx_handler) == xlan_in)
-        hook =  0; // JÁ ESTA HOOKADA
-    elif (netdev_rx_handler_register(dev, xlan_in, NULL) == 0)
-        hook =  1; // HOOKOU
-    else // NÃO CONSEGUIU HOOKAR
-        hook = -1;
+    if (rcu_dereference(dev->rx_handler) != xlan_in        
+        && netdev_rx_handler_register(dev, xlan_in, NULL) != 0)
+        // NÃO ESTÁ HOOKADA
+        // E NEM CONSEGUIU HOOKAR    
+        dev = NULL;
 
     rtnl_unlock();
-
-    switch (hook) {
-        
-        case 0:
-            // NOTE: ASSUME
-            
-            break;
-
-        case 1:
-            break;
-
-        case -1:
-            // DEIXA COMO ESTÁ
-            break;
-    }
 
     net_device_s* const old = ports[pid];
 
