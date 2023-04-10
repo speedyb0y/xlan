@@ -325,23 +325,23 @@ static int evento () {
 
     const void* const addr = dev->;
 
-    if (*(u32*)addr != BE32(XLAN_MAC_CODE))
+    const uint code = *(u32*)addr;
+    const uint hid  = *(u8*)(addr + sizeof(u32));
+    const uint pid  = *(u8*)(addr + sizeof(u32) + sizeof(u8));
+
+    if (code != BE32(XLAN_MAC_CODE))
         // NÃO É NOSSO MAC
         goto done;
 
-    if (*(u8*)(addr + sizeof(u32)) != HOST) {
+    if (hid != HOST) {
         printk("XLAN: HOST MISMATCH\n");
         goto done;
     }
-
-
-    const uint pid = *(u8*)(addr + sizeof(u32) + sizeof(u8));
 
     if (pid >= XLAN_PORTS_N) {
         printk("XLAN: BAD PORT\n");
         goto done;
     }
-
 
     int hook;
 
@@ -357,25 +357,32 @@ static int evento () {
     rtnl_unlock();
 
     switch (hook) {
+        
         case 0:
+            // NOTE: ASSUME
+            
             break;
 
         case 1:
             break;
 
         case -1:
-            dev_put(dev);
-            dev = NULL;
+            // DEIXA COMO ESTÁ
             break;
     }
 
-    if (ports[pid])
+    net_device_s* const old = ports[pid];
 
-    if (1) {
-        // NAO ESTA HOOKADA
+    if (old != dev) {
+        
+        if (old)
+            dev_put(old);
 
-
-        portsN++;            
+        if ((ports[pid] = dev)) {            
+            if (portsN <= pid)
+                portsN = pid + 1;            
+            dev_get(dev);
+        }
     }
 }
 
@@ -402,31 +409,7 @@ static int __init xlan_init (void) {
     // ENCONTRARÁ PELOS NOSSOS MACS
     portsN = 0;
 
-    // COLOCA A PARADA DE EVENTOS
-
-    foreach (i, itfcsN) {
-
-        xlan_itfc_s* const itfc = &itfcs[i];
-
-        // INITIALIZE PATHS
-        uint i = 0; 
-        
-        do {
-
-            xlan_path_s* const path = &itfc->paths[i];
-
-            if (path->dev == NULL)
-                break;
-
-
-
-            path->dev = dev;
-            path->eth.h_proto = BE16(ETH_P_IP);
-
-        } while (++i != XLAN_PORTS_N);
-
-        itfc->pathsN = i;
-    }
+    // TODO: COLOCA A PARADA DE EVENTOS
 
     return 0;
 }
