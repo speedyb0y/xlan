@@ -59,6 +59,8 @@ typedef struct ethhdr ethhdr_s;
 #define ETH_SIZE 14
 #define IP4_SIZE 20
 #define IP6_SIZE 40
+#define UDP_SIZE  8
+#define TCP_SIZE 20
 
 // THIS HOST
 #define HOST GW
@@ -203,7 +205,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
                 case 4 + IPPROTO_DCCP:
                     hash += *(u64*)(ip + 12); // SRC ADDR, DST ADDR
                     hash += *(u32*)(ip + 20); // SRC PORT, DST PORT
-                    hsize = IP4_SIZE + 2*sizeof(u16);
+                    hsize = IP4_SIZE + UDP_SIZE;
                     break;
                 default:
                     hash += *(u64*)(ip + 12); // SRC ADDR, DST ADDR
@@ -226,7 +228,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
                     hash += *(u64*)(ip + 24); // DST ADDR
                     hash += *(u64*)(ip + 32); // DST ADDR
                     hash += *(u32*)(ip + 40); // SRC PORT, DST PORT
-                    hsize = IP6_SIZE + 2*sizeof(u16);
+                    hsize = IP6_SIZE + UDP_SIZE;
                     break;
                 default:
                     hash += *(u64*)(ip +  8); // SRC ADDR
