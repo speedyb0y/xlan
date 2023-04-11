@@ -69,7 +69,7 @@ typedef struct notifier_block notifier_block_s;
 //
 #define XLAN_HOST_PORTS_MAX 4
 // MAX HOSTS IN A LAN
-#define XLAN_LAN_HOSTS_MAX 256
+#define XLAN_LAN_HOSTS_MAX 128
 
 typedef struct xlan_s {
     // NAME
@@ -152,36 +152,28 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
     const uint oui = BE16(eth->dstOUI);
     const uint lid = BE16(eth->dstLan);
     const uint hid =      eth->dstHost;
-    const uint pid =      eth->dstPort;
+    const uint pid =      eth->dstPort / 0x11;
 
+    // CONFIRM ITS XLAN
     if (oui != XLAN_OUI)
-        // NOT FROM XLAN
-        goto pass;
-    
-    if (pid == 0)
-        // NOT A SWITCH PORT
         goto pass;
 
-    if (pid >= XLAN_HOST_PORTS_MAX)
-        // INVALID PORT
-        goto pass;
-
-    if (lid >= XLAN_LAN_HOSTS_MAX)
-        // INVALID LAN
-        goto pass;
-
+    // VALIDATE LAN
     if (lid >= HOST_LANS_N)
-        // INVALID LAN
         goto pass;
 
     xlan_s* const lan = &lans[lid];
 
+    // CONFIRM ITS OURS
     if (hid != lan->host)
-        // NOT OURS
         goto pass;
 
+    // VALIDATE PORT
     if (pid >= lan->portsN)
-        // INVALID LOCAL PORT
+        goto pass;
+
+    // CONFIRM IT CAME ON THE PHYSICAL
+    if (skb->dev != lan->phys[pid])
         goto pass;
 
     net_device_s* const virt = lan->virt;
