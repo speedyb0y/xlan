@@ -479,20 +479,48 @@ static int __init xlan_init (void) {
 
     BUILD_BUG_ON(offsetof(eth_s, _align) != ETH_SIZE);
 
-    // CREATE THE VIRTUAL INTERFACE
-    if ((xdev = alloc_netdev(0, "xlan", NET_NAME_USER, xlan_setup)))
-        return -1;
+    foreach (i, HOST_LANS_N) {
 
-    // MAKE IT VISIBLE IN THE SYSTEM
-    if (register_netdev(xdev)) {
-        free_netdev(xdev);
-        return -1;
+        const xlan_s* const lan = &lans[i];
+
+        // CREATE THE VIRTUAL INTERFACE
+        net_device_s* const dev = alloc_netdev(sizeof(xlan_s*), "xlan", NET_NAME_USER, xlan_setup)
+        
+        if (dev == NULL)
+            return -1;
+
+        // MAKE IT VISIBLE IN THE SYSTEM
+        if (register_netdev(xdev)) {
+            free_netdev(xdev);
+            return -1;
+        }
+
+        *(xlan_s**)netdev_priv(dev) = lan;
+
+        lan->dev = dev;
+        lan->portsN = lan->portsQ[lan->host];
     }
 
     // COLOCA A PARADA DE EVENTOS
     register_netdevice_notifier(&notifyDevs);
 
     return 0;
+
+err:
+
+    // TODO: LIMPA TODAS
+    while (i) {
+
+        const xlan_s* const lan = &lans[i];
+
+    // DESTROY VIRTUAL INTERFACE
+    unregister_netdev(xdev);
+
+    free_netdev(xdev);
+        i--;
+    }
+
+    return -1;
 }
 
 static void __exit xlan_exit (void) {
@@ -502,28 +530,33 @@ static void __exit xlan_exit (void) {
     // PARA DE MONITORAR OS EVENTOS
     unregister_netdevice_notifier(&notifyDevs);
 
-    // UNHOOK PHYSICAL INTERFACES
-    foreach (i, HOST_PORTS_Q) {
+    foreach (i, HOST_LANS_N) {
 
-        net_device_s* const dev = ports[i];
+        const xlan_s* const lan = &lans[i];
 
-        if (dev) {
+        // UNHOOK PHYSICAL INTERFACES
+        foreach (i, lan->portsN) {
 
-            rtnl_lock();
+            net_device_s* const dev = lan->ports[i];
 
-            if (rcu_dereference(dev->rx_handler) == xlan_in)
-                netdev_rx_handler_unregister(dev);
+            if (dev) {
 
-            rtnl_unlock();
+                rtnl_lock();
 
-            dev_put(dev);
+                if (rcu_dereference(dev->rx_handler) == xlan_in)
+                    netdev_rx_handler_unregister(dev);
+
+                rtnl_unlock();
+
+                dev_put(dev);
+            }
         }
+
+        // DESTROY VIRTUAL INTERFACE
+        unregister_netdev(lan->dev);
+
+        free_netdev(lan->dev);
     }
-
-    // DESTROY VIRTUAL INTERFACE
-    unregister_netdev(xdev);
-
-    free_netdev(xdev);
 }
 
 module_init(xlan_init);
