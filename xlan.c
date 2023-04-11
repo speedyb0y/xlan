@@ -102,7 +102,7 @@ static xlan_s lans[] = {
     }
 };
 
-#define VIRT_LAN(dev) (*(xlan_s**)netdev_priv(dev))
+#define VIRT_LAN(v) (*(xlan_s**)netdev_priv(v))
 
 //
 #define XLAN_MAC_MAGIC 0x0025U
