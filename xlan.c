@@ -580,20 +580,20 @@ static void __exit xlan_exit (void) {
     // PARA DE MONITORAR OS EVENTOS
     unregister_netdevice_notifier(&notifyDevs);
 
-    foreach (i, HOST_LANS_N) {
+    foreach (lid, HOST_LANS_N) {
 
-        const xlan_s* const lan = &lans[i];
+        const xlan_s* const lan = &lans[lid];
 
-        printk("XLAN: DESTROYING LAN %s\n", lan->name);
+        printk("XLAN: DESTROYING LAN #%u %s\n", lid, lan->name);
 
         // UNHOOK PHYSICAL INTERFACES
-        foreach (i, lan->portsN) {
+        foreach (pid, lan->portsN) {
 
-            net_device_s* const dev = lan->ports[i];
+            net_device_s* const dev = lan->phys[pid];
 
             if (dev) {
 
-                printk("XLAN: UNHOOKING PHYSICAL %s\n", dev->name);
+                printk("XLAN: UNHOOKING PHYSICAL #%u INTERFACE %s\n", pid, dev->name);
 
                 rtnl_lock();
 
