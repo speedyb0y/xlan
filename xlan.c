@@ -69,7 +69,7 @@ typedef struct notifier_block notifier_block_s;
 //
 #define XLAN_HOST_PORTS_MAX 4
 // MAX HOSTS IN A LAN
-#define XLAN_LAN_HOSTS_MAX 64
+#define XLAN_LAN_HOSTS_MAX 256
 
 typedef struct xlan_s {
     // NAME
