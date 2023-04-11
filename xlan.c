@@ -419,7 +419,7 @@ static int xlan_notify_phys (struct notifier_block* const nb, const unsigned lon
      && event != NETDEV_CHANGEADDR)
         goto done;
 
-    net_device_s* port = netdev_notifier_info_to_dev(info);
+    net_device_s* dev = netdev_notifier_info_to_dev(info);
 
     // IGNORA EVENTOS DE LANS
     // TODO: FIXME: IDENTIFICAR SE A INTERFACE É UMA LAN
@@ -427,7 +427,7 @@ static int xlan_notify_phys (struct notifier_block* const nb, const unsigned lon
         goto done;
 
     // TODO: FIXME: CONFIRM ADDR LEN == ETH_ALEN
-    const eth_s* const addr = PTR(port->dev_addr);
+    const eth_s* const addr = PTR(dev->dev_addr);
 
     //
     if (addr == NULL)
@@ -441,43 +441,33 @@ static int xlan_notify_phys (struct notifier_block* const nb, const unsigned lon
         //ASSERT(dev != lan->dev);
 
         foreach (pid, lan->portsN) {
-            if (lan->portsDevs[pid]) {
-                if (lan->portsDevs[pid] == dev)
-                    // 
-                    break;
-                continue;
-            }
+            if (lan->portsDevs[pid])
+                // NAO ESTA MAIS TENTANDO DESCOBRIR
+                break;
             if (memcmp(lan->portsMACs[lan->host][pid], addr, ETH_ALEN) == 0) {
                 //
-                printk("XLAN: LAN %u: PORT %u: FOUND PHYSICAL INTERFACE %s\n", lid, pid, port->name);
-                lan->portsDevs[pid] = dev;
+                printk("XLAN: LAN %u: PORT %u: FOUND PHYSICAL INTERFACE %s\n", lid, pid, dev->name);
+
+                rtnl_lock();
+
+                if (rcu_dereference(dev->rx_handler) != xlan_in        
+                    && netdev_rx_handler_register(dev, xlan_in, NULL) != 0)
+                    // NÃO ESTÁ HOOKADA
+                    // E NÃO CONSEGUIU HOOKAR    
+                    dev = NULL;
+
+                rtnl_unlock();
+
+                if (dev) {
+                    printk("XLAN: HOOKED PHYSICAL\n");
+                    dev_hold((lan->portsDevs[pid] = dev));
+                } else 
+                    printk("XLAN: FAILED TO HOOK PHYSICAL\n");
+                    
                 break;
             }
         }
     }
-
-    net_device_s* const old = lan->portsDevs[pid];
-
-    if (old == NULL) {
-        
-        rtnl_lock();
-
-        if (rcu_dereference(port->rx_handler) != xlan_in        
-            && netdev_rx_handler_register(port, xlan_in, NULL) != 0)
-            // NÃO ESTÁ HOOKADA
-            // E NÃO CONSEGUIU HOOKAR    
-            port = NULL;
-
-        rtnl_unlock();
-
-        if (port) {
-            printk("XLAN: HOOKED PHYSICAL\n");
-            dev_hold((lan->portsDevs[pid] = port));
-        } else
-            printk("XLAN: FAILED TO HOOK PHYSICAL\n");
-    
-    } elif (old != port)
-        printk("XLAN: CANNOT CHANGE PHYSICAL\n");
 
 done:
     return NOTIFY_OK;
