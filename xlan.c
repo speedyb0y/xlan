@@ -504,7 +504,7 @@ static int __init xlan_init (void) {
 
     while (lid != HOST_LANS_N) {
 
-        const xlan_s* const lan = &lans[lid];
+        xlan_s* const lan = &lans[lid];
 
         if (lan->name == NULL) {
             printk("XLAN: CREATING NO LAN %u\n", lid);
