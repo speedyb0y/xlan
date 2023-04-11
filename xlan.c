@@ -529,14 +529,14 @@ static int __init xlan_init (void) {
 
         if (lan->name == NULL) {
             printk("XLAN: NO LAN #%u\n", lid);
-            goto next;
+            continue;
         }
 
         printk("XLAN: CREATING LAN #%u %s\n", lid, lan->name);
 
         if (lan->host >= XLAN_HOSTS_N) {
             printk("XLAN: INVALID HOST %u\n", lan->host);
-            goto next;
+            continue;
         }
 
         // CREATE THE VIRTUAL INTERFACE
@@ -544,14 +544,14 @@ static int __init xlan_init (void) {
         
         if (dev == NULL) {
             printk("XLAN: FAILED TO CREATE VIRTUAL\n");
-            goto next;
+            continue;
         }
 
         // MAKE IT VISIBLE IN THE SYSTEM
         if (register_netdev(dev)) {
             printk("XLAN: FAILED TO REGISTER VIRTUAL\n");
             free_netdev(virdevt);
-            goto next;
+            continue;
         }
 
         DEV_LAN(dev) = lan;
@@ -570,7 +570,7 @@ static int __init xlan_init (void) {
         lan->portsQ[lan->host];
 
         printk("XLAN: THIS HOST HAS %u PORTS\n", lan->portsN);
-next:
+
     } while (++lid != LANS_N);
 
     // COLOCA A PARADA DE EVENTOS
