@@ -419,6 +419,13 @@ static int xlan_notify_phys (struct notifier_block* const nb, const unsigned lon
 
     net_device_s* dev = netdev_notifier_info_to_dev(info);
 
+    const xlan_s** const priv = (xlan_s**)netdev_priv(dev);
+
+    // IGNORA EVENTOS DE LANS
+    if (priv >= lans
+     && priv < &lans[HOST_LANS_N])
+        goto done;
+
     //
     const void* const addr = dev->dev_addr;
 
@@ -441,7 +448,7 @@ static int xlan_notify_phys (struct notifier_block* const nb, const unsigned lon
     xlan_s* const lan = &lans[lid];
 
     // IGNORA EVENTOS DELA MESMA
-    if (dev == lan->dev)
+    if (dev == lan->virt)
         goto done;
 
     if (lid >= HOST_LANS_N) {
