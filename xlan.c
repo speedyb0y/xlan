@@ -149,12 +149,12 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
     || (PTR(eth) + ETH_SIZE) >= SKB_TAIL(skb))
         goto pass;
 
-    const uint code = BE16(eth->dstOUI);
-    const uint lid  = BE16(eth->dstLan);
-    const uint hid  =      eth->dstHost;
-    const uint pid  =      eth->dstPort;
+    const uint oui = BE16(eth->dstOUI);
+    const uint lid = BE16(eth->dstLan);
+    const uint hid =      eth->dstHost;
+    const uint pid =      eth->dstPort;
 
-    if (code != XLAN_OUI)
+    if (oui != XLAN_OUI)
         // NOT FROM XLAN
         goto pass;
     
@@ -313,11 +313,11 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const virt) {
         goto drop;
 
     eth->dstOUI   = BE16(XLAN_OUI);
-    eth->dstLan   = 0;
+    eth->dstLan   = BE16(lid);
     eth->dstHost  = dstHost;
     eth->dstPort  = dstPort;
     eth->srcOUI   = BE16(XLAN_OUI);
-    eth->srcLan   = 0;
+    eth->srcLan   = BE16(lid);
     eth->srcHost  = lan->host;
     eth->srcPort  = srcPort;
     eth->protocol = skb->protocol;
@@ -423,19 +423,19 @@ static int xlan_notify_phys (struct notifier_block* const nb, const unsigned lon
         goto done;
 
     // TODO: FIXME: CONFIRM ADDR LEN == ETH_ALEN
-    const void* const addr = dev->dev_addr;
+    const xlan_s* const addr = PTR(dev->dev_addr);
 
     //
     if (addr == NULL)
         goto done;
 
-    const uint oui = *(eth_oui_t*)(addr);
-    const uint lid = *(eth_lid_t*)(addr + sizeof(eth_oui_t));
-    const uint hid = *(eth_hid_t*)(addr + sizeof(eth_oui_t) + sizeof(eth_lid_t));
-    const uint pid = *(eth_pid_t*)(addr + sizeof(eth_oui_t) + sizeof(eth_lid_t) + sizeof(eth_hid_t));
+    const uint oui = BE16(addr->dstOUI);
+    const uint lid = BE16(addr->dstLan);
+    const uint hid =      addr->dstHost;
+    const uint pid =      addr->dstPort;
 
     // CONFIRMA SE É XLAN
-    if (oui != BE16(XLAN_OUI))
+    if (oui != XLAN_OUI)
         goto done;
 
     printk("XLAN: FOUND INTERFACE %s WITH LAN %u HOST %u PORT %u\n",
