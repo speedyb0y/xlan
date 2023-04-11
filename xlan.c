@@ -510,15 +510,16 @@ static int __init xlan_init (void) {
 
         xlan_s* const lan = &lans[lid];
 
-        if (lan->name == NULL) {
-            printk("XLAN: NO LAN #%u\n", lid);
+        //
+        if (lan->name == NULL)
             continue;
-        }
 
-        printk("XLAN: CREATING LAN #%u %s\n", lid, lan->name);
+        printk("XLAN: LAN %u: CREATING (%s)\n",
+            lid, lan->name);
 
         if (lan->host >= XLAN_HOSTS_N) {
-            printk("XLAN: INVALID HOST %u\n", lan->host);
+            printk("XLAN: LAN %u: INVALID HOST %u\n",
+                lid, lan->host);
             continue;
         }
 
@@ -526,13 +527,15 @@ static int __init xlan_init (void) {
         net_device_s* const dev = alloc_netdev(sizeof(xlan_s*), lan->name, NET_NAME_USER, xlan_setup);
         
         if (dev == NULL) {
-            printk("XLAN: FAILED TO CREATE VIRTUAL\n");
+            printk("XLAN: LAN %u: FAILED TO CREATE VIRTUAL\n",
+                lid);
             continue;
         }
 
         // MAKE IT VISIBLE IN THE SYSTEM
         if (register_netdev(dev)) {
-            printk("XLAN: FAILED TO REGISTER VIRTUAL\n");
+            printk("XLAN: LAN %u: FAILED TO REGISTER VIRTUAL\n",
+                lid);
             free_netdev(dev);
             continue;
         }
@@ -545,16 +548,20 @@ static int __init xlan_init (void) {
             while (*(u32*)(lan->portsMACs[h][p]))
                 p++;
             lan->portsQ[h] = p;
-            printk("XLAN: HOST %u WITH %u PORTS\n", h, p);
+            printk("XLAN: LAN %u: HOST %u HAS %u PORTS\n",
+                lid, h, p);
         }
 
         lan->dev = dev;
         lan->portsN = // SO WE NEED TO SPECIFY IT ONLY ONCE
         lan->portsQ[lan->host];
 
-        printk("XLAN: THIS HOST HAS %u PORTS\n", lan->portsN);
+        printk("XLAN: LAN %u: HAS %u PORTS\n",
+            lid, lan->portsN);
 
     } while (++lid != LANS_N);
+
+    printk("XLAN: HAS %u LANS\n", lid);
 
     // COLOCA A PARADA DE EVENTOS
     if (register_netdevice_notifier(&notifyDevs) < 0)
