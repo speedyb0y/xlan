@@ -291,9 +291,9 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
     // CHOOSE MY INTERFACE
     // CHOOSE THEIR INTERFACE
     // TOOD: o caso do ipv6, vai ter que transformar o valor de volta pois esta em hexadecimal
-    const uint srcPort = hash %  HOST_PORTS_Q;
-                         hash /= HOST_PORTS_Q;
-    const uint dstPort = hash % hostPortsQ[dstHost];
+    const uint srcPort = hash %  lan->portsN;
+                         hash /= lan->portsN;
+    const uint dstPort = hash %  lan->portsQ[dstHost];
 
     // INSERT ETHERNET HEADER
     eth_s* const eth = PTR(ip) - ETH_SIZE;
