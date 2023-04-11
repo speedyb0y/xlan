@@ -66,6 +66,8 @@ typedef struct notifier_block notifier_block_s;
 // THIS HOST
 #define HOST 1
 
+// HOW MANY LANS CAN EXIST
+#define XLAN_LANS_N 256
 // HOW MANY HOSTS A LAN CAN HAVE
 #define XLAN_HOSTS_N 128
 // HOW MANY PORTS A HOST CAN HAVE
