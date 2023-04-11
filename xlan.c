@@ -403,7 +403,7 @@ static int xlan_notify_phys (struct notifier_block* const nb, const unsigned lon
     if (code != BE32(XLAN_MAC_CODE))
         goto done;
 
-    printk("XLAN: PHYSICAL INTERFACE %s CREATED/CHANGED WITH CODE 0x%04X HOST %u PORT %u\n",
+    printk("XLAN: FOUND INTERFACE %s WITH CODE 0x%04X HOST %u PORT %u\n",
         dev->name, code, host, port);
 
     if (host != HOST_ID) {
