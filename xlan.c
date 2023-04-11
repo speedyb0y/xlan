@@ -66,9 +66,9 @@ typedef struct notifier_block notifier_block_s;
 // THIS HOST
 #define HOST 1
 
-// MAX HOSTS IN A LAN
+// HOW MANY HOSTS A LAN CAN HAVE
 #define XLAN_HOSTS_N 128
-// MAX PORTS ON A HOST
+// HOW MANY PORTS A HOST CAN HAVE
 #define XLAN_PORTS_N 4
 
 typedef struct xlan_s {    
@@ -113,7 +113,7 @@ typedef struct eth_s {
 } __attribute__((packed)) eth_s;
 
 // HOW MANY LANS THIS HOST HAS
-#define HOST_LANS_N (sizeof(lans)/sizeof(*lans))
+#define LANS_N (sizeof(lans)/sizeof(*lans))
 
 static xlan_s lans[] = {  // TODO: MOSTLY READ
     { .name = "lan",
@@ -160,7 +160,7 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
         goto pass;
 
     // VALIDATE LAN
-    if (lid >= HOST_LANS_N)
+    if (lid >= LANS_N)
         goto drop;
 
     xlan_s* const lan = &lans[lid];
@@ -443,7 +443,7 @@ static int xlan_notify_phys (struct notifier_block* const nb, const unsigned lon
     printk("XLAN: FOUND PHYSICAL %s WITH LAN %u HOST %u PORT %u\n",
         port->name, lid, hid, pid);
 
-    if (lid >= HOST_LANS_N) {
+    if (lid >= LANS_N) {
         printk("XLAN: BAD LAN\n");
         goto done;        
     }
@@ -499,17 +499,24 @@ static int __init xlan_init (void) {
     printk("XLAN: INIT\n");
 
     BUILD_BUG_ON(offsetof(eth_s, _align) != ETH_SIZE);
-    BUILD_BUG_ON((eth_oui_t)XLAN_OUI     != XLAN_OUI);
-    BUILD_BUG_ON((eth_lid_t)XLAN_LANS_N  != XLAN_LANS_N);
-    BUILD_BUG_ON((eth_hid_t)XLAN_HOSTS_N != XLAN_HOSTS_N);
-    BUILD_BUG_ON((eth_pid_t)XLAN_PORTS_N != XLAN_PORTS_N);
 
-    if (HOST_LANS_N == 0) {
+    BUILD_BUG_ON((eth_oui_t) XLAN_OUI          !=  XLAN_OUI);
+    BUILD_BUG_ON((eth_lid_t)(XLAN_LANS_N  - 1) != (XLAN_LANS_N  - 1));
+    BUILD_BUG_ON((eth_hid_t)(XLAN_HOSTS_N - 1) != (XLAN_HOSTS_N - 1));
+    BUILD_BUG_ON((eth_pid_t)(XLAN_PORTS_N - 1) != (XLAN_PORTS_N - 1));
+
+    BUILD_BUG_ON((typeof(lans->id))      (XLAN_LANS_N  - 1) != (XLAN_LANS_N  - 1));
+    BUILD_BUG_ON((typeof(lans->host))    (XLAN_HOSTS_N - 1) != (XLAN_HOSTS_N - 1));
+    BUILD_BUG_ON((typeof(lans->hostsN))   XLAN_HOSTS_N      !=  XLAN_HOSTS_N);
+    BUILD_BUG_ON((typeof(lans->portsN))   XLAN_PORTS_N      !=  XLAN_PORTS_N);
+    BUILD_BUG_ON((typeof(lans->portsQ[0]))XLAN_PORTS_N      !=  XLAN_PORTS_N);
+
+    if (LANS_N == 0) {
         printk("XLAN: NO LANS\n");
         goto err;
     }
 
-    if (HOST_LANS_N >= XLAN_LANS_N) {
+    if (LANS_N >= XLAN_LANS_N) {
         printk("XLAN: TOO MANY LANS\n");
         goto err;
     }
@@ -566,7 +573,7 @@ static int __init xlan_init (void) {
         lan->portsN = // SO WE NEED TO SPECIFY IT ONLY ONCE
         lan->portsQ[lan->host];
 next:
-    } while (++lid != HOST_LANS_N);
+    } while (++lid != LANS_N);
 
     // COLOCA A PARADA DE EVENTOS
     if (register_netdevice_notifier(&notifyDevs) < 0)
@@ -596,7 +603,7 @@ static void __exit xlan_exit (void) {
     // PARA DE MONITORAR OS EVENTOS
     unregister_netdevice_notifier(&notifyDevs);
 
-    foreach (lid, HOST_LANS_N) {
+    foreach (lid, LANS_N) {
 
         const xlan_s* const lan = &lans[lid];
 
