@@ -268,12 +268,6 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
                          hash /= HOST_PORTS_Q;
     const uint dstPort = hash % hostPortsQ[dstHost];
 
-    net_device_s* const dev = ports[srcPort];
-
-    // TODO: SOMENTE SE ELA ESTIVER ATIVA
-    if (dev == NULL)
-        goto drop;
-
     // INSERT ETHERNET HEADER
     eth_s* const eth = PTR(ip) - ETH_SIZE;
 
@@ -297,7 +291,15 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
     skb->mac_header       = PTR(eth);
 #endif
     skb->len              = SKB_TAIL(skb) - PTR(eth);
-    skb->dev              = dev;
+
+    //
+    net_device_s* const dev = ports[srcPort];
+
+    // TODO: SOMENTE SE ELA ESTIVER ATIVA
+    if (dev == NULL)
+        goto drop;
+
+    skb->dev = dev;
 
     // -- THE FUNCTION CAN BE CALLED FROM AN INTERRUPT
     // -- WHEN CALLING THIS METHOD, INTERRUPTS MUST BE ENABLED
