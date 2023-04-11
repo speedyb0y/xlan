@@ -102,6 +102,8 @@ static xlan_s lans[] = {
     }
 };
 
+#define VIRT_LAN(dev) (*(xlan_s**)netdev_priv(dev))
+
 //
 #define XLAN_MAC_MAGIC 0x0025U
 
@@ -211,7 +213,7 @@ pass:
 
 static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const virt) {
 
-    xlan_s* const lan = *(xlan_s**)netdev_priv(virt);
+    xlan_s* const lan = VIRT_LAN(virt);
 
     if (skb_linearize(skb))
         // NON LINEAR
@@ -351,20 +353,16 @@ drop:
     return NETDEV_TX_OK;
 }
 
-static int xlan_up (net_device_s* const dev) {
+static int xlan_up (net_device_s* const virt) {
 
-    xlan_s* const lan = *(xlan_s**)netdev_priv(dev);
-
-    printk("XLAN: LAN %s: %s UP\n", lan->name, dev->name);
+    printk("XLAN: LAN %s: %s UP\n", VIRT(virt)->name, dev->name);
 
     return 0;
 }
 
-static int xlan_down (net_device_s* const dev) {
+static int xlan_down (net_device_s* const virt) {
 
-    xlan_s* const lan = *(xlan_s**)netdev_priv(dev);
-
-    printk("XLAN: LAN %s: %s DOWN\n", lan->name, dev->name);
+    printk("XLAN: LAN %s: %s DOWN\n", VIRT(virt)->name, dev->name);
 
     return 0;
 }
@@ -537,7 +535,7 @@ static int __init xlan_init (void) {
             goto failed_dev;
         }
 
-        *(xlan_s**)netdev_priv(virt) = lan;
+        VIRT_LAN(virt) = lan;
 
         lan->virt = virt;
         lan->portsN = lan->portsQ[lan->host];
