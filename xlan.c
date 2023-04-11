@@ -73,37 +73,18 @@ typedef struct notifier_block notifier_block_s;
 
 typedef struct xlan_s {    
     const char* const name; // NAME
+    const u8 id; // LAN ID    
     const u8 hostsN; // TODO: IMPLEMENTAR ISSO
     const u8 host; // HOST ID
-    const u8 id; // LAN ID    
     u8 portsN; // HOW MANY PORTS THIS HOST HAS | lan->portsQ[THIS_HOST]    
     net_device_s* dev; // VIRTUAL INTERFACE    
-    net_device_s* portsDevs[XLAN_HOST_PORTS_MAX]; // PHYSICAL INTERFACES
-    // HOW MANY PORTS EACH HOST HAS | CALCULATED FROM lan->portsMACs[HOST]
-    u8 portsQ[XLAN_LAN_HOSTS_MAX];
-    // MAC OF EACH PORT OF EACH HOST
-    const u8 portsMACs
+    net_device_s* portsDevs[XLAN_HOST_PORTS_MAX]; // PHYSICAL INTERFACES    
+    u8 portsQ[XLAN_LAN_HOSTS_MAX]; // HOW MANY PORTS EACH HOST HAS | CALCULATED FROM lan->portsMACs[HOST]
+    const u8 portsMACs // MAC OF EACH PORT OF EACH HOST
         [XLAN_LAN_HOSTS_MAX]
         [XLAN_HOST_PORTS_MAX]
         [ETH_ALEN];
 } xlan_s;
-
-#define HOST_LANS_N (sizeof(lans)/sizeof(*lans))
-
-static xlan_s lans[] = {  // TODO: MOSTLY READ
-    { .name = "lan",
-        .hostsN = 64,
-        .host = HOST,
-        .portsMACs = {
-            [ 1] = { "\x88\xC9\xB3\xB0\xF1\xEB", "\x88\xC9\xB3\xB0\xF1\xEA" },
-            [10] = { "\x00\x00\x00\x00\x00\x00" },
-            [20] = { "\xBC\x5F\xF4\xF9\xE6\x66", "\xBC\x5F\xF4\xF9\xE6\x67" },
-            [30] = { "\x00\x00\x00\x00\x00\x00" },
-            [40] = { "\x00\x00\x00\x00\x00\x00" },
-            [70] = { "\x00\x00\x00\x00\x00\x00" },
-        }
-    }
-};
 
 //
 #define DEV_LAN(dev) (*(xlan_s**)netdev_priv(dev))
@@ -130,6 +111,23 @@ typedef struct eth_s {
     eth_proto_t protocol;
     u16 _align;
 } __attribute__((packed)) eth_s;
+
+#define HOST_LANS_N (sizeof(lans)/sizeof(*lans))
+
+static xlan_s lans[] = {  // TODO: MOSTLY READ
+    { .name = "lan",
+        .hostsN = 64,
+        .host = HOST,
+        .portsMACs = {
+            [ 1] = { "\x88\xC9\xB3\xB0\xF1\xEB", "\x88\xC9\xB3\xB0\xF1\xEA" },
+            [10] = { "\x00\x00\x00\x00\x00\x00" },
+            [20] = { "\xBC\x5F\xF4\xF9\xE6\x66", "\xBC\x5F\xF4\xF9\xE6\x67" },
+            [30] = { "\x00\x00\x00\x00\x00\x00" },
+            [40] = { "\x00\x00\x00\x00\x00\x00" },
+            [70] = { "\x00\x00\x00\x00\x00\x00" },
+        }
+    }
+};
 
 static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
 
