@@ -435,14 +435,14 @@ static int xlan_notify_phys (struct notifier_block* const nb, const unsigned lon
     if (mgk != BE16(XLAN_MAC_MAGIC))
         goto done;
 
+    printk("XLAN: FOUND INTERFACE %s WITH LAN %u HOST %u PORT %u\n",
+        dev->name, lid, hid, pid);
+
     xlan_s* const lan = &lans[lid];
 
     // IGNORA EVENTOS DELA MESMA
     if (dev == lan->dev)
         goto done;
-
-    printk("XLAN: FOUND INTERFACE %s WITH LAN %u HOST %u PORT %u\n",
-        dev->name, lid, hid, pid);
 
     if (lid >= HOST_LANS_N) {
         printk("XLAN: BAD LAN\n");
