@@ -479,45 +479,56 @@ static int __init xlan_init (void) {
 
     BUILD_BUG_ON(offsetof(eth_s, _align) != ETH_SIZE);
 
-    foreach (i, HOST_LANS_N) {
+    uint i = 0;
+
+    while (i != HOST_LANS_N) {
 
         const xlan_s* const lan = &lans[i];
 
         // CREATE THE VIRTUAL INTERFACE
         net_device_s* const dev = alloc_netdev(sizeof(xlan_s*), "xlan", NET_NAME_USER, xlan_setup)
         
-        if (dev == NULL)
-            return -1;
+        if (dev == NULL) {
+
+            goto failed;
+        }
 
         // MAKE IT VISIBLE IN THE SYSTEM
         if (register_netdev(xdev)) {
-            free_netdev(xdev);
-            return -1;
+            
+            goto failed_dev;
         }
 
         *(xlan_s**)netdev_priv(dev) = lan;
 
         lan->dev = dev;
         lan->portsN = lan->portsQ[lan->host];
+
+        continue;
+
+failed_dev:
+        free_netdev(xdev);
+failed:        
+        lan->dev = NULL;
     }
 
     // COLOCA A PARADA DE EVENTOS
-    register_netdevice_notifier(&notifyDevs);
+    if (register_netdevice_notifier(&notifyDevs) < 0)
+        goto err;
 
     return 0;
 
 err:
 
-    // TODO: LIMPA TODAS
+    // CLEANUP
     while (i) {
 
-        const xlan_s* const lan = &lans[i];
+        const xlan_s* const lan = &lans[--i];
 
-    // DESTROY VIRTUAL INTERFACE
-    unregister_netdev(xdev);
-
-    free_netdev(xdev);
-        i--;
+        if (lan->dev) {
+            unregister_netdev(lan->dev);
+            free_netdev(lan->dev);
+        }
     }
 
     return -1;
