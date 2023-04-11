@@ -93,26 +93,32 @@ enum HOSTS_PORTS_Q {
     HOST_PORTS_Q_TEST      = 1,
 };
 
+//
+#define XLAN_HOST_PORTS_MAX 4
 // MAX HOSTS IN A LAN
-#define XLAN_HOSTS_MAX 64
+#define XLAN_LAN_HOSTS_MAX 64
 
 typedef struct xlan_s {
     // VIRTUAL INTERFACE
     net_device_s* dev;
     // PHYSICAL INTERFACES
-    net_device_s* ports[HOST_PORTS_Q];
+    net_device_s* ports[XLAN_HOST_PORTS_MAX];
     //
-    const u8 hostPortsQ[HOSTS_N] = {
-        [HOST_ID_GW]        = HOST_PORTS_Q_GW,
-        [HOST_ID_WIFI]      = HOST_PORTS_Q_WIFI,
-        [HOST_ID_PC2]       = HOST_PORTS_Q_PC2,
-        [HOST_ID_SPEEDYB0Y] = HOST_PORTS_Q_SPEEDYB0Y,
-        [HOST_ID_XTRADER]   = HOST_PORTS_Q_XTRADER,
-        [HOST_ID_TEST]      = HOST_PORTS_Q_TEST,
-    };
+    const u8 portsQ[XLAN_LAN_HOSTS_MAX];
 };
 
-static xlan_s lans[HOST_LANS_N];
+static xlan_s lans[HOST_LANS_N] = {
+    {
+        .portsQ = {
+            [HOST_ID_GW]        = HOST_PORTS_Q_GW,
+            [HOST_ID_WIFI]      = HOST_PORTS_Q_WIFI,
+            [HOST_ID_PC2]       = HOST_PORTS_Q_PC2,
+            [HOST_ID_SPEEDYB0Y] = HOST_PORTS_Q_SPEEDYB0Y,
+            [HOST_ID_XTRADER]   = HOST_PORTS_Q_XTRADER,
+            [HOST_ID_TEST]      = HOST_PORTS_Q_TEST,
+        };
+    }
+};
 
 //
 #define XLAN_MAC_CODE 0x00256200U
