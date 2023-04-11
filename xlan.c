@@ -495,32 +495,6 @@ static notifier_block_s notifyDevs = {
     .notifier_call = xlan_notify_phys
 };
 
-static void xlan_keeper (struct timer_list*);
-
-static DEFINE_TIMER(doTimer, xlan_keeper);
-
-static void xlan_keeper (struct timer_list* const timer) {
-
-    //
-    foreach (lid, HOST_LANS_N) {
-
-        const xlan_s* const lan = &lans[lid];
-
-        foreach (pid, lan->portsN) {
-
-            net_device_s* const port = lan->port[pid];
-
-            if (port && port->flags & IFF_UP)                
-                dev_queue_xmit(skb_get(port->skb));
-        }
-    }
-
-    // REINSTALL TIMER
-    doTimer.expires = jiffies + 2*HZ;
-
-    add_timer(&doTimer);
-}
-
 static int __init xlan_init (void) {
 
     printk("XLAN: INIT\n");
@@ -591,11 +565,6 @@ next:
     if (register_netdevice_notifier(&notifyDevs) < 0)
         goto err;
 
-    // INSTALL TIMER
-    doTimer.expires = jiffies + 2*HZ;
-
-    add_timer(&doTimer);
-
     return 0;
 
 err:
@@ -616,8 +585,6 @@ err:
 static void __exit xlan_exit (void) {
 
     printk("XLAN: EXIT\n");
-
-TODO: REMOVE TIMER
 
     // PARA DE MONITORAR OS EVENTOS
     unregister_netdevice_notifier(&notifyDevs);
