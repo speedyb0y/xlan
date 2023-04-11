@@ -416,7 +416,9 @@ static int xlan_notify_phys (struct notifier_block* const nb, const unsigned lon
         goto done;
     }
 
-    if (ports[port] == NULL) {
+    net_device_s* const old = ports[port];
+
+    if (old == NULL) {
         
         rtnl_lock();
 
@@ -435,7 +437,10 @@ static int xlan_notify_phys (struct notifier_block* const nb, const unsigned lon
         } else
             printk("XLAN: %s: PORT %X: FAILED TO HOOK INTERFACE %s\n",
                 xdev->name, port, dev->name);
-    }
+    
+    } elif (old != dev)
+        printk("XLAN: %s: PORT %X: CANNOT CHANGE INTERFACE FROM %s TO %s\n",
+            xdev->name, port, old->name, dev->name);
 
 done:
     return NOTIFY_OK;
