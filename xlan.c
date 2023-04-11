@@ -493,9 +493,15 @@ static int __init xlan_init (void) {
 
     BUILD_BUG_ON(offsetof(eth_s, _align) != ETH_SIZE);
 
+    if (HOST_LANS_N == 0)
+        goto err;
+
+    if (HOST_LANS_N >= LANS_MAX)
+        goto err;
+
     uint lid = 0;
 
-    while (lid != HOST_LANS_N) {
+    do {
 
         xlan_s* const lan = &lans[lid];
 
@@ -537,8 +543,7 @@ static int __init xlan_init (void) {
         lan->portsN = // SO WE NEED TO SPECIFY IT ONLY ONCE
         lan->portsQ[lan->host];
 next:
-        lid++;
-    }
+    } while (++lid != HOST_LANS_N);
 
     // COLOCA A PARADA DE EVENTOS
     if (register_netdevice_notifier(&notifyDevs) < 0)
