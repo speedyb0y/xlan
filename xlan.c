@@ -82,7 +82,7 @@ typedef struct xlan_s {
     net_device_s* ports[XLAN_HOST_PORTS_MAX];
     // QUANTITY OF PORTS OF EACH HOST
     const u8 portsQ[XLAN_LAN_HOSTS_MAX];
-};
+} xlan_s;
 
 #define HOST_LANS_N (sizeof(lans)/sizeof(*lans))
 
