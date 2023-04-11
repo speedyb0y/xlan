@@ -137,23 +137,20 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
 
     sk_buff_s* const skb = *pskb;
 
-    // SE FOR ARP, PASS
-    // SE NAO FOR IPV6 E NEM V4, PASS
-    if (skb->protocol != BE16(ETH_P_IP)
-     && skb->protocol != BE16(ETH_P_IPV6))
-        goto pass;
-
-    // TODO: FIXME: DESCOBRIR O QUE CAUSA TANTOS SKBS NAO LINEARES AQUI
-    // TODO: FIXME: pskb vs skb??? sera que vai te rque fazer skb_copy() e depois *pskb = skb ?
-    // e aí faz ou não kfree_skb()?
-    if (skb_linearize(skb))
-        goto pass;
-
-    eth_s* const eth = SKB_MAC(skb);
+    eth_s* eth = SKB_MAC(skb);
 
     if (PTR(eth) < SKB_HEAD(skb)
-    || (PTR(eth) + ETH_SIZE) >= SKB_TAIL(skb))
-        goto pass;
+    || (PTR(eth) + ETH_SIZE) > SKB_TAIL(skb)) {
+        // TENTAR NOVAMENTE, MAS APÓS LINEARIZAR
+        // TODO: FIXME: pskb vs skb??? sera que vai te rque fazer skb_copy() e depois *pskb = skb ?
+        // e aí faz ou não kfree_skb()?
+        if (skb_linearize(skb))
+            goto pass;
+        eth = SKB_MAC(skb);
+        if (PTR(eth) < SKB_HEAD(skb)
+        || (PTR(eth) + ETH_SIZE) > SKB_TAIL(skb))
+            goto pass;
+    }
 
     const uint oui = BE16(eth->dstOUI);
     const uint lid = BE16(eth->dstLan);
@@ -179,7 +176,7 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
         goto drop;
 
     // CONFIRM IT CAME ON THE PHYSICAL
-    if (skb->dev != lan->port[pid])
+    if (skb->dev != lan->portsDevs[pid])
         goto drop;
 
     net_device_s* const dev = lan->dev;
@@ -339,7 +336,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
     skb->len              = SKB_TAIL(skb) - PTR(eth);
 
     //
-    net_device_s* const devPort = lan->port[srcPort];
+    net_device_s* const devPort = lan->portsDevs[srcPort];
 
     // TODO: SOMENTE SE ELA ESTIVER ATIVA
     if (devPort == NULL)
@@ -468,7 +465,7 @@ static int xlan_notify_phys (struct notifier_block* const nb, const unsigned lon
         goto done;
     }
 
-    net_device_s* const old = lan->port[pid];
+    net_device_s* const old = lan->portsDevs[pid];
 
     if (old == NULL) {
         
@@ -484,7 +481,7 @@ static int xlan_notify_phys (struct notifier_block* const nb, const unsigned lon
 
         if (port) {
             printk("XLAN: HOOKED PHYSICAL\n");
-            dev_hold((lan->port[pid] = port));
+            dev_hold((lan->portsDevs[pid] = port));
         } else
             printk("XLAN: FAILED TO HOOK PHYSICAL\n");
     
@@ -602,7 +599,7 @@ static void __exit xlan_exit (void) {
         // UNHOOK PHYSICAL INTERFACES
         foreach (pid, lan->portsN) {
 
-            net_device_s* const port = lan->port[pid];
+            net_device_s* const port = lan->portsDevs[pid];
 
             if (port) {
 
