@@ -532,7 +532,7 @@ static int __init xlan_init (void) {
         }
 
         // MAKE IT VISIBLE IN THE SYSTEM
-        if (register_netdev(xdev)) {
+        if (register_netdev(dev)) {
             printk("XLAN: FAILED TO REGISTER VIRTUAL\n");
             goto failed_dev;
         }
@@ -545,7 +545,7 @@ static int __init xlan_init (void) {
         continue;
 
 failed_dev:
-        free_netdev(xdev);
+        free_netdev(dev);
 failed:        
         lan->dev = NULL;
         lan->portsN = 0;
