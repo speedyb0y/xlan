@@ -71,17 +71,14 @@ typedef struct notifier_block notifier_block_s;
 // MAX PORTS ON A HOST
 #define XLAN_HOST_PORTS_MAX 4
 
-typedef struct xlan_s {
-    // NAME
-    const char* const name;
-    //
-    const uint host;
-    // HOW MANY PORTS THIS HOST HAS | lan->portsQ[THIS_HOST]
-    uint portsN;
-    // VIRTUAL INTERFACE
-    net_device_s* dev;
-    // PHYSICAL INTERFACES
-    net_device_s* portsDevs[XLAN_HOST_PORTS_MAX];
+typedef struct xlan_s {    
+    const char* const name; // NAME
+    const u8 hostsN; // TODO: IMPLEMENTAR ISSO
+    const u8 host; // HOST ID
+    const u8 id; // LAN ID    
+    u8 portsN; // HOW MANY PORTS THIS HOST HAS | lan->portsQ[THIS_HOST]    
+    net_device_s* dev; // VIRTUAL INTERFACE    
+    net_device_s* portsDevs[XLAN_HOST_PORTS_MAX]; // PHYSICAL INTERFACES
     // HOW MANY PORTS EACH HOST HAS | CALCULATED FROM lan->portsMACs[HOST]
     u8 portsQ[XLAN_LAN_HOSTS_MAX];
     // MAC OF EACH PORT OF EACH HOST
@@ -95,6 +92,7 @@ typedef struct xlan_s {
 
 static xlan_s lans[] = {  // TODO: MOSTLY READ
     { .name = "lan",
+        .hostsN = 64,
         .host = HOST,
         .portsMACs = {
             [ 1] = { "\x88\xC9\xB3\xB0\xF1\xEB", "\x88\xC9\xB3\xB0\xF1\xEA" },
