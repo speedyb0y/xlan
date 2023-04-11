@@ -537,7 +537,7 @@ static int __init xlan_init (void) {
             goto failed_dev;
         }
 
-        *(xlan_s**)netdev_priv(dev) = lan;
+        **(xlan_s**)netdev_priv(dev) = lan;
 
         lan->dev = dev;
         lan->portsN = lan->portsQ[lan->host];
