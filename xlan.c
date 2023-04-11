@@ -552,7 +552,7 @@ static int __init xlan_init (void) {
         // MAKE IT VISIBLE IN THE SYSTEM
         if (register_netdev(dev)) {
             printk("XLAN: FAILED TO REGISTER VIRTUAL\n");
-            free_netdev(virdevt);
+            free_netdev(dev);
             continue;
         }
 
