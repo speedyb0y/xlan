@@ -418,7 +418,7 @@ static int xlan_notify_phys (struct notifier_block* const nb, const unsigned lon
      && event != NETDEV_CHANGEADDR)
         goto done;
 
-    net_device_s* dev = netdev_notifier_info_to_dev(info);
+    net_device_s* phys = netdev_notifier_info_to_dev(info);
 
     // IGNORA EVENTOS DE LANS
     // TODO: FIXME: IDENTIFICAR SE A INTERFACE É UMA LAN
@@ -426,7 +426,7 @@ static int xlan_notify_phys (struct notifier_block* const nb, const unsigned lon
         goto done;
 
     // TODO: FIXME: CONFIRM ADDR LEN == ETH_ALEN
-    const eth_s* const addr = PTR(dev->dev_addr);
+    const eth_s* const addr = PTR(phys->dev_addr);
 
     //
     if (addr == NULL)
@@ -441,8 +441,8 @@ static int xlan_notify_phys (struct notifier_block* const nb, const unsigned lon
     if (oui != XLAN_OUI)
         goto done;
 
-    printk("XLAN: FOUND INTERFACE %s WITH LAN %u HOST %u PORT %u\n",
-        dev->name, lid, hid, pid);
+    printk("XLAN: FOUND PHYSICAL %s WITH LAN %u HOST %u PORT %u\n",
+        phys->name, lid, hid, pid);
 
     if (lid >= HOST_LANS_N) {
         printk("XLAN: BAD LAN\n");
@@ -452,7 +452,7 @@ static int xlan_notify_phys (struct notifier_block* const nb, const unsigned lon
     xlan_s* const lan = &lans[lid];
 
     // NAO PODE HEGAR AQUI COM EVENTOS DELA MESMA
-    //ASSERT(dev != lan->virt);
+    //ASSERT(phys != lan->virt);
 
     if (hid != lan->host) {
         printk("XLAN: HOST MISMATCH\n");
@@ -470,21 +470,21 @@ static int xlan_notify_phys (struct notifier_block* const nb, const unsigned lon
         
         rtnl_lock();
 
-        if (rcu_dereference(dev->rx_handler) == xlan_in        
-            && netdev_rx_handler_register(dev, xlan_in, NULL) != 0)
+        if (rcu_dereference(phys->rx_handler) == xlan_in        
+            && netdev_rx_handler_register(phys, xlan_in, NULL) != 0)
             // JÁ ESTÁ HOOKADA
             // OU NÃO CONSEGUIU HOOKAR    
-            dev = NULL;
+            phys = NULL;
 
         rtnl_unlock();
 
-        if (dev) {
+        if (phys) {
             printk("XLAN: HOOKED INTERFACE\n");
-            dev_hold((lan->phys[pid] = dev));
+            dev_hold((lan->phys[pid] = phys));
         } else
             printk("XLAN: FAILED TO HOOK INTERFACE\n");
     
-    } elif (old != dev)
+    } elif (old != phys)
         printk("XLAN: CANNOT CHANGE INTERFACE\n");
 
 done:
