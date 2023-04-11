@@ -90,6 +90,8 @@ enum HOSTS_PORTS_Q {
     HOST_PORTS_Q_TEST      = 1,
 };
 
+// VIRTUAL INTERFACE
+static net_device_s* xdev;
 // PHYSICAL INTERFACES
 static net_device_s* ports[HOST_PORTS_Q];
 
