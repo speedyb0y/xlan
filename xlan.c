@@ -467,7 +467,7 @@ static void __exit xlan_exit (void) {
     unregister_netdevice_notifier(&notifyDevs);
 
     // UNHOOK PHYSICAL INTERFACES
-    foreach (i, portsN) {
+    foreach (i, HOST_PORTS_Q) {
 
         net_device_s* const dev = ports[i];
 
