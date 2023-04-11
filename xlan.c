@@ -524,30 +524,30 @@ static int __init xlan_init (void) {
         }
 
         // CREATE THE VIRTUAL INTERFACE
-        net_device_s* const dev = alloc_netdev(sizeof(xlan_s*), lan->name, NET_NAME_USER, xlan_setup);
+        net_device_s* const virt = alloc_netdev(sizeof(xlan_s*), lan->name, NET_NAME_USER, xlan_setup);
         
-        if (dev == NULL) {
+        if (virt == NULL) {
             printk("XLAN: FAILED TO CREATE VIRTUAL\n");
             goto failed;
         }
 
         // MAKE IT VISIBLE IN THE SYSTEM
-        if (register_netdev(dev)) {
+        if (register_netdev(virt)) {
             printk("XLAN: FAILED TO REGISTER VIRTUAL\n");
             goto failed_dev;
         }
 
-        *(xlan_s**)netdev_priv(dev) = lan;
+        *(xlan_s**)netdev_priv(virt) = lan;
 
-        lan->dev = dev;
+        lan->virt = virt;
         lan->portsN = lan->portsQ[lan->host];
 
         continue;
 
 failed_dev:
-        free_netdev(dev);
+        free_netdev(virt);
 failed:        
-        lan->dev = NULL;
+        lan->virt = NULL;
         lan->portsN = 0;
     }
 
@@ -564,9 +564,9 @@ err:
 
         const xlan_s* const lan = &lans[--lid];
 
-        if (lan->dev) {
-            unregister_netdev(lan->dev);
-            free_netdev(lan->dev);
+        if (lan->virt) {
+            unregister_netdev(lan->virt);
+            free_netdev(lan->virt);
         }
     }
 
