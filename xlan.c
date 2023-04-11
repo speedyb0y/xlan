@@ -81,9 +81,13 @@ typedef struct xlan_s {
     // VIRTUAL INTERFACE
     net_device_s* virt;
     // PHYSICAL INTERFACES
-    net_device_s* port[XLAN_HOST_PORTS_MAX];
+    net_device_s* ports[XLAN_HOST_PORTS_MAX];
+    // CONTROL PACKETS
+    sk_buff_s* portsSkbs[XLAN_HOST_PORTS_MAX];
     // QUANTITY OF PORTS OF EACH HOST
     const u8 portsQ[XLAN_LAN_HOSTS_MAX];
+    //
+    const u8 portsMACs[XLAN_LAN_HOSTS_MAX][XLAN_HOST_PORTS_MAX][ETH_ALEN];
 } xlan_s;
 
 #define HOST_LANS_N (sizeof(lans)/sizeof(*lans))
@@ -92,12 +96,12 @@ static xlan_s lans[] = {  // TODO: MOSTLY READ
     { .name = "lan",
         .host = HOST,
         .portsQ = {
-            [ 1] = 2,
-            [10] = 1,
-            [20] = 2,
-            [30] = 1,
-            [40] = 1,
-            [70] = 1,
+            [ 1] = { "\x00\x00\x00\x00\x00\x00" },
+            [10] = { "\x00\x00\x00\x00\x00\x00" },
+            [20] = { "\x00\x00\x00\x00\x00\x00" },
+            [30] = { "\x00\x00\x00\x00\x00\x00" },
+            [40] = { "\x00\x00\x00\x00\x00\x00" },
+            [70] = { "\x00\x00\x00\x00\x00\x00" },
         }
     }
 };
@@ -657,3 +661,8 @@ MODULE_LICENSE("GPL");
 MODULE_AUTHOR("speedyb0y");
 MODULE_DESCRIPTION("XLAN");
 MODULE_VERSION("0.1");
+
+IDENTIFICAR PELO MAC DA INTERFACE
+
+"xlan"
+"xlan-0"
