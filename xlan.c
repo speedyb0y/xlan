@@ -420,15 +420,11 @@ static int xlan_notify_phys (struct notifier_block* const nb, const unsigned lon
     net_device_s* dev = netdev_notifier_info_to_dev(info);
 
     // IGNORA EVENTOS DE LANS
-    const xlan_s** const priv = (const xlan_s**)netdev_priv(dev);
+    // TODO: FIXME: IDENTIFICAR SE A INTERFACE É UMA LAN
+    if (0)
+        goto done;
 
-    if (priv) {
-        if (*priv >= lans
-         && *priv < &lans[HOST_LANS_N])
-            goto done;
-    }
-
-    //
+    // TODO: FIXME: CONFIRM ADDR LEN == ETH_ALEN
     const void* const addr = dev->dev_addr;
 
     //
