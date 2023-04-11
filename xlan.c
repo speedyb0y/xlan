@@ -29,6 +29,7 @@ typedef struct net net_s;
 typedef struct header_ops header_ops_s;
 typedef struct net_device_ops net_device_ops_s;
 typedef struct ethhdr ethhdr_s;
+typedef struct notifier_block notifier_block_s;
 
 #define SKB_HEAD(skb) PTR((skb)->head)
 #define SKB_DATA(skb) PTR((skb)->data)
