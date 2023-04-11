@@ -200,7 +200,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
                 case 4 + IPPROTO_UDP:
                 case 4 + IPPROTO_UDPLITE:
                 case 4 + IPPROTO_SCTP:
-                case 4 + IPPROTO_TCCP:
+                case 4 + IPPROTO_DCCP:
                     hash += *(u64*)(ip + 12); // SRC ADDR, DST ADDR
                     hash += *(u32*)(ip + 20); // SRC PORT, DST PORT
                     hsize = IP4_SIZE + 2*sizeof(u16);
@@ -220,7 +220,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
                 case 6 + IPPROTO_UDP:
                 case 6 + IPPROTO_UDPLITE:
                 case 6 + IPPROTO_SCTP:
-                case 6 + IPPROTO_TCCP:
+                case 6 + IPPROTO_DCCP:
                     hash += *(u64*)(ip +  8); // SRC ADDR
                     hash += *(u64*)(ip + 16); // SRC ADDR
                     hash += *(u64*)(ip + 24); // DST ADDR
