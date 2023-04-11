@@ -204,6 +204,8 @@ pass:
 }
 
 static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
+    
+    xlan_s* const lan = *(xlan_s**)netdev_priv(dev);
 
     if (skb_linearize(skb))
         // NON LINEAR
