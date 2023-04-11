@@ -76,6 +76,7 @@ enum HOSTS_IDS {
     HOSTS_N
 };
 
+// QUANTITY OF PORTS OF EACH HOST
 enum HOSTS_PORTS_Q {
     HOST_PORTS_Q_GW        = 2,
     HOST_PORTS_Q_WIFI      = 1,
@@ -86,14 +87,12 @@ enum HOSTS_PORTS_Q {
 };
 
 // PHYSICAL INTERFACES
-// TODO: IDENTIFY THEM BY MAC
 static net_device_s* ports[HOST_PORTS_Q];
 
 //
 #define XLAN_MAC_CODE 0x00256200U
 
-// PARA COLOCAR NO HEADER
-// hid = 20 ; pid = 2 ; '0x%04X' % ((0x0101 * ((hid // 10) << 4 | (hid % 10)) )) , hex(0xAAAA + 0x1111 * pid )
+// ETHERNET HEADER
 typedef struct eth_s {
     u32 dstCode; // XLAN_MAC_CODE
      u8 dstHost;
@@ -104,16 +103,6 @@ typedef struct eth_s {
     u16 protocol;
     u16 _align;
 } __attribute__((packed)) eth_s;
-
-// NUMBER OF PATHS OF EACH HOST
-static const u8 hostPortsQ[HOSTS_N] = {
-    [HOST_GW]        = 2,
-    [HOST_WIFI]      = 1,
-    [HOST_PC2]       = 1,
-    [HOST_SPEEDYB0Y] = 2,
-    [HOST_XTRADER]   = 1,
-    [HOST_TEST]      = 1,
-};
 
 static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
 
