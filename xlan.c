@@ -116,11 +116,11 @@ typedef u16 eth_proto_t;
 // ETHERNET HEADER
 typedef struct eth_s {
     eth_oui_t dstOUI; // XLAN_OUI
-    eth_lid_t  dstLan;
+    eth_lid_t dstLan;
     eth_hid_t dstHost;
     eth_pid_t dstPort;
     eth_oui_t srcOUI; // XLAN_OUI
-    eth_lid_t  srcLan;
+    eth_lid_t srcLan;
     eth_hid_t srcHost;
     eth_pid_t srcPort;
     eth_proto_t protocol;
@@ -426,7 +426,7 @@ static int xlan_notify_phys (struct notifier_block* const nb, const unsigned lon
         goto done;
 
     // TODO: FIXME: CONFIRM ADDR LEN == ETH_ALEN
-    const xlan_s* const addr = PTR(dev->dev_addr);
+    const eth_s* const addr = PTR(dev->dev_addr);
 
     //
     if (addr == NULL)
