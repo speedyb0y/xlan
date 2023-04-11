@@ -397,12 +397,12 @@ static int xlan_notify_phys (struct notifier_block* const nb, const unsigned lon
         // NÃO É NOSSO MAC
         goto done;
 
-    if (host != HOST) {
+    if (host != HOST_ID) {
         printk("XLAN: HOST MISMATCH\n");
         goto done;
     }
 
-    if (port >= XLAN_HOST_PORTS_N) {
+    if (port >= HOST_PORTS_Q) {
         printk("XLAN: BAD PORT\n");
         goto done;
     }
