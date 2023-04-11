@@ -120,8 +120,6 @@ typedef struct eth_s {
     u16 _align;
 } __attribute__((packed)) eth_s;
 
-#define HOST_LANS_N 1
-
 static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
 
     sk_buff_s* const skb = *pskb;
