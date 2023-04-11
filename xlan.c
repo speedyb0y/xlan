@@ -505,20 +505,20 @@ static int __init xlan_init (void) {
         xlan_s* const lan = &lans[lid];
 
         if (lan->name == NULL) {
-            printk("XLAN: CREATING NO LAN %u\n", lid);
-            goto failed;
+            printk("XLAN: NO LAN #%u\n", lid);
+            continue;
         }
 
-        printk("XLAN: CREATING LAN %s\n", lan->name);
+        printk("XLAN: CREATING LAN #%u %s\n", lid, lan->name);
 
         if (lan->host >= XLAN_LAN_HOSTS_MAX) {
             printk("XLAN: INVALID HOST %u\n", lan->host);
-            goto err;
+            continue;
         }
 
         if (lan->portsN >= XLAN_HOST_PORTS_MAX) {
             printk("XLAN: INVALID PORTS N %u\n", lan->portsN);
-            goto err;
+            continue;
         }
 
         // CREATE THE VIRTUAL INTERFACE
@@ -526,27 +526,21 @@ static int __init xlan_init (void) {
         
         if (virt == NULL) {
             printk("XLAN: FAILED TO CREATE VIRTUAL\n");
-            goto failed;
+            continue;
         }
 
         // MAKE IT VISIBLE IN THE SYSTEM
         if (register_netdev(virt)) {
             printk("XLAN: FAILED TO REGISTER VIRTUAL\n");
-            goto failed_dev;
+            free_netdev(virt);
+            continue;
         }
 
         VIRT_LAN(virt) = lan;
 
         lan->virt = virt;
-        lan->portsN = lan->portsQ[lan->host];
-
-        continue;
-
-failed_dev:
-        free_netdev(virt);
-failed:        
-        lan->virt = NULL;
-        lan->portsN = 0;
+        lan->portsN = // SO WE NEED TO SPECIFY IT ONLY ONCE
+        lan->portsQ[lan->host];
     }
 
     // COLOCA A PARADA DE EVENTOS
@@ -556,7 +550,6 @@ failed:
     return 0;
 
 err:
-
     // CLEANUP
     while (lid) {
 
