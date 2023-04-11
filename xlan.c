@@ -293,13 +293,13 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
     skb->len              = SKB_TAIL(skb) - PTR(eth);
 
     //
-    net_device_s* const dev = ports[srcPort];
+    net_device_s* const dev2 = ports[srcPort];
 
     // TODO: SOMENTE SE ELA ESTIVER ATIVA
-    if (dev == NULL)
+    if (dev2 == NULL)
         goto drop;
 
-    skb->dev = dev;
+    skb->dev = dev2;
 
     // -- THE FUNCTION CAN BE CALLED FROM AN INTERRUPT
     // -- WHEN CALLING THIS METHOD, INTERRUPTS MUST BE ENABLED
