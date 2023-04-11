@@ -433,36 +433,27 @@ static int xlan_notify_phys (struct notifier_block* const nb, const unsigned lon
     if (addr == NULL)
         goto done;
 
-    const uint oui = BE16(addr->dstOUI);
-    const uint lid = BE16(addr->dstLan);
-    const uint hid =      addr->dstHost;
-    const uint pid =      addr->dstPort;
+    foreach (lid, LANS_N) {
 
-    // CONFIRMA SE É XLAN
-    if (oui != XLAN_OUI)
-        goto done;
+        xlan_s* const lan = &lans[lid];
 
-    printk("XLAN: FOUND PHYSICAL %s WITH LAN %u HOST %u PORT %u\n",
-        port->name, lid, hid, pid);
+        // NAO PODE CHEGAR AQUI COM EVENTOS DELA MESMA
+        //ASSERT(dev != lan->dev);
 
-    if (lid >= LANS_N) {
-        printk("XLAN: BAD LAN\n");
-        goto done;        
-    }
-    
-    xlan_s* const lan = &lans[lid];
-
-    // NAO PODE CHEGAR AQUI COM EVENTOS DELA MESMA
-    //ASSERT(port != lan->dev);
-
-    if (hid != lan->host) {
-        printk("XLAN: HOST MISMATCH\n");
-        goto done;
-    }
-
-    if (pid >= lan->portsN) {
-        printk("XLAN: BAD PORT\n");
-        goto done;
+        foreach (pid, lan->portsN) {
+            if (lan->portsDevs[pid]) {
+                if (lan->portsDevs[pid] == dev)
+                    // 
+                    break;
+                continue;
+            }
+            if (memcmp(lan->portsMACs[lan->host][pid], addr, ETH_ALEN) == 0) {
+                //
+                printk("XLAN: LAN %u: PORT %u: FOUND PHYSICAL INTERFACE %s\n", lid, pid, port->name);
+                lan->portsDevs[pid] = dev;
+                break;
+            }
+        }
     }
 
     net_device_s* const old = lan->portsDevs[pid];
