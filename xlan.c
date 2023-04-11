@@ -443,18 +443,15 @@ static int xlan_notify_phys (struct notifier_block* const nb, const unsigned lon
     printk("XLAN: FOUND INTERFACE %s WITH LAN %u HOST %u PORT %u\n",
         dev->name, lid, hid, pid);
 
-    xlan_s* const lan = &lans[lid];
-
-    // IGNORA EVENTOS DELA MESMA
-    if (dev == lan->virt)
-        goto done;
-
     if (lid >= HOST_LANS_N) {
         printk("XLAN: BAD LAN\n");
         goto done;        
     }
     
     xlan_s* const lan = &lans[lid];
+
+    // NAO PODE HEGAR AQUI COM EVENTOS DELA MESMA
+    //ASSERT(dev != lan->virt);
 
     if (hid != lan->host) {
         printk("XLAN: HOST MISMATCH\n");
