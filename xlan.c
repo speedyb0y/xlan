@@ -146,25 +146,33 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
         goto pass;
 
     const uint code = BE16(eth->dstCode);
-    const uint lan  = BE16(eth->dstLan);
-    const uint host =      eth->dstHost;
-    const uint port =      eth->dstPort;
+    const uint lid  = BE16(eth->dstLan);
+    const uint hid  =      eth->dstHost;
+    const uint pid  =      eth->dstPort;
 
     if (code != XLAN_MAC_CODE)
         // NOT FROM XLAN
         goto pass;
     
-    if (port == 0)
+    if (pid == 0)
         // NOT A SWITCH PORT
         goto pass;
 
-    if (lan >= HOST_LANS_N)
-        //
+    if (pid >= XLAN_HOST_PORTS_MAX)
+        // INVALID PORT
         goto pass;
 
-    xlan_s* const lan = &lans[lan];
+    if (lid >= XLAN_LAN_HOSTS_MAX)
+        // INVALID LAN
+        goto pass;
 
-    if (host != lan->host)
+    if (lid >= HOST_LANS_N)
+        // INVALID LAN
+        goto pass;
+
+    xlan_s* const lan = &lans[lid];
+
+    if (hid != lan->host)
         // NOT OURS
         goto pass;
 
