@@ -385,24 +385,24 @@ static int xlan_notify_phys (struct notifier_block* const nb, const unsigned lon
     const void* const addr = dev->;
 
     const uint code = *(u32*) addr;
-    const uint hid  = *( u8*)(addr + sizeof(u32));
-    const uint pid  = *( u8*)(addr + sizeof(u32) + sizeof(u8));
+    const uint host = *( u8*)(addr + sizeof(u32));
+    const uint port = *( u8*)(addr + sizeof(u32) + sizeof(u8));
 
     if (code != BE32(XLAN_MAC_CODE))
         // NÃO É NOSSO MAC
         goto done;
 
-    if (hid != HOST) {
+    if (host != HOST) {
         printk("XLAN: HOST MISMATCH\n");
         goto done;
     }
 
-    if (pid >= XLAN_HOST_PORTS_N) {
+    if (port >= XLAN_HOST_PORTS_N) {
         printk("XLAN: BAD PORT\n");
         goto done;
     }
 
-    net_device_s* const old = ports[pid];
+    net_device_s* const old = ports[port];
 
     if (old != dev) {
         
@@ -419,11 +419,8 @@ static int xlan_notify_phys (struct notifier_block* const nb, const unsigned lon
         if (old)
             dev_put(old);
 
-        if ((ports[pid] = dev)) {            
-            if (portsN <= pid)
-                portsN = pid + 1;            
+        if ((ports[port] = dev))
             dev_hold(dev);
-        }
     }
 
 done:
@@ -438,7 +435,7 @@ static int __init xlan_init (void) {
 
     printk("XLAN: INIT\n");
 
-    ASSERT(offsetof(eth_s, _align) == ETH_SIZE);
+    BUILD_BUG_ON(offsetof(eth_s, _align) != ETH_SIZE);
 
     // CREATE THE VIRTUAL INTERFACE
     if ((xdev = alloc_netdev(0, "xlan", NET_NAME_USER, xlan_setup)))
@@ -449,10 +446,6 @@ static int __init xlan_init (void) {
         free_netdev(xdev);
         return -1;
     }
-
-    // ENCONTRARÁ PELOS NOSSOS MACS
-    // NOTE: OTHERWISE DIVISION BY ZERO
-    portsN = 1;
 
     // COLOCA A PARADA DE EVENTOS
     register_netdevice_notifier(&notifyDevs);
