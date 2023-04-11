@@ -103,24 +103,24 @@ static xlan_s lans[] = {
 };
 
 //
-#define XLAN_MAC_CODE 0x0025U
+#define XLAN_MAC_MAGIC 0x0025U
 
-typedef u16 eth_code_t;
-typedef u16 eth_lan_t;
-typedef u8  eth_host_t;
-typedef u8  eth_port_t;
+typedef u16 eth_mgk_t;
+typedef u16 eth_lid_t;
+typedef u8  eth_hid_t;
+typedef u8  eth_pid_t;
 typedef u16 eth_proto_t;
 
 // ETHERNET HEADER
 typedef struct eth_s {
-    eth_code_t dstCode; // XLAN_MAC_CODE
-    eth_lan_t  dstLan;
-    eth_host_t dstHost;
-    eth_port_t dstPort;
-    eth_code_t srcCode; // XLAN_MAC_CODE
-    eth_lan_t  srcLan;
-    eth_host_t srcHost;
-    eth_port_t srcPort;
+    eth_mgk_t dstCode; // XLAN_MAC_MAGIC
+    eth_lid_t  dstLan;
+    eth_hid_t dstHost;
+    eth_pid_t dstPort;
+    eth_mgk_t srcCode; // XLAN_MAC_MAGIC
+    eth_lid_t  srcLan;
+    eth_hid_t srcHost;
+    eth_pid_t srcPort;
     eth_proto_t protocol;
     u16 _align;
 } __attribute__((packed)) eth_s;
@@ -152,7 +152,7 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
     const uint hid  =      eth->dstHost;
     const uint pid  =      eth->dstPort;
 
-    if (code != XLAN_MAC_CODE)
+    if (code != XLAN_MAC_MAGIC)
         // NOT FROM XLAN
         goto pass;
     
@@ -310,11 +310,11 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
         // SEM ESPACO PARA COLOCAR O MAC HEADER
         goto drop;
 
-    eth->dstCode  = BE16(XLAN_MAC_CODE);
+    eth->dstCode  = BE16(XLAN_MAC_MAGIC);
     eth->dstLan   = 0;
     eth->dstHost  = dstHost;
     eth->dstPort  = dstPort;
-    eth->srcCode  = BE16(XLAN_MAC_CODE);
+    eth->srcCode  = BE16(XLAN_MAC_MAGIC);
     eth->srcLan   = 0;
     eth->srcHost  = lan->host;
     eth->srcPort  = srcPort;
@@ -419,10 +419,6 @@ static int xlan_notify_phys (struct notifier_block* const nb, const unsigned lon
 
     net_device_s* dev = netdev_notifier_info_to_dev(info);
 
-    // IGNORA EVENTOS DELA MESMA
-    if (dev == xdev)
-        goto done;
-
     //
     const void* const addr = dev->dev_addr;
 
@@ -430,36 +426,42 @@ static int xlan_notify_phys (struct notifier_block* const nb, const unsigned lon
     if (addr == NULL)
         goto done;
 
-    const uint code = *(eth_code_t*)(addr);
-    const uint lan = 1; // SWITCH ID
-    const uint host = *(eth_host_t*)(addr + sizeof(eth_code_t));
-    const uint port = *(eth_port_t*)(addr + sizeof(eth_code_t) + sizeof(eth_host_t));
+    const uint mgk = *(eth_mgk_t*)(addr);
+    const uint lid = *(eth_lid_t*)(addr + sizeof(eth_mgk_t));
+    const uint hid = *(eth_hid_t*)(addr + sizeof(eth_mgk_t) + sizeof(eth_lid_t));
+    const uint pid = *(eth_pid_t*)(addr + sizeof(eth_mgk_t) + sizeof(eth_lid_t) + sizeof(eth_hid_t));
 
     // CONFIRMA SE É XLAN
-    if (code != BE16(XLAN_MAC_CODE))
+    if (mgk != BE16(XLAN_MAC_MAGIC))
+        goto done;
+
+    xlan_s* const lan = &lans[lid];
+
+    // IGNORA EVENTOS DELA MESMA
+    if (dev == lan->dev)
         goto done;
 
     printk("XLAN: FOUND INTERFACE %s WITH LAN %u HOST %u PORT %u\n",
-        dev->name, lan, host, port);
+        dev->name, lid, hid, pid);
 
-    if (lan >= HOST_LANS_N) {
+    if (lid >= HOST_LANS_N) {
         printk("XLAN: BAD LAN\n");
         goto done;        
     }
     
-    xlan_s* const lan = &lans[lan];
+    xlan_s* const lan = &lans[lid];
 
-    if (host != HOST_ID) {
+    if (hid != lan->host) {
         printk("XLAN: HOST MISMATCH\n");
         goto done;
     }
 
-    if (port >= HOST_PORTS_Q) {
+    if (pid >= lan->portsN) {
         printk("XLAN: BAD PORT\n");
         goto done;
     }
 
-    net_device_s* const old = ports[port];
+    net_device_s* const old = lan->phys[pid];
 
     if (old == NULL) {
         
@@ -474,16 +476,13 @@ static int xlan_notify_phys (struct notifier_block* const nb, const unsigned lon
         rtnl_unlock();
 
         if (dev) {
-            printk("XLAN: %s: PORT %X: HOOKED INTERFACE %s\n",
-                xdev->name, port, dev->name);
-            dev_hold((ports[port] = dev));
+            printk("XLAN: HOOKED INTERFACE\n");
+            dev_hold((lan->phys[pid] = dev));
         } else
-            printk("XLAN: %s: PORT %X: FAILED TO HOOK INTERFACE %s\n",
-                xdev->name, port, dev->name);
+            printk("XLAN: FAILED TO HOOK INTERFACE\n");
     
     } elif (old != dev)
-        printk("XLAN: %s: PORT %X: CANNOT CHANGE INTERFACE FROM %s TO %s\n",
-            xdev->name, port, old->name, dev->name);
+        printk("XLAN: CANNOT CHANGE INTERFACE\n");
 
 done:
     return NOTIFY_OK;
