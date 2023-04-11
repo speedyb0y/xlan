@@ -79,9 +79,9 @@ typedef struct xlan_s {
     //
     uint portsN;
     // VIRTUAL INTERFACE
-    net_device_s* dev;
+    net_device_s* virt;
     // PHYSICAL INTERFACES
-    net_device_s* ports[XLAN_HOST_PORTS_MAX];
+    net_device_s* phys[XLAN_HOST_PORTS_MAX];
     // QUANTITY OF PORTS OF EACH HOST
     const u8 portsQ[XLAN_LAN_HOSTS_MAX];
 } xlan_s;
@@ -326,7 +326,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
     skb->len              = SKB_TAIL(skb) - PTR(eth);
 
     //
-    net_device_s* const dev2 = ports[srcPort];
+    net_device_s* const dev2 = lan->phys[srcPort];
 
     // TODO: SOMENTE SE ELA ESTIVER ATIVA
     if (dev2 == NULL)
