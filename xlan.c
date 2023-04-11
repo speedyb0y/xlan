@@ -66,26 +66,29 @@ typedef struct notifier_block notifier_block_s;
 // THIS HOST
 #define HOST 1
 
-//
-#define XLAN_HOST_PORTS_MAX 4
 // MAX HOSTS IN A LAN
 #define XLAN_LAN_HOSTS_MAX 128
+// MAX PORTS ON A HOST
+#define XLAN_HOST_PORTS_MAX 4
 
 typedef struct xlan_s {
     // NAME
     const char* const name;
     //
     const uint host;
-    //
+    // HOW MANY PORTS THIS HOST HAS | lan->portsQ[THIS_HOST]
     uint portsN;
     // VIRTUAL INTERFACE
-    net_device_s* virt;
+    net_device_s* dev;
     // PHYSICAL INTERFACES
     net_device_s* portsDevs[XLAN_HOST_PORTS_MAX];
-    // HOW MANY PORTS EACH HOST HAS
+    // HOW MANY PORTS EACH HOST HAS | CALCULATED FROM lan->portsMACs[HOST]
     u8 portsQ[XLAN_LAN_HOSTS_MAX];
-    //
-    const u8 portsMACs[XLAN_LAN_HOSTS_MAX][XLAN_HOST_PORTS_MAX][ETH_ALEN];
+    // MAC OF EACH PORT OF EACH HOST
+    const u8 portsMACs
+        [XLAN_LAN_HOSTS_MAX]
+        [XLAN_HOST_PORTS_MAX]
+        [ETH_ALEN];
 } xlan_s;
 
 #define HOST_LANS_N (sizeof(lans)/sizeof(*lans))
@@ -94,9 +97,9 @@ static xlan_s lans[] = {  // TODO: MOSTLY READ
     { .name = "lan",
         .host = HOST,
         .portsMACs = {
-            [ 1] = { "\x00\x00\x00\x00\x00\x00" },
+            [ 1] = { "\x00\x00\x00\x00\x00\x00", "\x00\x00\x00\x00\x00\x00" },
             [10] = { "\x00\x00\x00\x00\x00\x00" },
-            [20] = { "\x00\x00\x00\x00\x00\x00" },
+            [20] = { "\x00\x00\x00\x00\x00\x00", "\x00\x00\x00\x00\x00\x00" },
             [30] = { "\x00\x00\x00\x00\x00\x00" },
             [40] = { "\x00\x00\x00\x00\x00\x00" },
             [70] = { "\x00\x00\x00\x00\x00\x00" },
@@ -312,15 +315,12 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
         // SEM ESPACO PARA COLOCAR O MAC HEADER
         goto drop;
 
-#define LAN_ID(lan) ((lan) - lans)
-    const uint lid = LAN_ID(lan);
-
     eth->dstOUI   = BE16(XLAN_OUI);
-    eth->dstLan   = BE16(lid);
+    eth->dstLan   = BE16(lan->id);
     eth->dstHost  = dstHost;
     eth->dstPort  = dstPort;
     eth->srcOUI   = BE16(XLAN_OUI);
-    eth->srcLan   = BE16(lid);
+    eth->srcLan   = BE16(lan->id);
     eth->srcHost  = lan->host;
     eth->srcPort  = srcPort;
     eth->protocol = skb->protocol;
