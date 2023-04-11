@@ -451,7 +451,7 @@ static int xlan_notify_phys (struct notifier_block* const nb, const unsigned lon
     
     xlan_s* const lan = &lans[lid];
 
-    // NAO PODE HEGAR AQUI COM EVENTOS DELA MESMA
+    // NAO PODE CHEGAR AQUI COM EVENTOS DELA MESMA
     //ASSERT(phys != lan->virt);
 
     if (hid != lan->host) {
