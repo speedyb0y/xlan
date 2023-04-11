@@ -279,7 +279,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
     eth->dstHost  = dstHost;
     eth->dstPort  = dstPort;
     eth->srcCode  = BE32(XLAN_MAC_CODE); // XLAN_MAC_CODE
-    eth->srcHost  = HOST;
+    eth->srcHost  = HOST_ID;
     eth->srcPort  = srcPort;
     eth->protocol = skb->protocol;
 
