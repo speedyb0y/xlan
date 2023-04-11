@@ -209,9 +209,9 @@ pass:
     return RX_HANDLER_PASS;
 }
 
-static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
+static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const virt) {
 
-    xlan_s* const lan = *(xlan_s**)netdev_priv(dev);
+    xlan_s* const lan = *(xlan_s**)netdev_priv(virt);
 
     if (skb_linearize(skb))
         // NON LINEAR
@@ -597,7 +597,7 @@ static void __exit xlan_exit (void) {
 
                 rtnl_lock();
 
-                if (rcu_dereference(dev->rx_handler) == xlan_in)
+                if (rcu_dereference(phys->rx_handler) == xlan_in)
                     netdev_rx_handler_unregister(phys);
 
                 rtnl_unlock();
