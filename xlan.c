@@ -88,7 +88,7 @@ typedef struct xlan_s {
 
 #define HOST_LANS_N (sizeof(lans)/sizeof(*lans))
 
-static xlan_s lans[] = {
+static xlan_s lans[] = {  // TODO: MOSTLY READ
     { .name = "lan",
         .host = HOST,
         .portsQ = {
