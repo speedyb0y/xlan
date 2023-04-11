@@ -64,34 +64,7 @@ typedef struct notifier_block notifier_block_s;
 #define TCP_SIZE 20
 
 // THIS HOST
-#define HOST GW
-
-#define __HOST2(a, h) a ## h
-#define __HOST(a, h) __HOST2(a, h)
-
-#define HOST_ID         __HOST(HOST_ID_, HOST)
-#define HOST_PORTS_Q    __HOST(HOST_PORTS_Q_, HOST)
-
-enum HOSTS_IDS {
-    HOST_ID_GW         =  1,
-    HOST_ID_XQUOTES    =  1,
-    HOST_ID_WIFI       = 10,
-    HOST_ID_SPEEDYB0Y  = 20,
-    HOST_ID_PC2        = 30,
-    HOST_ID_XTRADER    = 40,
-    HOST_ID_TEST       = 70,
-    HOSTS_N
-};
-
-// QUANTITY OF PORTS OF EACH HOST
-enum HOSTS_PORTS_Q {
-    HOST_PORTS_Q_GW        = 2,
-    HOST_PORTS_Q_WIFI      = 1,
-    HOST_PORTS_Q_PC2       = 1,
-    HOST_PORTS_Q_SPEEDYB0Y = 2,
-    HOST_PORTS_Q_XTRADER   = 1,
-    HOST_PORTS_Q_TEST      = 1,
-};
+#define HOST 1
 
 //
 #define XLAN_HOST_PORTS_MAX 4
@@ -99,23 +72,30 @@ enum HOSTS_PORTS_Q {
 #define XLAN_LAN_HOSTS_MAX 64
 
 typedef struct xlan_s {
+    // NAME
+    const char* const name;
+    //
+    const uint host;
     // VIRTUAL INTERFACE
     net_device_s* dev;
     // PHYSICAL INTERFACES
     net_device_s* ports[XLAN_HOST_PORTS_MAX];
-    //
+    // QUANTITY OF PORTS OF EACH HOST
     const u8 portsQ[XLAN_LAN_HOSTS_MAX];
 };
 
-static xlan_s lans[HOST_LANS_N] = {
-    {
+#define HOST_LANS_N (sizeof(lans)/sizeof(*lans))
+
+static xlan_s lans[] = {
+    { .name = "lan",
+        .host = HOST,
         .portsQ = {
-            [HOST_ID_GW]        = HOST_PORTS_Q_GW,
-            [HOST_ID_WIFI]      = HOST_PORTS_Q_WIFI,
-            [HOST_ID_PC2]       = HOST_PORTS_Q_PC2,
-            [HOST_ID_SPEEDYB0Y] = HOST_PORTS_Q_SPEEDYB0Y,
-            [HOST_ID_XTRADER]   = HOST_PORTS_Q_XTRADER,
-            [HOST_ID_TEST]      = HOST_PORTS_Q_TEST,
+            [ 1] = 2,
+            [10] = 1,
+            [20] = 1,
+            [30] = 2,
+            [40] = 1,
+            [70] = 1,
         };
     }
 };
@@ -486,7 +466,7 @@ static int __init xlan_init (void) {
         const xlan_s* const lan = &lans[i];
 
         // CREATE THE VIRTUAL INTERFACE
-        net_device_s* const dev = alloc_netdev(sizeof(xlan_s*), "xlan", NET_NAME_USER, xlan_setup)
+        net_device_s* const dev = alloc_netdev(sizeof(xlan_s*), lan->name, NET_NAME_USER, xlan_setup)
         
         if (dev == NULL) {
 
@@ -510,6 +490,7 @@ failed_dev:
         free_netdev(xdev);
 failed:        
         lan->dev = NULL;
+        lan->portsN = 0;
     }
 
     // COLOCA A PARADA DE EVENTOS
