@@ -178,7 +178,7 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
         // NOT OURS
         goto pass;
 
-    net_device_s* const virt = lan->dev;
+    net_device_s* const virt = lan->virt;
 
     // TODO: SE A INTERFACE XLAN ESTIVER DOWN, PASS OU DROP?
     if (virt == NULL)
