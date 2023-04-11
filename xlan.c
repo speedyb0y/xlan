@@ -430,10 +430,10 @@ static int xlan_notify_phys (struct notifier_block* const nb, const unsigned lon
 
         rtnl_unlock();
 
-        if ((ports[port] = dev)) {
+        if (dev) {
             printk("XLAN: %s: PORT %X: HOOKED INTERFACE %s\n",
                 xdev->name, port, dev->name);
-            dev_hold(dev);
+            dev_hold((ports[port] = dev));
         } else
             printk("XLAN: %s: PORT %X: FAILED TO HOOK INTERFACE %s\n",
                 xdev->name, port, dev->name);
