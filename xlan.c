@@ -539,11 +539,6 @@ static int __init xlan_init (void) {
             goto next;
         }
 
-        //if (lan->portsN >= XLAN_PORTS_N) {
-            //printk("XLAN: INVALID PORTS N %u\n", lan->portsN);
-            //goto next;
-        //}
-
         // CREATE THE VIRTUAL INTERFACE
         net_device_s* const dev = alloc_netdev(sizeof(xlan_s*), lan->name, NET_NAME_USER, xlan_setup);
         
@@ -562,16 +557,19 @@ static int __init xlan_init (void) {
         DEV_LAN(dev) = lan;
 
         // CONTA QUANTAS PORTAS TEM EM CADA HOST
-        foreach (h, XLAN_HOSTS_N) {
+        foreach (h, lan->hostsN) {
             uint p = 0;
             while (*(u32*)(lan->portsMACs[h][p]))
                 p++;
             lan->portsQ[h] = p;
+            printk("XLAN: HOST %u WITH %u PORTS\n", h, p);
         }
 
         lan->dev = dev;
         lan->portsN = // SO WE NEED TO SPECIFY IT ONLY ONCE
         lan->portsQ[lan->host];
+
+        printk("XLAN: THIS HOST HAS %u PORTS\n", lan->portsN);
 next:
     } while (++lid != LANS_N);
 
