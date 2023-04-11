@@ -376,7 +376,7 @@ static void xlan_setup (net_device_s* const dev) {
 
 static int xlan_notify_phys (struct notifier_block* const nb, const unsigned long event, void* const info) {
 
-    net_device_s* const dev = netdev_notifier_info_to_dev(info);
+    net_device_s* dev = netdev_notifier_info_to_dev(info);
 
     if (dev == xdev)
         // IGNORA EVENTOS DELA MESMA
