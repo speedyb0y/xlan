@@ -359,14 +359,14 @@ drop:
 
 static int xlan_up (net_device_s* const dev) {
 
-    printk("XLAN: LAN %s: VIRT %s UP\n", DEV_LAN(dev)->name, dev->name);
+    printk("XLAN: LAN %u %s: UP\n", lid, dev->name);
 
     return 0;
 }
 
 static int xlan_down (net_device_s* const dev) {
 
-    printk("XLAN: LAN %s: VIRT %s DOWN\n", DEV_LAN(dev)->name, dev->name);
+    printk("XLAN: LAN %u %s: DOWN\n", lid, dev->name);
 
     return 0;
 }
@@ -446,7 +446,8 @@ static int xlan_notify_phys (struct notifier_block* const nb, const unsigned lon
                 break;
             if (memcmp(lan->portsMACs[lan->host][pid], addr, ETH_ALEN) == 0) {
                 //
-                printk("XLAN: LAN %u: PORT %u: FOUND PHYSICAL INTERFACE %s\n", lid, pid, dev->name);
+                printk("XLAN: LAN %u: PORT %u: FOUND PHYSICAL INTERFACE %s\n",
+                    lid, pid, dev->name);
 
                 rtnl_lock();
 
