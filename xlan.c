@@ -81,10 +81,8 @@ typedef struct xlan_s {
     // VIRTUAL INTERFACE
     net_device_s* virt;
     // PHYSICAL INTERFACES
-    net_device_s* ports[XLAN_HOST_PORTS_MAX];
-    // CONTROL PACKETS
-    sk_buff_s* portsSkbs[XLAN_HOST_PORTS_MAX];
-    // QUANTITY OF PORTS OF EACH HOST
+    net_device_s* portsDevs[XLAN_HOST_PORTS_MAX];
+    // HOW MANY PORTS EACH HOST HAS
     u8 portsQ[XLAN_LAN_HOSTS_MAX];
     //
     const u8 portsMACs[XLAN_LAN_HOSTS_MAX][XLAN_HOST_PORTS_MAX][ETH_ALEN];
@@ -106,7 +104,7 @@ static xlan_s lans[] = {  // TODO: MOSTLY READ
     }
 };
 
-#define VIRT_LAN(v) (*(xlan_s**)netdev_priv(v))
+#define DEV_LAN(v) (*(xlan_s**)netdev_priv(v))
 
 //
 #define XLAN_OUI 0x0025U
@@ -180,13 +178,13 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
     if (skb->dev != lan->port[pid])
         goto drop;
 
-    net_device_s* const virt = lan->virt;
+    net_device_s* const dev = lan->dev;
 
-    if (virt == NULL)
+    if (dev == NULL)
         goto drop;
 
     // SE A INTERFACE XLAN ESTIVER DOWN, PASS
-    if (virt->flags & IFF_UP)
+    if (dev->flags & IFF_UP)
         goto drop;
 
     // PULA O ETHERNET HEADER
@@ -202,7 +200,7 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
     skb->network_header   = PTR(ip);
 #endif
     skb->len              = SKB_TAIL(skb) - PTR(ip);
-    skb->dev              = virt;
+    skb->dev              = dev;
 
     return RX_HANDLER_ANOTHER;
 
@@ -215,7 +213,7 @@ drop: // TODO: DROP
 
 static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const virt) {
 
-    xlan_s* const lan = VIRT_LAN(virt);
+    xlan_s* const lan = DEV_LAN(virt);
 
     if (skb_linearize(skb))
         // NON LINEAR
@@ -358,16 +356,16 @@ drop:
     return NETDEV_TX_OK;
 }
 
-static int xlan_up (net_device_s* const virt) {
+static int xlan_up (net_device_s* const dev) {
 
-    printk("XLAN: LAN %s: VIRT %s UP\n", VIRT_LAN(virt)->name, virt->name);
+    printk("XLAN: LAN %s: VIRT %s UP\n", DEV_LAN(dev)->name, dev->name);
 
     return 0;
 }
 
-static int xlan_down (net_device_s* const virt) {
+static int xlan_down (net_device_s* const dev) {
 
-    printk("XLAN: LAN %s: VIRT %s DOWN\n", VIRT_LAN(virt)->name, virt->name);
+    printk("XLAN: LAN %s: VIRT %s DOWN\n", DEV_LAN(dev)->name, dev->name);
 
     return 0;
 }
@@ -454,7 +452,7 @@ static int xlan_notify_phys (struct notifier_block* const nb, const unsigned lon
     xlan_s* const lan = &lans[lid];
 
     // NAO PODE CHEGAR AQUI COM EVENTOS DELA MESMA
-    //ASSERT(port != lan->virt);
+    //ASSERT(port != lan->dev);
 
     if (hid != lan->host) {
         printk("XLAN: HOST MISMATCH\n");
@@ -573,7 +571,7 @@ static int __init xlan_init (void) {
             goto next;
         }
 
-        VIRT_LAN(virt) = lan;
+        DEV_LAN(virt) = lan;
 
         // CONTA QUANTAS PORTAS TEM EM CADA HOST
         foreach (h, XLAN_LAN_HOSTS_MAX) {
@@ -583,7 +581,7 @@ static int __init xlan_init (void) {
             lan->portsQ[h] = p;
         }
 
-        lan->virt = virt;
+        lan->dev = virt;
         lan->portsN = // SO WE NEED TO SPECIFY IT ONLY ONCE
         lan->portsQ[lan->host];
 next:
@@ -606,9 +604,9 @@ err:
 
         const xlan_s* const lan = &lans[--lid];
 
-        if (lan->virt) {
-            unregister_netdev(lan->virt);
-            free_netdev(lan->virt);
+        if (lan->dev) {
+            unregister_netdev(lan->dev);
+            free_netdev(lan->dev);
         }
     }
 
@@ -650,14 +648,14 @@ TODO: REMOVE TIMER
             }
         }
 
-        if (lan->virt) {
+        if (lan->dev) {
 
-            printk("XLAN: DESTROYING VIRTUAL %s\n", lan->virt->name);
+            printk("XLAN: DESTROYING VIRTUAL %s\n", lan->dev->name);
 
             // DESTROY VIRTUAL INTERFACE
-            unregister_netdev(lan->virt);
+            unregister_netdev(lan->dev);
 
-            free_netdev(lan->virt);
+            free_netdev(lan->dev);
         }
     }
 }
@@ -669,8 +667,3 @@ MODULE_LICENSE("GPL");
 MODULE_AUTHOR("speedyb0y");
 MODULE_DESCRIPTION("XLAN");
 MODULE_VERSION("0.1");
-
-IDENTIFICAR PELO MAC DA INTERFACE
-
-"xlan"
-"xlan-0"
