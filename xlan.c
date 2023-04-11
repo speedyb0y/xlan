@@ -152,7 +152,7 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
     const uint oui = BE16(eth->dstOUI);
     const uint lid = BE16(eth->dstLan);
     const uint hid =      eth->dstHost;
-    const uint pid =      eth->dstPort / 0x11;
+    const uint pid =      eth->dstPort;
 
     // CONFIRM ITS XLAN
     if (oui != XLAN_OUI)
