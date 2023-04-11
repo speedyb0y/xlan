@@ -89,6 +89,15 @@ enum HOSTS_PORTS_Q {
 // PHYSICAL INTERFACES
 static net_device_s* ports[HOST_PORTS_Q];
 
+static const u8 hostPortsQ[HOSTS_N] = {
+    [HOST_ID_GW]        = HOST_PORTS_Q_GW,
+    [HOST_ID_WIFI]      = HOST_PORTS_Q_WIFI,
+    [HOST_ID_PC2]       = HOST_PORTS_Q_PC2,
+    [HOST_ID_SPEEDYB0Y] = HOST_PORTS_Q_SPEEDYB0Y,
+    [HOST_ID_XTRADER]   = HOST_PORTS_Q_XTRADER,
+    [HOST_ID_TEST]      = HOST_PORTS_Q_TEST,
+};
+
 //
 #define XLAN_MAC_CODE 0x00256200U
 
@@ -248,8 +257,8 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
     // CHOOSE MY INTERFACE
     // CHOOSE THEIR INTERFACE
     // TOOD: o caso do ipv6, vai ter que transformar o valor de volta pois esta em hexadecimal
-    const uint srcPort = hash %  MY_PORTS_N;
-                         hash /= MY_PORTS_N;
+    const uint srcPort = hash %  HOST_PORTS_Q;
+                         hash /= HOST_PORTS_Q;
     const uint dstPort = hash % hostPortsQ[dstHost];
 
     net_device_s* const dev = ports[srcPort];
