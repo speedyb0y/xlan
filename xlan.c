@@ -188,21 +188,27 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
      || PTR(ip) > SKB_TAIL(skb))
         goto drop;
 
+    // MINIMUM SIZE
+    uint hsize;
     // COMPUTE HASH
-    u64 hash; uint hsize;
+    u64 hash;
+    // IDENTIFY HOST BY IP DESTINATION
+    uint dstHost; 
 
     // IP VERSION
     switch ((hash = *(u8*)ip >> 4)) {
 
         case 4: // TODO: VER DENTRO DAS MENSAGENS ICMP E GERAR O MESMO HASH DESSES AQUI
+
+            dstHost = *(u8*)(ip + IP4_SIZE - 1);
             
             // IP PROTOCOL
             switch ((hash += *(u8*)(ip + 9))) {
-                case 4 + IPPROTO_TCP:
-                case 4 + IPPROTO_UDP:
-                case 4 + IPPROTO_UDPLITE:
-                case 4 + IPPROTO_SCTP:
-                case 4 + IPPROTO_DCCP:
+                case IPPROTO_TCP:
+                case IPPROTO_UDP:
+                case IPPROTO_UDPLITE:
+                case IPPROTO_SCTP:
+                case IPPROTO_DCCP:
                     hash += *(u64*)(ip + 12); // SRC ADDR, DST ADDR
                     hash += *(u32*)(ip + 20); // SRC PORT, DST PORT
                     hsize = IP4_SIZE + UDP_SIZE;
@@ -216,13 +222,16 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
 
         case 6:
 
+            dstHost = *(u8*)(ip + IP6_SIZE - 1);
+            dstHost = (dstHost >> 4)*10 + (dstHost & 0xF);
+
             // IP PROTOCOL
             switch ((hash += *(u8*)(ip + 5))) {
-                case 6 + IPPROTO_TCP:
-                case 6 + IPPROTO_UDP:
-                case 6 + IPPROTO_UDPLITE:
-                case 6 + IPPROTO_SCTP:
-                case 6 + IPPROTO_DCCP:
+                case IPPROTO_TCP:
+                case IPPROTO_UDP:
+                case IPPROTO_UDPLITE:
+                case IPPROTO_SCTP:
+                case IPPROTO_DCCP:
                     hash += *(u64*)(ip +  8); // SRC ADDR
                     hash += *(u64*)(ip + 16); // SRC ADDR
                     hash += *(u64*)(ip + 24); // DST ADDR
@@ -251,16 +260,6 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
     hash += hash >> 32;
     hash += hash >> 16;
     hash += hash >> 8;
-
-    // IDENTIFY HOST BY IP DESTINATION
-    uint dstHost;
-    
-    if (v4)
-        dstHost = *(u8*)(ip + IP4_SIZE - 1);
-    else {
-        dstHost = *(u8*)(ip + IP6_SIZE - 1);
-        dstHost = (dstHost >> 4)*10 + (dstHost & 0xF);
-    }
 
     // CHOOSE MY INTERFACE
     // CHOOSE THEIR INTERFACE
