@@ -211,9 +211,9 @@ drop: // TODO: DROP
     return RX_HANDLER_PASS;
 }
 
-static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const virt) {
+static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
 
-    xlan_s* const lan = DEV_LAN(virt);
+    xlan_s* const lan = DEV_LAN(dev);
 
     if (skb_linearize(skb))
         // NON LINEAR
@@ -335,13 +335,13 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const virt) {
     skb->len              = SKB_TAIL(skb) - PTR(eth);
 
     //
-    net_device_s* const dev2 = lan->port[srcPort];
+    net_device_s* const devPort = lan->port[srcPort];
 
     // TODO: SOMENTE SE ELA ESTIVER ATIVA
-    if (dev2 == NULL)
+    if (devPort == NULL)
         goto drop;
 
-    skb->dev = dev2;
+    skb->dev = devPort;
 
     // -- THE FUNCTION CAN BE CALLED FROM AN INTERRUPT
     // -- WHEN CALLING THIS METHOD, INTERRUPTS MUST BE ENABLED
