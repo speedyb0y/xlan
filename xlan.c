@@ -470,10 +470,10 @@ static int xlan_notify_phys (struct notifier_block* const nb, const unsigned lon
         
         rtnl_lock();
 
-        if (rcu_dereference(phys->rx_handler) == xlan_in        
+        if (rcu_dereference(phys->rx_handler) != xlan_in        
             && netdev_rx_handler_register(phys, xlan_in, NULL) != 0)
-            // JÁ ESTÁ HOOKADA
-            // OU NÃO CONSEGUIU HOOKAR    
+            // NÃO ESTÁ HOOKADA
+            // E NÃO CONSEGUIU HOOKAR    
             phys = NULL;
 
         rtnl_unlock();
