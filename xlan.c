@@ -57,17 +57,13 @@ typedef struct ethhdr ethhdr_s;
 #define IP4_SIZE 20
 #define IP6_SIZE 40
 
-// TOTAL SWITCH PORTS
-#define XLAN_PORTS_N 8
-
-// MAX PORTS PER HOST
-#define XLAN_HOST_PORTS_N 4
-
 // THIS HOST
 #define HOST GW
 
-#define HOST_ID(h)
-#define HOST_PORTS_Q(h)
+#define __HOST(a, h) a ## h
+
+#define HOST_ID         __HOST(HOST_ID_, HOST)
+#define HOST_PORTS_Q    __HOST(HOST_PORTS_Q_, HOST)
 
 enum HOSTS_IDS {
     HOST_ID_GW         =  1,
@@ -91,7 +87,7 @@ enum HOSTS_PORTS_Q {
 
 // PHYSICAL INTERFACES
 // TODO: IDENTIFY THEM BY MAC
-static net_device_s* ports[MY_PORTS_N];
+static net_device_s* ports[HOST_PORTS_Q];
 
 //
 #define XLAN_MAC_CODE 0x00256200U
