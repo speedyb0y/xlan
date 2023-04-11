@@ -588,31 +588,34 @@ static void __exit xlan_exit (void) {
 
         const xlan_s* const lan = &lans[lid];
 
-        printk("XLAN: DESTROYING LAN #%u %s\n", lid, lan->name);
+        printk("XLAN: LAN %u: DESTROYING (%s)\n",
+            lid, lan->name);
 
         // UNHOOK PHYSICAL INTERFACES
         foreach (pid, lan->portsN) {
 
-            net_device_s* const port = lan->portsDevs[pid];
+            net_device_s* const dev = lan->portsDevs[pid];
 
-            if (port) {
+            if (dev) {
 
-                printk("XLAN: UNHOOKING PORT #%u PHYSICAL %s\n", pid, port->name);
+                printk("XLAN: LAN %u: PORT %u: UNHOOKING PHYSICAL %s\n",
+                    lid, pid, dev->name);
 
                 rtnl_lock();
 
-                if (rcu_dereference(port->rx_handler) == xlan_in)
-                    netdev_rx_handler_unregister(port);
+                if (rcu_dereference(dev->rx_handler) == xlan_in)
+                    netdev_rx_handler_unregister(dev);
 
                 rtnl_unlock();
 
-                dev_put(port);
+                dev_put(dev);
             }
         }
 
         if (lan->dev) {
 
-            printk("XLAN: DESTROYING VIRTUAL %s\n", lan->dev->name);
+            printk("XLAN: LAN %u: DESTROYING VIRTUAL %s\n",
+                lid, lan->dev->name);
 
             // DESTROY VIRTUAL INTERFACE
             unregister_netdev(lan->dev);
