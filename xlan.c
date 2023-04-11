@@ -67,9 +67,9 @@ typedef struct notifier_block notifier_block_s;
 #define HOST 1
 
 // MAX HOSTS IN A LAN
-#define XLAN_LAN_HOSTS_MAX 128
+#define XLAN_HOSTS_N 128
 // MAX PORTS ON A HOST
-#define XLAN_HOST_PORTS_MAX 4
+#define XLAN_PORTS_N 4
 
 typedef struct xlan_s {    
     const char* const name; // NAME
@@ -78,11 +78,11 @@ typedef struct xlan_s {
     const u8 host; // HOST ID
     u8 portsN; // HOW MANY PORTS THIS HOST HAS | lan->portsQ[THIS_HOST]    
     net_device_s* dev; // VIRTUAL INTERFACE    
-    net_device_s* portsDevs[XLAN_HOST_PORTS_MAX]; // PHYSICAL INTERFACES    
-    u8 portsQ[XLAN_LAN_HOSTS_MAX]; // HOW MANY PORTS EACH HOST HAS | CALCULATED FROM lan->portsMACs[HOST]
+    net_device_s* portsDevs[XLAN_PORTS_N]; // PHYSICAL INTERFACES    
+    u8 portsQ[XLAN_HOSTS_N]; // HOW MANY PORTS EACH HOST HAS | CALCULATED FROM lan->portsMACs[HOST]
     const u8 portsMACs // MAC OF EACH PORT OF EACH HOST
-        [XLAN_LAN_HOSTS_MAX]
-        [XLAN_HOST_PORTS_MAX]
+        [XLAN_HOSTS_N]
+        [XLAN_PORTS_N]
         [ETH_ALEN];
 } xlan_s;
 
@@ -112,10 +112,12 @@ typedef struct eth_s {
     u16 _align;
 } __attribute__((packed)) eth_s;
 
+// HOW MANY LANS THIS HOST HAS
 #define HOST_LANS_N (sizeof(lans)/sizeof(*lans))
 
 static xlan_s lans[] = {  // TODO: MOSTLY READ
     { .name = "lan",
+        .id = 0,
         .hostsN = 64,
         .host = HOST,
         .portsMACs = {
@@ -497,12 +499,20 @@ static int __init xlan_init (void) {
     printk("XLAN: INIT\n");
 
     BUILD_BUG_ON(offsetof(eth_s, _align) != ETH_SIZE);
+    BUILD_BUG_ON((eth_oui_t)XLAN_OUI     != XLAN_OUI);
+    BUILD_BUG_ON((eth_lid_t)XLAN_LANS_N  != XLAN_LANS_N);
+    BUILD_BUG_ON((eth_hid_t)XLAN_HOSTS_N != XLAN_HOSTS_N);
+    BUILD_BUG_ON((eth_pid_t)XLAN_PORTS_N != XLAN_PORTS_N);
 
-    if (HOST_LANS_N == 0)
+    if (HOST_LANS_N == 0) {
+        printk("XLAN: NO LANS\n");
         goto err;
+    }
 
-    if (HOST_LANS_N >= LANS_MAX)
+    if (HOST_LANS_N >= XLAN_LANS_N) {
+        printk("XLAN: TOO MANY LANS\n");
         goto err;
+    }
 
     uint lid = 0;
 
@@ -517,12 +527,12 @@ static int __init xlan_init (void) {
 
         printk("XLAN: CREATING LAN #%u %s\n", lid, lan->name);
 
-        if (lan->host >= XLAN_LAN_HOSTS_MAX) {
+        if (lan->host >= XLAN_HOSTS_N) {
             printk("XLAN: INVALID HOST %u\n", lan->host);
             goto next;
         }
 
-        //if (lan->portsN >= XLAN_HOST_PORTS_MAX) {
+        //if (lan->portsN >= XLAN_PORTS_N) {
             //printk("XLAN: INVALID PORTS N %u\n", lan->portsN);
             //goto next;
         //}
@@ -545,7 +555,7 @@ static int __init xlan_init (void) {
         DEV_LAN(dev) = lan;
 
         // CONTA QUANTAS PORTAS TEM EM CADA HOST
-        foreach (h, XLAN_LAN_HOSTS_MAX) {
+        foreach (h, XLAN_HOSTS_N) {
             uint p = 0;
             while (*(u32*)(lan->portsMACs[h][p]))
                 p++;
