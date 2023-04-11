@@ -500,23 +500,40 @@ static int __init xlan_init (void) {
 
     BUILD_BUG_ON(offsetof(eth_s, _align) != ETH_SIZE);
 
-    uint i = 0;
+    uint lid = 0;
 
-    while (i != HOST_LANS_N) {
+    while (lid != HOST_LANS_N) {
 
-        const xlan_s* const lan = &lans[i];
+        const xlan_s* const lan = &lans[lid];
+
+        if (lan->name == NULL) {
+            printk("XLAN: CREATING NO LAN %u\n", lid);
+            goto failed;
+        }
+
+        printk("XLAN: CREATING LAN %s\n", lan->name);
+
+        if (lan->host >= XLAN_LAN_HOSTS_MAX) {
+            printk("XLAN: INVALID HOST %u\n", lan->host);
+            goto err;
+        }
+
+        if (lan->portsN >= XLAN_HOST_PORTS_MAX) {
+            printk("XLAN: INVALID PORTS N %u\n", lan->portsN);
+            goto err;
+        }
 
         // CREATE THE VIRTUAL INTERFACE
-        net_device_s* const dev = alloc_netdev(sizeof(xlan_s*), lan->name, NET_NAME_USER, xlan_setup)
+        net_device_s* const dev = alloc_netdev(sizeof(xlan_s*), lan->name, NET_NAME_USER, xlan_setup);
         
         if (dev == NULL) {
-
+            printk("XLAN: FAILED TO CREATE VIRTUAL\n");
             goto failed;
         }
 
         // MAKE IT VISIBLE IN THE SYSTEM
         if (register_netdev(xdev)) {
-            
+            printk("XLAN: FAILED TO REGISTER VIRTUAL\n");
             goto failed_dev;
         }
 
@@ -543,9 +560,9 @@ failed:
 err:
 
     // CLEANUP
-    while (i) {
+    while (lid) {
 
-        const xlan_s* const lan = &lans[--i];
+        const xlan_s* const lan = &lans[--lid];
 
         if (lan->dev) {
             unregister_netdev(lan->dev);
@@ -567,12 +584,16 @@ static void __exit xlan_exit (void) {
 
         const xlan_s* const lan = &lans[i];
 
+        printk("XLAN: DESTROYING LAN %s\n", lan->name);
+
         // UNHOOK PHYSICAL INTERFACES
         foreach (i, lan->portsN) {
 
             net_device_s* const dev = lan->ports[i];
 
             if (dev) {
+
+                printk("XLAN: UNHOOKING PHYSICAL %s\n", dev->name);
 
                 rtnl_lock();
 
@@ -585,10 +606,15 @@ static void __exit xlan_exit (void) {
             }
         }
 
-        // DESTROY VIRTUAL INTERFACE
-        unregister_netdev(lan->dev);
+        if (lan->dev) {
 
-        free_netdev(lan->dev);
+            printk("XLAN: DESTROYING VIRTUAL %s\n", lan->dev->name);
+
+            // DESTROY VIRTUAL INTERFACE
+            unregister_netdev(lan->dev);
+
+            free_netdev(lan->dev);
+        }
     }
 }
 
