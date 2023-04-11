@@ -359,14 +359,14 @@ drop:
 
 static int xlan_up (net_device_s* const dev) {
 
-    printk("XLAN: LAN %u %s: UP\n", lid, dev->name);
+    printk("XLAN: LAN %u: UP %s\n", DEV_LAN(dev)->id, dev->name);
 
     return 0;
 }
 
 static int xlan_down (net_device_s* const dev) {
 
-    printk("XLAN: LAN %u %s: DOWN\n", lid, dev->name);
+    printk("XLAN: LAN %u: DOWN %s\n", DEV_LAN(dev)->id, dev->name);
 
     return 0;
 }
