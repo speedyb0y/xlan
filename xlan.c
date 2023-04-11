@@ -196,14 +196,14 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
     uint dstHost; 
 
     // IP VERSION
-    switch ((hash = *(u8*)ip >> 4)) {
+    switch (*(u8*)ip >> 4) {
 
         case 4: // TODO: VER DENTRO DAS MENSAGENS ICMP E GERAR O MESMO HASH DESSES AQUI
 
             dstHost = *(u8*)(ip + IP4_SIZE - 1);
             
             // IP PROTOCOL
-            switch ((hash += *(u8*)(ip + 9))) {
+            switch ((hash = *(u8*)(ip + 9))) {
                 case IPPROTO_TCP:
                 case IPPROTO_UDP:
                 case IPPROTO_UDPLITE:
@@ -226,7 +226,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
             dstHost = (dstHost >> 4)*10 + (dstHost & 0xF);
 
             // IP PROTOCOL
-            switch ((hash += *(u8*)(ip + 5))) {
+            switch ((hash = *(u8*)(ip + 5))) {
                 case IPPROTO_TCP:
                 case IPPROTO_UDP:
                 case IPPROTO_UDPLITE:
