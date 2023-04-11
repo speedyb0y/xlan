@@ -109,15 +109,20 @@ static const u8 hostPortsQ[HOSTS_N] = {
 //
 #define XLAN_MAC_CODE 0x00256200U
 
+typedef u32 eth_code_t;
+typedef u8  eth_host_t;
+typedef u8  eth_port_t;
+typedef u16 eth_proto_t;
+
 // ETHERNET HEADER
 typedef struct eth_s {
-    u32 dstCode; // XLAN_MAC_CODE
-     u8 dstHost;
-     u8 dstPort;
-    u32 srcCode; // XLAN_MAC_CODE
-     u8 srcHost;
-     u8 srcPort;
-    u16 protocol;
+    eth_code_t dstCode; // XLAN_MAC_CODE
+    eth_host_t dstHost;
+    eth_port_t dstPort;
+    eth_code_t srcCode; // XLAN_MAC_CODE
+    eth_host_t srcHost;
+    eth_port_t srcPort;
+    eth_proto_t protocol;
     u16 _align;
 } __attribute__((packed)) eth_s;
 
@@ -382,11 +387,11 @@ static int xlan_notify_phys (struct notifier_block* const nb, const unsigned lon
         //
         goto done;
 
-    const void* const addr = dev->;
+    const void* const addr = dev->dev_addr;
 
-    const uint code = *(u32*) addr;
-    const uint host = *( u8*)(addr + sizeof(u32));
-    const uint port = *( u8*)(addr + sizeof(u32) + sizeof(u8));
+    const uint code = *(eth_code_t*) addr;
+    const uint host = *(eth_host_t*)(addr + sizeof(eth_code_t));
+    const uint port = *(eth_port_t*)(addr + sizeof(eth_code_t) + sizeof(eth_host_t));
 
     if (code != BE32(XLAN_MAC_CODE))
         // NÃO É NOSSO MAC
