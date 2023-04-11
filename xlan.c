@@ -479,13 +479,13 @@ static int xlan_notify_phys (struct notifier_block* const nb, const unsigned lon
         rtnl_unlock();
 
         if (phys) {
-            printk("XLAN: HOOKED INTERFACE\n");
+            printk("XLAN: HOOKED PHYSICAL\n");
             dev_hold((lan->phys[pid] = phys));
         } else
-            printk("XLAN: FAILED TO HOOK INTERFACE\n");
+            printk("XLAN: FAILED TO HOOK PHYSICAL\n");
     
     } elif (old != phys)
-        printk("XLAN: CANNOT CHANGE INTERFACE\n");
+        printk("XLAN: CANNOT CHANGE PHYSICAL\n");
 
 done:
     return NOTIFY_OK;
