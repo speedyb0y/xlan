@@ -35,6 +35,9 @@ typedef struct ethhdr ethhdr_s;
 #define SKB_TAIL(skb) PTR(skb_tail_pointer(skb))
 #define SKB_END(skb)  PTR(skb_end_pointer(skb))
 
+#define SKB_MAC(skb)     PTR(skb_mac_header(skb))
+#define SKB_NETWORK(skb) PTR(skb_network_header(skb))
+
 #define PTR(p) ((void*)(p))
 
 #define loop while(1)
@@ -130,7 +133,7 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
     if (skb_linearize(skb))
         goto pass;
 
-    eth_s* const eth = skb_mac_header(skb);
+    eth_s* const eth = SKB_MAC(skb);
 
     if (PTR(eth) < SKB_HEAD(skb)
     || (PTR(eth) + ETH_SIZE) >= SKB_TAIL(skb))
@@ -175,7 +178,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
         // NON LINEAR
         goto drop;
 
-    void* const ip = skb_network_header(skb);
+    void* const ip = SKB_NETWORK(skb);
 
     if (PTR(ip) < SKB_HEAD(skb)
      || PTR(ip) > SKB_TAIL(skb))
