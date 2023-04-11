@@ -164,7 +164,7 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
     skb->network_header   = PTR(ip);
 #endif
     skb->len              = SKB_TAIL(skb) - PTR(ip);
-    skb->dev              = itfc->dev;
+    skb->dev              = xdev;
 
     return RX_HANDLER_ANOTHER;
 
