@@ -145,16 +145,33 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
     || (PTR(eth) + ETH_SIZE) >= SKB_TAIL(skb))
         goto pass;
 
-    if (eth->srcCode != BE16(XLAN_MAC_CODE))
+    const uint code = BE16(eth->dstCode);
+    const uint lan  = BE16(eth->dstLan);
+    const uint host =      eth->dstHost;
+    const uint port =      eth->dstPort;
+
+    if (code != XLAN_MAC_CODE)
         // NOT FROM XLAN
         goto pass;
     
-    if (eth->srcPort == 0)
+    if (port == 0)
         // NOT A SWITCH PORT
         goto pass;
 
+    if (lan >= HOST_LANS_N)
+        //
+        goto pass;
+
+    xlan_s* const lan = &lans[lan];
+
+    if (host != lan->host)
+        // NOT OURS
+        goto pass;
+
+    net_device_s* const virt = lan->dev;
+
     // TODO: SE A INTERFACE XLAN ESTIVER DOWN, PASS OU DROP?
-    if (0)
+    if (virt == NULL)
         goto pass;
 
     // PULA O ETHERNET HEADER
@@ -170,7 +187,7 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
     skb->network_header   = PTR(ip);
 #endif
     skb->len              = SKB_TAIL(skb) - PTR(ip);
-    skb->dev              = xdev;
+    skb->dev              = virt;
 
     return RX_HANDLER_ANOTHER;
 
