@@ -150,7 +150,7 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
         goto pass;
 
     if (eth->srcCode != BE32(XLAN_MAC_CODE))
-        // NOT FROM XVLAN
+        // NOT FROM XLAN
         goto pass;
     
     if (eth->srcPort == 0)
@@ -377,26 +377,34 @@ static void xlan_setup (net_device_s* const dev) {
 
 static int xlan_notify_phys (struct notifier_block* const nb, const unsigned long event, void* const info) {
 
-    net_device_s* dev = netdev_notifier_info_to_dev(info);
-
-    if (dev == xdev)
-        // IGNORA EVENTOS DELA MESMA
-        goto done;
-
+    // CONSIDERA SOMENTE ESTES EVENTOS
     if (event != NETDEV_REGISTER
      && event != NETDEV_CHANGEADDR)
-        //
         goto done;
 
+    net_device_s* dev = netdev_notifier_info_to_dev(info);
+
+    // IGNORA EVENTOS DELA MESMA
+    if (dev == xdev)
+        goto done;
+
+    //
     const void* const addr = dev->dev_addr;
 
-    const uint code = *(eth_code_t*) addr;
+    //
+    if (addr == NULL)
+        goto done;
+
+    const uint code = *(eth_code_t*)(addr);
     const uint host = *(eth_host_t*)(addr + sizeof(eth_code_t));
     const uint port = *(eth_port_t*)(addr + sizeof(eth_code_t) + sizeof(eth_host_t));
 
+    // CONFIRMA SE É XLAN
     if (code != BE32(XLAN_MAC_CODE))
-        // NÃO É NOSSO MAC
         goto done;
+
+    printk("XLAN: PHYSICAL INTERFACE %s CREATED/CHANGED WITH CODE 0x%04X HOST %u PORT %u\n",
+        dev->name, code, host, port);
 
     if (host != HOST_ID) {
         printk("XLAN: HOST MISMATCH\n");
@@ -408,25 +416,25 @@ static int xlan_notify_phys (struct notifier_block* const nb, const unsigned lon
         goto done;
     }
 
-    net_device_s* const old = ports[port];
-
-    if (old != dev) {
+    if (ports[port] == NULL) {
         
         rtnl_lock();
 
-        if (rcu_dereference(dev->rx_handler) != xlan_in        
+        if (rcu_dereference(dev->rx_handler) == xlan_in        
             && netdev_rx_handler_register(dev, xlan_in, NULL) != 0)
-            // NÃO ESTÁ HOOKADA
-            // E NEM CONSEGUIU HOOKAR    
+            // JÁ ESTÁ HOOKADA
+            // OU NÃO CONSEGUIU HOOKAR    
             dev = NULL;
 
         rtnl_unlock();
 
-        if (old)
-            dev_put(old);
-
-        if ((ports[port] = dev))
+        if ((ports[port] = dev)) {
+            printk("XLAN: %s: PORT %X: HOOKED INTERFACE %s\n",
+                xdev->name, port, dev->name);
             dev_hold(dev);
+        } else
+            printk("XLAN: %s: PORT %X: FAILED TO HOOK INTERFACE %s\n",
+                xdev->name, port, dev->name);
     }
 
 done:
