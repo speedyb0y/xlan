@@ -557,21 +557,21 @@ static int __init xlan_init (void) {
         //}
 
         // CREATE THE VIRTUAL INTERFACE
-        net_device_s* const virt = alloc_netdev(sizeof(xlan_s*), lan->name, NET_NAME_USER, xlan_setup);
+        net_device_s* const dev = alloc_netdev(sizeof(xlan_s*), lan->name, NET_NAME_USER, xlan_setup);
         
-        if (virt == NULL) {
+        if (dev == NULL) {
             printk("XLAN: FAILED TO CREATE VIRTUAL\n");
             goto next;
         }
 
         // MAKE IT VISIBLE IN THE SYSTEM
-        if (register_netdev(virt)) {
+        if (register_netdev(dev)) {
             printk("XLAN: FAILED TO REGISTER VIRTUAL\n");
-            free_netdev(virt);
+            free_netdev(virdevt);
             goto next;
         }
 
-        DEV_LAN(virt) = lan;
+        DEV_LAN(dev) = lan;
 
         // CONTA QUANTAS PORTAS TEM EM CADA HOST
         foreach (h, XLAN_LAN_HOSTS_MAX) {
@@ -581,7 +581,7 @@ static int __init xlan_init (void) {
             lan->portsQ[h] = p;
         }
 
-        lan->dev = virt;
+        lan->dev = dev;
         lan->portsN = // SO WE NEED TO SPECIFY IT ONLY ONCE
         lan->portsQ[lan->host];
 next:
