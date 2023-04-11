@@ -364,7 +364,7 @@ static int xlan_down (net_device_s* const dev) {
 
     xlan_s* const lan = *(xlan_s**)netdev_priv(dev);
 
-    printk("XLAN: LAN %s: %s DOWN\n", dev->name);
+    printk("XLAN: LAN %s: %s DOWN\n", lan->name, dev->name);
 
     return 0;
 }
