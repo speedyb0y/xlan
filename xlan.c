@@ -60,7 +60,8 @@ typedef struct ethhdr ethhdr_s;
 // THIS HOST
 #define HOST GW
 
-#define __HOST(a, h) a ## h
+#define __HOST2(a, h) a ## h
+#define __HOST(a, h) __HOST2(a, h)
 
 #define HOST_ID         __HOST(HOST_ID_, HOST)
 #define HOST_PORTS_Q    __HOST(HOST_PORTS_Q_, HOST)
