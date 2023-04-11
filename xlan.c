@@ -355,14 +355,14 @@ drop:
 
 static int xlan_up (net_device_s* const virt) {
 
-    printk("XLAN: LAN %s: %s UP\n", VIRT_LAN(virt)->name, dev->name);
+    printk("XLAN: LAN %s: %s UP\n", VIRT_LAN(virt)->name, virt->name);
 
     return 0;
 }
 
 static int xlan_down (net_device_s* const virt) {
 
-    printk("XLAN: LAN %s: %s DOWN\n", VIRT_LAN(virt)->name, dev->name);
+    printk("XLAN: LAN %s: %s DOWN\n", VIRT_LAN(virt)->name, virt->name);
 
     return 0;
 }
