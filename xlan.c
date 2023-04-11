@@ -166,17 +166,17 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
 
     // VALIDATE LAN
     if (lid >= HOST_LANS_N)
-        goto pass;
+        goto drop;
 
     xlan_s* const lan = &lans[lid];
 
     // CONFIRM ITS OURS
     if (hid != lan->host)
-        goto pass;
+        goto drop;
 
     // VALIDATE PORT
     if (pid >= lan->portsN)
-        goto pass;
+        goto drop;
 
     // CONFIRM IT CAME ON THE PHYSICAL
     if (skb->dev != lan->port[pid])
@@ -211,8 +211,11 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
 pass:
     return RX_HANDLER_PASS;
 
-drop: // TODO: DROP
-    return RX_HANDLER_PASS;
+drop: // TODO: dev_kfree_skb ?
+
+    kfree_skb(skb);
+
+    return RX_HANDLER_CONSUMED;
 }
 
 static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
