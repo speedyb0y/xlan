@@ -97,9 +97,9 @@ static xlan_s lans[] = {  // TODO: MOSTLY READ
     { .name = "lan",
         .host = HOST,
         .portsMACs = {
-            [ 1] = { "\x00\x00\x00\x00\x00\x00", "\x00\x00\x00\x00\x00\x00" },
+            [ 1] = { "\x88\xC9\xB3\xB0\xF1\xEB", "\x88\xC9\xB3\xB0\xF1\xEA" },
             [10] = { "\x00\x00\x00\x00\x00\x00" },
-            [20] = { "\x00\x00\x00\x00\x00\x00", "\x00\x00\x00\x00\x00\x00" },
+            [20] = { "\xBC\x5F\xF4\xF9\xE6\x66", "\xBC\x5F\xF4\xF9\xE6\x67" },
             [30] = { "\x00\x00\x00\x00\x00\x00" },
             [40] = { "\x00\x00\x00\x00\x00\x00" },
             [70] = { "\x00\x00\x00\x00\x00\x00" },
@@ -107,10 +107,11 @@ static xlan_s lans[] = {  // TODO: MOSTLY READ
     }
 };
 
-#define DEV_LAN(v) (*(xlan_s**)netdev_priv(v))
+//
+#define DEV_LAN(dev) (*(xlan_s**)netdev_priv(dev))
 
 //
-#define XLAN_OUI 0x0025U
+#define XLAN_OUI 0x2652U
 
 typedef u16 eth_oui_t;
 typedef u16 eth_lid_t;
