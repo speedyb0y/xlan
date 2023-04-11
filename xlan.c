@@ -312,6 +312,9 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const virt) {
         // SEM ESPACO PARA COLOCAR O MAC HEADER
         goto drop;
 
+#define LAN_ID(lan) ((lan) - lans)
+    const uint lid = LAN_ID(lan);
+
     eth->dstOUI   = BE16(XLAN_OUI);
     eth->dstLan   = BE16(lid);
     eth->dstHost  = dstHost;
