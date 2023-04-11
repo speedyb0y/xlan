@@ -85,7 +85,7 @@ typedef struct xlan_s {
     // CONTROL PACKETS
     sk_buff_s* portsSkbs[XLAN_HOST_PORTS_MAX];
     // QUANTITY OF PORTS OF EACH HOST
-    const u8 portsQ[XLAN_LAN_HOSTS_MAX];
+    u8 portsQ[XLAN_LAN_HOSTS_MAX];
     //
     const u8 portsMACs[XLAN_LAN_HOSTS_MAX][XLAN_HOST_PORTS_MAX][ETH_ALEN];
 } xlan_s;
@@ -95,7 +95,7 @@ typedef struct xlan_s {
 static xlan_s lans[] = {  // TODO: MOSTLY READ
     { .name = "lan",
         .host = HOST,
-        .portsQ = {
+        .portsMACs = {
             [ 1] = { "\x00\x00\x00\x00\x00\x00" },
             [10] = { "\x00\x00\x00\x00\x00\x00" },
             [20] = { "\x00\x00\x00\x00\x00\x00" },
@@ -553,10 +553,10 @@ static int __init xlan_init (void) {
             goto next;
         }
 
-        if (lan->portsN >= XLAN_HOST_PORTS_MAX) {
-            printk("XLAN: INVALID PORTS N %u\n", lan->portsN);
-            goto next;
-        }
+        //if (lan->portsN >= XLAN_HOST_PORTS_MAX) {
+            //printk("XLAN: INVALID PORTS N %u\n", lan->portsN);
+            //goto next;
+        //}
 
         // CREATE THE VIRTUAL INTERFACE
         net_device_s* const virt = alloc_netdev(sizeof(xlan_s*), lan->name, NET_NAME_USER, xlan_setup);
@@ -574,6 +574,14 @@ static int __init xlan_init (void) {
         }
 
         VIRT_LAN(virt) = lan;
+
+        // CONTA QUANTAS PORTAS TEM EM CADA HOST
+        foreach (h, XLAN_LAN_HOSTS_MAX) {
+            uint p = 0;
+            while (*(u32*)(lan->portsMACs[h][p]))
+                p++;
+            lan->portsQ[h] = p;
+        }
 
         lan->virt = virt;
         lan->portsN = // SO WE NEED TO SPECIFY IT ONLY ONCE
