@@ -105,9 +105,9 @@ static xlan_s lans[] = {
 #define VIRT_LAN(v) (*(xlan_s**)netdev_priv(v))
 
 //
-#define XLAN_MAC_MAGIC 0x0025U
+#define XLAN_MAC_OUI 0x0025U
 
-typedef u16 eth_mgk_t;
+typedef u16 eth_oui_t;
 typedef u16 eth_lid_t;
 typedef u8  eth_hid_t;
 typedef u8  eth_pid_t;
@@ -115,11 +115,11 @@ typedef u16 eth_proto_t;
 
 // ETHERNET HEADER
 typedef struct eth_s {
-    eth_mgk_t dstCode; // XLAN_MAC_MAGIC
+    eth_oui_t dstOUI; // XLAN_MAC_OUI
     eth_lid_t  dstLan;
     eth_hid_t dstHost;
     eth_pid_t dstPort;
-    eth_mgk_t srcCode; // XLAN_MAC_MAGIC
+    eth_oui_t srcOUI; // XLAN_MAC_OUI
     eth_lid_t  srcLan;
     eth_hid_t srcHost;
     eth_pid_t srcPort;
@@ -149,12 +149,12 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
     || (PTR(eth) + ETH_SIZE) >= SKB_TAIL(skb))
         goto pass;
 
-    const uint code = BE16(eth->dstCode);
+    const uint code = BE16(eth->dstOUI);
     const uint lid  = BE16(eth->dstLan);
     const uint hid  =      eth->dstHost;
     const uint pid  =      eth->dstPort;
 
-    if (code != XLAN_MAC_MAGIC)
+    if (code != XLAN_MAC_OUI)
         // NOT FROM XLAN
         goto pass;
     
@@ -312,11 +312,11 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const virt) {
         // SEM ESPACO PARA COLOCAR O MAC HEADER
         goto drop;
 
-    eth->dstCode  = BE16(XLAN_MAC_MAGIC);
+    eth->dstOUI   = BE16(XLAN_MAC_OUI);
     eth->dstLan   = 0;
     eth->dstHost  = dstHost;
     eth->dstPort  = dstPort;
-    eth->srcCode  = BE16(XLAN_MAC_MAGIC);
+    eth->srcOUI   = BE16(XLAN_MAC_OUI);
     eth->srcLan   = 0;
     eth->srcHost  = lan->host;
     eth->srcPort  = srcPort;
@@ -429,13 +429,13 @@ static int xlan_notify_phys (struct notifier_block* const nb, const unsigned lon
     if (addr == NULL)
         goto done;
 
-    const uint mgk = *(eth_mgk_t*)(addr);
-    const uint lid = *(eth_lid_t*)(addr + sizeof(eth_mgk_t));
-    const uint hid = *(eth_hid_t*)(addr + sizeof(eth_mgk_t) + sizeof(eth_lid_t));
-    const uint pid = *(eth_pid_t*)(addr + sizeof(eth_mgk_t) + sizeof(eth_lid_t) + sizeof(eth_hid_t));
+    const uint mgk = *(eth_oui_t*)(addr);
+    const uint lid = *(eth_lid_t*)(addr + sizeof(eth_oui_t));
+    const uint hid = *(eth_hid_t*)(addr + sizeof(eth_oui_t) + sizeof(eth_lid_t));
+    const uint pid = *(eth_pid_t*)(addr + sizeof(eth_oui_t) + sizeof(eth_lid_t) + sizeof(eth_hid_t));
 
     // CONFIRMA SE É XLAN
-    if (mgk != BE16(XLAN_MAC_MAGIC))
+    if (mgk != BE16(XLAN_MAC_OUI))
         goto done;
 
     printk("XLAN: FOUND INTERFACE %s WITH LAN %u HOST %u PORT %u\n",
