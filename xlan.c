@@ -93,19 +93,26 @@ enum HOSTS_PORTS_Q {
     HOST_PORTS_Q_TEST      = 1,
 };
 
-// VIRTUAL INTERFACE
-static net_device_s* xdev;
-// PHYSICAL INTERFACES
-static net_device_s* ports[HOST_PORTS_Q];
+// MAX HOSTS IN A LAN
+#define XLAN_HOSTS_MAX 64
 
-static const u8 hostPortsQ[HOSTS_N] = {
-    [HOST_ID_GW]        = HOST_PORTS_Q_GW,
-    [HOST_ID_WIFI]      = HOST_PORTS_Q_WIFI,
-    [HOST_ID_PC2]       = HOST_PORTS_Q_PC2,
-    [HOST_ID_SPEEDYB0Y] = HOST_PORTS_Q_SPEEDYB0Y,
-    [HOST_ID_XTRADER]   = HOST_PORTS_Q_XTRADER,
-    [HOST_ID_TEST]      = HOST_PORTS_Q_TEST,
+typedef struct xlan_s {
+    // VIRTUAL INTERFACE
+    net_device_s* dev;
+    // PHYSICAL INTERFACES
+    net_device_s* ports[HOST_PORTS_Q];
+    //
+    const u8 hostPortsQ[HOSTS_N] = {
+        [HOST_ID_GW]        = HOST_PORTS_Q_GW,
+        [HOST_ID_WIFI]      = HOST_PORTS_Q_WIFI,
+        [HOST_ID_PC2]       = HOST_PORTS_Q_PC2,
+        [HOST_ID_SPEEDYB0Y] = HOST_PORTS_Q_SPEEDYB0Y,
+        [HOST_ID_XTRADER]   = HOST_PORTS_Q_XTRADER,
+        [HOST_ID_TEST]      = HOST_PORTS_Q_TEST,
+    };
 };
+
+static xlan_s lans[HOST_LANS_N];
 
 //
 #define XLAN_MAC_CODE 0x00256200U
@@ -126,6 +133,8 @@ typedef struct eth_s {
     eth_proto_t protocol;
     u16 _align;
 } __attribute__((packed)) eth_s;
+
+#define HOST_LANS_N 1
 
 static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
 
@@ -396,6 +405,7 @@ static int xlan_notify_phys (struct notifier_block* const nb, const unsigned lon
         goto done;
 
     const uint code = *(eth_code_t*)(addr);
+    const uint lan = 1; // SWITCH ID
     const uint host = *(eth_host_t*)(addr + sizeof(eth_code_t));
     const uint port = *(eth_port_t*)(addr + sizeof(eth_code_t) + sizeof(eth_host_t));
 
@@ -403,8 +413,15 @@ static int xlan_notify_phys (struct notifier_block* const nb, const unsigned lon
     if (code != BE32(XLAN_MAC_CODE))
         goto done;
 
-    printk("XLAN: FOUND INTERFACE %s WITH CODE 0x%04X HOST %u PORT %u\n",
-        dev->name, code, host, port);
+    printk("XLAN: FOUND INTERFACE %s WITH LAN %u HOST %u PORT %u\n",
+        dev->name, lan, host, port);
+
+    if (lan >= HOST_LANS_N) {
+        printk("XLAN: BAD LAN\n");
+        goto done;        
+    }
+    
+    xlan_s* const lan = &lans[lan];
 
     if (host != HOST_ID) {
         printk("XLAN: HOST MISMATCH\n");
