@@ -267,7 +267,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const virt) {
                 case IPPROTO_TCP:
                 case IPPROTO_UDP:
                 case IPPROTO_UDPLITE:
-                case IPPROTO_SCTP:
+                case IPPROTO_SCTP: // TODO: CONSIDER IPV6 FLOW?
                 case IPPROTO_DCCP:
                     hash += *(u64*)(ip +  8); // SRC ADDR
                     hash += *(u64*)(ip + 16); // SRC ADDR
