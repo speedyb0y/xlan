@@ -345,14 +345,18 @@ drop:
 
 static int xlan_up (net_device_s* const dev) {
 
-    printk("XLAN: %s UP\n", dev->name);
+    xlan_s* const lan = *(xlan_s**)netdev_priv(dev);
+
+    printk("XLAN: LAN %s: %s UP\n", lan->name, dev->name);
 
     return 0;
 }
 
 static int xlan_down (net_device_s* const dev) {
 
-    printk("XLAN: %s DOWN\n", dev->name);
+    xlan_s* const lan = *(xlan_s**)netdev_priv(dev);
+
+    printk("XLAN: LAN %s: %s DOWN\n", dev->name);
 
     return 0;
 }
