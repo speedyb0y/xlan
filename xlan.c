@@ -101,9 +101,10 @@ static xlan_s lans[] = {
 };
 
 //
-#define XLAN_MAC_CODE 0x00256200U
+#define XLAN_MAC_CODE 0x0025U
 
-typedef u32 eth_code_t;
+typedef u16 eth_code_t;
+typedef u16 eth_lan_t;
 typedef u8  eth_host_t;
 typedef u8  eth_port_t;
 typedef u16 eth_proto_t;
@@ -111,9 +112,11 @@ typedef u16 eth_proto_t;
 // ETHERNET HEADER
 typedef struct eth_s {
     eth_code_t dstCode; // XLAN_MAC_CODE
+    eth_lan_t  dstLan;
     eth_host_t dstHost;
     eth_port_t dstPort;
     eth_code_t srcCode; // XLAN_MAC_CODE
+    eth_lan_t  srcLan;
     eth_host_t srcHost;
     eth_port_t srcPort;
     eth_proto_t protocol;
@@ -142,7 +145,7 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
     || (PTR(eth) + ETH_SIZE) >= SKB_TAIL(skb))
         goto pass;
 
-    if (eth->srcCode != BE32(XLAN_MAC_CODE))
+    if (eth->srcCode != BE16(XLAN_MAC_CODE))
         // NOT FROM XLAN
         goto pass;
     
@@ -274,11 +277,13 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
         // SEM ESPACO PARA COLOCAR O MAC HEADER
         goto drop;
 
-    eth->dstCode  = BE32(XLAN_MAC_CODE); // XLAN_MAC_CODE
+    eth->dstCode  = BE16(XLAN_MAC_CODE);
+    eth->dstLan   = 0;
     eth->dstHost  = dstHost;
     eth->dstPort  = dstPort;
-    eth->srcCode  = BE32(XLAN_MAC_CODE); // XLAN_MAC_CODE
-    eth->srcHost  = HOST_ID;
+    eth->srcCode  = BE16(XLAN_MAC_CODE);
+    eth->srcLan   = 0;
+    eth->srcHost  = lan->host;
     eth->srcPort  = srcPort;
     eth->protocol = skb->protocol;
 
@@ -394,7 +399,7 @@ static int xlan_notify_phys (struct notifier_block* const nb, const unsigned lon
     const uint port = *(eth_port_t*)(addr + sizeof(eth_code_t) + sizeof(eth_host_t));
 
     // CONFIRMA SE É XLAN
-    if (code != BE32(XLAN_MAC_CODE))
+    if (code != BE16(XLAN_MAC_CODE))
         goto done;
 
     printk("XLAN: FOUND INTERFACE %s WITH LAN %u HOST %u PORT %u\n",
