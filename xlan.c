@@ -81,7 +81,7 @@ typedef struct xlan_s {
     // VIRTUAL INTERFACE
     net_device_s* virt;
     // PHYSICAL INTERFACES
-    net_device_s* phys[XLAN_HOST_PORTS_MAX];
+    net_device_s* port[XLAN_HOST_PORTS_MAX];
     // QUANTITY OF PORTS OF EACH HOST
     const u8 portsQ[XLAN_LAN_HOSTS_MAX];
 } xlan_s;
@@ -173,14 +173,17 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
         goto pass;
 
     // CONFIRM IT CAME ON THE PHYSICAL
-    if (skb->dev != lan->phys[pid])
-        goto pass;
+    if (skb->dev != lan->port[pid])
+        goto drop;
 
     net_device_s* const virt = lan->virt;
 
-    // TODO: SE A INTERFACE XLAN ESTIVER DOWN, PASS OU DROP?
     if (virt == NULL)
-        goto pass;
+        goto drop;
+
+    // SE A INTERFACE XLAN ESTIVER DOWN, PASS
+    if (virt->flags & IFF_UP)
+        goto drop;
 
     // PULA O ETHERNET HEADER
     void* const ip = PTR(eth) + ETH_SIZE;
@@ -200,6 +203,9 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
     return RX_HANDLER_ANOTHER;
 
 pass:
+    return RX_HANDLER_PASS;
+
+drop: // TODO: DROP
     return RX_HANDLER_PASS;
 }
 
@@ -327,7 +333,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const virt) {
     skb->len              = SKB_TAIL(skb) - PTR(eth);
 
     //
-    net_device_s* const dev2 = lan->phys[srcPort];
+    net_device_s* const dev2 = lan->port[srcPort];
 
     // TODO: SOMENTE SE ELA ESTIVER ATIVA
     if (dev2 == NULL)
@@ -410,7 +416,7 @@ static int xlan_notify_phys (struct notifier_block* const nb, const unsigned lon
      && event != NETDEV_CHANGEADDR)
         goto done;
 
-    net_device_s* phys = netdev_notifier_info_to_dev(info);
+    net_device_s* port = netdev_notifier_info_to_dev(info);
 
     // IGNORA EVENTOS DE LANS
     // TODO: FIXME: IDENTIFICAR SE A INTERFACE É UMA LAN
@@ -418,7 +424,7 @@ static int xlan_notify_phys (struct notifier_block* const nb, const unsigned lon
         goto done;
 
     // TODO: FIXME: CONFIRM ADDR LEN == ETH_ALEN
-    const eth_s* const addr = PTR(phys->dev_addr);
+    const eth_s* const addr = PTR(port->dev_addr);
 
     //
     if (addr == NULL)
@@ -434,7 +440,7 @@ static int xlan_notify_phys (struct notifier_block* const nb, const unsigned lon
         goto done;
 
     printk("XLAN: FOUND PHYSICAL %s WITH LAN %u HOST %u PORT %u\n",
-        phys->name, lid, hid, pid);
+        port->name, lid, hid, pid);
 
     if (lid >= HOST_LANS_N) {
         printk("XLAN: BAD LAN\n");
@@ -444,7 +450,7 @@ static int xlan_notify_phys (struct notifier_block* const nb, const unsigned lon
     xlan_s* const lan = &lans[lid];
 
     // NAO PODE CHEGAR AQUI COM EVENTOS DELA MESMA
-    //ASSERT(phys != lan->virt);
+    //ASSERT(port != lan->virt);
 
     if (hid != lan->host) {
         printk("XLAN: HOST MISMATCH\n");
@@ -456,27 +462,27 @@ static int xlan_notify_phys (struct notifier_block* const nb, const unsigned lon
         goto done;
     }
 
-    net_device_s* const old = lan->phys[pid];
+    net_device_s* const old = lan->port[pid];
 
     if (old == NULL) {
         
         rtnl_lock();
 
-        if (rcu_dereference(phys->rx_handler) != xlan_in        
-            && netdev_rx_handler_register(phys, xlan_in, NULL) != 0)
+        if (rcu_dereference(port->rx_handler) != xlan_in        
+            && netdev_rx_handler_register(port, xlan_in, NULL) != 0)
             // NÃO ESTÁ HOOKADA
             // E NÃO CONSEGUIU HOOKAR    
-            phys = NULL;
+            port = NULL;
 
         rtnl_unlock();
 
-        if (phys) {
+        if (port) {
             printk("XLAN: HOOKED PHYSICAL\n");
-            dev_hold((lan->phys[pid] = phys));
+            dev_hold((lan->port[pid] = port));
         } else
             printk("XLAN: FAILED TO HOOK PHYSICAL\n");
     
-    } elif (old != phys)
+    } elif (old != port)
         printk("XLAN: CANNOT CHANGE PHYSICAL\n");
 
 done:
@@ -486,6 +492,32 @@ done:
 static notifier_block_s notifyDevs = {
     .notifier_call = xlan_notify_phys
 };
+
+static void xlan_keeper (struct timer_list*);
+
+static DEFINE_TIMER(doTimer, xlan_keeper);
+
+static void xlan_keeper (struct timer_list* const timer) {
+
+    //
+    foreach (lid, HOST_LANS_N) {
+
+        const xlan_s* const lan = &lans[lid];
+
+        foreach (pid, lan->portsN) {
+
+            net_device_s* const port = lan->port[pid];
+
+            if (port && port->flags & IFF_UP)                
+                dev_queue_xmit(skb_get(port->skb));
+        }
+    }
+
+    // REINSTALL TIMER
+    doTimer.expires = jiffies + 2*HZ;
+
+    add_timer(&doTimer);
+}
 
 static int __init xlan_init (void) {
 
@@ -549,6 +581,11 @@ next:
     if (register_netdevice_notifier(&notifyDevs) < 0)
         goto err;
 
+    // INSTALL TIMER
+    doTimer.expires = jiffies + 2*HZ;
+
+    add_timer(&doTimer);
+
     return 0;
 
 err:
@@ -570,6 +607,8 @@ static void __exit xlan_exit (void) {
 
     printk("XLAN: EXIT\n");
 
+TODO: REMOVE TIMER
+
     // PARA DE MONITORAR OS EVENTOS
     unregister_netdevice_notifier(&notifyDevs);
 
@@ -582,20 +621,20 @@ static void __exit xlan_exit (void) {
         // UNHOOK PHYSICAL INTERFACES
         foreach (pid, lan->portsN) {
 
-            net_device_s* const phys = lan->phys[pid];
+            net_device_s* const port = lan->port[pid];
 
-            if (phys) {
+            if (port) {
 
-                printk("XLAN: UNHOOKING PORT #%u PHYSICAL %s\n", pid, phys->name);
+                printk("XLAN: UNHOOKING PORT #%u PHYSICAL %s\n", pid, port->name);
 
                 rtnl_lock();
 
-                if (rcu_dereference(phys->rx_handler) == xlan_in)
-                    netdev_rx_handler_unregister(phys);
+                if (rcu_dereference(port->rx_handler) == xlan_in)
+                    netdev_rx_handler_unregister(port);
 
                 rtnl_unlock();
 
-                dev_put(phys);
+                dev_put(port);
             }
         }
 
