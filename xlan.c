@@ -174,7 +174,7 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
         goto drop;
 
     // SE A INTERFACE XLAN ESTIVER DOWN, DROP
-    if (dev->flags & IFF_UP)
+    if (!(dev->flags & IFF_UP))
         goto drop;    
 
     xlan_s* const lan = DEV_LAN(dev);   
@@ -299,19 +299,18 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
     hash += hash >> 16;
     hash += hash >> 8;
 
-    // CHOOSE MY INTERFACE
-    // CHOOSE THEIR INTERFACE
-    // TOOD: o caso do ipv6, vai ter que transformar o valor de volta pois esta em hexadecimal
-    const uint srcPort = hash %  lan->P;
-                         hash /= lan->P;
-
     const uint dstPortsN = lan->PH[dstHost];
 
     if (dstPortsN == 0)
         // DESTINATION HOST HAS NO PORTS
         goto drop;
 
-    const uint dstPort = hash % dstPortsN;
+    // CHOOSE MY INTERFACE
+    // CHOOSE THEIR INTERFACE
+    // TOOD: o caso do ipv6, vai ter que transformar o valor de volta pois esta em hexadecimal
+    const uint dstPort = hash %  dstPortsN;
+                         hash /= dstPortsN;
+    const uint srcPort = hash %  lan->P;    
 
     // INSERT ETHERNET HEADER
     eth_s* const eth = PTR(ip) - ETH_SIZE;
