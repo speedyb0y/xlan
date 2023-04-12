@@ -183,9 +183,6 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
         goto drop;
 
     // VALIDATE PORT
-    if (pid >= lan->portsN)
-        goto drop;
-
     // CONFIRM IT CAME ON THE PHYSICAL
     if (skb->dev != lan->portsDevs[pid])
         goto drop;
@@ -462,17 +459,20 @@ static int xlan_notify_phys (struct notifier_block* const nb, const unsigned lon
                     break;
             } elif (memcmp(lan->portsMACs[lan->host][pid], mac, ETH_ALEN) == 0) {
 
-                printk("XLAN: LAN %u: PORT %u: FOUND PHYSICAL INTERFACE %s\n", lid, pid, dev->name);
+                const char* fmt;
 
                 if (rcu_dereference(dev->rx_handler) == xlan_in        
                     || netdev_rx_handler_register(dev, xlan_in, NULL) == 0) {
-                    printk("XLAN: HOOKED PHYSICAL\n");
                     dev_hold((lan->portsDevs[pid] = dev));
+                    fmt = "XLAN: LAN %u: PORT %u: HOOK PHYSICAL %s: SUCCESS\n";
                 } else
                     // NÃO ESTÁ HOOKADA
-                    // E NÃO CONSEGUIU HOOKAR    
-                    printk("XLAN: FAILED TO HOOK PHYSICAL\n");
+                    // E NÃO CONSEGUIU HOOKAR
+                    fmt = "XLAN: LAN %u: PORT %u: HOOK PHYSICAL %s: FAILED\n";
+                
+                printk(fm, lid, pid, dev->name);
 
+                // ESTA INTERFACE NAO PODE SER USADA NOVAMENTE NA MESMA LAN
                 break;
             }
         }
