@@ -436,6 +436,11 @@ static int xlan_notify_phys (struct notifier_block* const nb, const unsigned lon
     if (mac == NULL)
         goto done;
 
+    if (!rtnl_is_locked()) {
+        printk("XLAN: RTNL IS NOT LOCKED");
+        goto done;
+    }
+
     foreach (lid, LANS_N) {
 
         xlan_s* const lan = &lans[lid];
@@ -456,7 +461,7 @@ static int xlan_notify_phys (struct notifier_block* const nb, const unsigned lon
                 printk("XLAN: LAN %u: PORT %u: FOUND PHYSICAL INTERFACE %s\n",
                     lid, pid, dev->name);
 
-                rtnl_lock();
+                //rtnl_lock();
 
                 if (rcu_dereference(dev->rx_handler) != xlan_in        
                     && netdev_rx_handler_register(dev, xlan_in, NULL) != 0)
@@ -464,7 +469,7 @@ static int xlan_notify_phys (struct notifier_block* const nb, const unsigned lon
                     // E NÃO CONSEGUIU HOOKAR    
                     dev = NULL;
 
-                rtnl_unlock();
+                //rtnl_unlock();
 
                 if (dev) {
                     printk("XLAN: HOOKED PHYSICAL\n");
