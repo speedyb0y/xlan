@@ -76,9 +76,8 @@ typedef struct notifier_block notifier_block_s;
 typedef struct xlan_cfg_s {    
     const char* name; // O NOME INICIAL DA INTERFACE
     u8 id; // LAN ID    
-    u8 hostsN; // TODO: IMPLEMENTAR ISSO
     u8 host; // HOST ID
-    const u8 portsMACs // MAC OF EACH PORT OF EACH HOST
+    u8 portsMACs // MAC OF EACH PORT OF EACH HOST
         [XLAN_HOSTS_N]
         [XLAN_PORTS_N]
         [ETH_ALEN];
@@ -86,7 +85,6 @@ typedef struct xlan_cfg_s {
 
 typedef struct xlan_s {    
     u8 id; // LAN ID    
-    u8 hostsN; // TODO: IMPLEMENTAR ISSO
     u8 host; // HOST ID
     u8 portsN; // HOW MANY PORTS THIS HOST HAS | lan->portsQ[THIS_HOST]    
     net_device_s* portsDevs[XLAN_PORTS_N]; // PHYSICAL INTERFACES    
@@ -120,13 +118,12 @@ typedef struct eth_s {
 } __attribute__((packed)) eth_s;
 
 // HOW MANY LANS THIS HOST HAS
-#define LANS_N (sizeof(lans)/sizeof(*lans))
+#define CFG_N (sizeof(cfg)/sizeof(*cfg))
 
 // TODO: ISSO AQUI VAI SER SO UMA CONFIG; DEVERA ARRASTAR TUDO PARA O PRIVATE
-static xlan_s lans[] = { // TODO: const
+static const xlan_cfg_s cfg[] = { // TODO: const
     { .name = "lan-x",
         .id = 0,
-        .hostsN = 64,
         .host = HOST,
         .portsMACs = {
             [ 1] = { "\x88\xC9\xB3\xB0\xF1\xEB", "\x88\xC9\xB3\xB0\xF1\xEA" },
@@ -138,6 +135,8 @@ static xlan_s lans[] = { // TODO: const
         }
     }
 };
+
+static xlan_s lans[LANS_N];
 
 static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
 
@@ -508,39 +507,51 @@ static int __init xlan_init (void) {
 
     BUILD_BUG_ON((typeof(DEV_LAN(lans)->id))      (XLAN_LANS_N  - 1) != (XLAN_LANS_N  - 1));
     BUILD_BUG_ON((typeof(DEV_LAN(lans)->host))    (XLAN_HOSTS_N - 1) != (XLAN_HOSTS_N - 1));
-    BUILD_BUG_ON((typeof(DEV_LAN(lans)->hostsN))   XLAN_HOSTS_N      !=  XLAN_HOSTS_N);
     BUILD_BUG_ON((typeof(DEV_LAN(lans)->portsN))   XLAN_PORTS_N      !=  XLAN_PORTS_N);
     BUILD_BUG_ON((typeof(DEV_LAN(lans)->portsQ[0]))XLAN_PORTS_N      !=  XLAN_PORTS_N);
 
-    if (LANS_N == 0) {
+    if (CFG_N == 0) {
         printk("XLAN: NO LANS\n");
         goto err;
     }
 
-    if (LANS_N >= XLAN_LANS_N) {
+    if (CFG_N >= XLAN_LANS_N) {
         printk("XLAN: TOO MANY LANS\n");
         goto err;
     }
 
-    uint lid = 0;
+    uint cid = 0;
 
     do {
 
-        xlan_cfg_s* const cfg = &lans[cid];
+        xlan_cfg_s* const cfg = &cfg[cid];
 
-        //
-        if (lan->name == NULL)
+        const uint lid = cfg->id;
+
+        if (lid >= XLAN_LANS_N) {
+            printk("XLAN: LAN %u: BAD ID\n", lid);
             continue;
+        }
 
-        printk("XLAN: LAN %u: CREATING (%s)\n", lid, lan->name);
+        if (lans[lid]) {
+            printk("XLAN: LAN %u: DUPLICATE ID\n", lid);
+            continue;
+        }
 
-        if (lan->host >= XLAN_HOSTS_N) {
-            printk("XLAN: LAN %u: INVALID HOST %u\n", lid, lan->host);
+        if (cfg->name == NULL) {
+            printk("XLAN: LAN %u: MISSING NAME\n", lid);
+            continue;
+        }
+
+        printk("XLAN: LAN %u: CREATING %s\n", lid, cfg->name);
+
+        if (cfg->host >= XLAN_HOSTS_N) {
+            printk("XLAN: LAN %u: INVALID HOST %u\n", lid, cfg->host);
             continue;
         }
 
         // CREATE THE VIRTUAL INTERFACE
-        net_device_s* const dev = alloc_netdev(sizeof(xlan_s*), lan->name, NET_NAME_USER, xlan_setup);
+        net_device_s* const dev = alloc_netdev(sizeof(xlan_s), cfg->name, NET_NAME_USER, xlan_setup);
         
         if (dev == NULL) {
             printk("XLAN: LAN %u: FAILED TO CREATE VIRTUAL\n", lid);
@@ -557,7 +568,7 @@ static int __init xlan_init (void) {
         xlan_s* const lan = DEV_LAN(dev);
 
         // CONTA QUANTAS PORTAS TEM EM CADA HOST
-        foreach (h, cfg->hostsN) {
+        foreach (h, XLAN_HOSTS_N) {
             uint p = 0;
             while (*(u32*)(cfg->portsMACs[h][p]))
                 p++;
@@ -566,7 +577,6 @@ static int __init xlan_init (void) {
         }
         
         lan->host   = cfg->host;
-        lan->hostsN = cfg->hostsN;
         lan->portsN = // SO WE NEED TO SPECIFY IT ONLY ONCE
         lan->portsQ[lan->host];
 
@@ -574,7 +584,7 @@ static int __init xlan_init (void) {
 
         printk("XLAN: LAN %u: HAS %u PORTS\n", lid, lan->portsN);
 
-    } while (++cid != LANS_N);
+    } while (++cid != CFG_N);
 
     printk("XLAN: HAS %u LANS\n", lid);
 
@@ -608,12 +618,11 @@ static void __exit xlan_exit (void) {
     // PARA DE MONITORAR OS EVENTOS
     unregister_netdevice_notifier(&notifyDevs);
 
-    foreach (lid, LANS_N) {
+    foreach (lid, XLAN_LANS_N) {
 
         const xlan_s* const lan = &lans[lid];
 
-        printk("XLAN: LAN %u: DESTROYING (%s)\n",
-            lid, lan->name);
+        printk("XLAN: LAN %u: DESTROYING (%s)\n", lid, lan->name);
 
         // UNHOOK PHYSICAL INTERFACES
         foreach (pid, lan->portsN) {
