@@ -493,8 +493,6 @@ static notifier_block_s notifyDevs = {
 
 static int __init xlan_init (void) {
 
-    printk("XLAN: INIT\n");
-
     BUILD_BUG_ON(offsetof(eth_s, _align) != ETH_SIZE);
 
     BUILD_BUG_ON((eth_oui_t) XLAN_OUI          !=  XLAN_OUI);
@@ -506,6 +504,8 @@ static int __init xlan_init (void) {
     BUILD_BUG_ON((typeof(DEV_LAN(lans)->host))    (XLAN_HOSTS_N - 1) != (XLAN_HOSTS_N - 1));
     BUILD_BUG_ON((typeof(DEV_LAN(lans)->portsN))   XLAN_PORTS_N      !=  XLAN_PORTS_N);
     BUILD_BUG_ON((typeof(DEV_LAN(lans)->portsQ[0]))XLAN_PORTS_N      !=  XLAN_PORTS_N);
+
+    printk("XLAN: INITIALIZING WITH %u CONFIGURED LANS\n", (uint)CFG_N);
 
     if (CFG_N == 0) {
         printk("XLAN: NO LANS\n");
@@ -590,8 +590,6 @@ static int __init xlan_init (void) {
         printk("XLAN: LAN %u: HAS %u PORTS\n", lid, lan->portsN);
 
     } while (++cid != CFGS_N);
-
-    printk("XLAN: HAS %u LANS\n", lid);
 
     // COLOCA A PARADA DE EVENTOS
     if (register_netdevice_notifier(&notifyDevs) < 0) {
