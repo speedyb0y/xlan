@@ -74,10 +74,10 @@ typedef struct notifier_block notifier_block_s;
 #define XLAN_PORTS_N 4
 
 typedef struct xlan_s {    
-    const char* const name; // NAME
-    const u8 id; // LAN ID    
-    const u8 hostsN; // TODO: IMPLEMENTAR ISSO
-    const u8 host; // HOST ID
+    const char* const name; // O NOME INICIAL DA INTERFACE
+    u8 id; // LAN ID    
+    u8 hostsN; // TODO: IMPLEMENTAR ISSO
+    u8 host; // HOST ID
     u8 portsN; // HOW MANY PORTS THIS HOST HAS | lan->portsQ[THIS_HOST]    
     net_device_s* dev; // VIRTUAL INTERFACE    
     net_device_s* portsDevs[XLAN_PORTS_N]; // PHYSICAL INTERFACES    
@@ -118,8 +118,8 @@ typedef struct eth_s {
 #define LANS_N (sizeof(lans)/sizeof(*lans))
 
 // TODO: ISSO AQUI VAI SER SO UMA CONFIG; DEVERA ARRASTAR TUDO PARA O PRIVATE
-static xlan_s lans[] = {
-    { .name = "lan", // O NOME INICIAL DA INTERFACE
+static xlan_s lans[] = { // TODO: const
+    { .name = "lan",
         .id = 0,
         .hostsN = 64,
         .host = HOST,
