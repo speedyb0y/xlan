@@ -445,7 +445,7 @@ static int xlan_notify_phys (struct notifier_block* const nb, const unsigned lon
 
     foreach (lid, XLAN_LANS_N) {
 
-        xlan_s* const lan = &lans[lid];
+xlan_s* const lan = lans[lid];
 
         // NAO PODE CHEGAR AQUI COM EVENTOS DELA MESMA
         //ASSERT(dev != lan->dev);
@@ -600,13 +600,11 @@ err:
     // CLEANUP
     foreach (lid, XLAN_LANS_N) {
 
-        net_device_s* const dev = &lans[lid];
+        net_device_s* const dev = lans[lid];
 
-        const xlan_s* const lan = DEV_LAN(dev);
-
-        if (lan->dev) {
-            unregister_netdev(lan->dev);
-            free_netdev(lan->dev);
+        if (dev) {
+            unregister_netdev(dev);
+            free_netdev(dev);
         }
     }
 
@@ -622,19 +620,23 @@ static void __exit xlan_exit (void) {
 
     foreach (lid, XLAN_LANS_N) {
 
-        const xlan_s* const lan = &lans[lid];
+        net_device_s* const dev = lans[lid];
 
-        printk("XLAN: LAN %u: DESTROYING (%s)\n", lid, lan->name);
+        if (dev == NULL)
+            continue;
+
+        printk("XLAN: LAN %u: DESTROYING\n", lid);
+
+        const xlan_s* const lan = DEV_LAN(dev);
 
         // UNHOOK PHYSICAL INTERFACES
-        foreach (pid, lan->portsN) {
+        foreach (pid, XLAN_PORTS_N) {
 
             net_device_s* const dev = lan->portsDevs[pid];
 
             if (dev) {
 
-                printk("XLAN: LAN %u: PORT %u: UNHOOKING PHYSICAL %s\n",
-                    lid, pid, dev->name);
+                printk("XLAN: LAN %u: PORT %u: UNHOOKING PHYSICAL %s\n", lid, pid, dev->name);
 
                 rtnl_lock();
 
@@ -647,16 +649,12 @@ static void __exit xlan_exit (void) {
             }
         }
 
-        if (lan->dev) {
+        printk("XLAN: LAN %u: DESTROYING VIRTUAL %s\n", lid, dev->name);
 
-            printk("XLAN: LAN %u: DESTROYING VIRTUAL %s\n",
-                lid, lan->dev->name);
+        // DESTROY VIRTUAL INTERFACE
+        unregister_netdev(dev);
 
-            // DESTROY VIRTUAL INTERFACE
-            unregister_netdev(lan->dev);
-
-            free_netdev(lan->dev);
-        }
+        free_netdev(dev);
     }
 }
 
