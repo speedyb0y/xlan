@@ -63,12 +63,9 @@ typedef struct notifier_block notifier_block_s;
 #define UDP_SIZE  8
 #define TCP_SIZE 20
 
-// HOW MANY LANS CAN EXIST
-#define XLAN_LANS_N 256
-// HOW MANY HOSTS A LAN CAN HAVE
-#define XLAN_HOSTS_N 128
-// HOW MANY PORTS A HOST CAN HAVE
-#define XLAN_PORTS_N 4
+#define XLAN_LANS_N 256 // HOW MANY LANS CAN EXIST
+#define XLAN_HOSTS_N 128 // HOW MANY HOSTS A LAN CAN HAVE
+#define XLAN_PORTS_N 4 // HOW MANY PORTS A HOST CAN HAVE
 
 typedef struct xlan_cfg_s {    
     const char* name; // O NOME INICIAL DA INTERFACE
