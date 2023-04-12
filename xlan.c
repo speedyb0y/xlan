@@ -416,6 +416,8 @@ static void xlan_setup (net_device_s* const dev) {
 
 static int xlan_notify_phys (struct notifier_block* const nb, const unsigned long event, void* const info) {
 
+    // ASSERT: rtnl_is_locked()
+
     // CONSIDERA SOMENTE ESTES EVENTOS
     if (event != NETDEV_REGISTER
      && event != NETDEV_CHANGEADDR)
@@ -437,11 +439,6 @@ static int xlan_notify_phys (struct notifier_block* const nb, const unsigned lon
     //
     if (mac == NULL)
         goto done;
-
-    if (!rtnl_is_locked()) {
-        printk("XLAN: ERROR: RTNL IS NOT LOCKED");
-        goto done;
-    }
 
     foreach (lid, XLAN_LANS_N) {
 
