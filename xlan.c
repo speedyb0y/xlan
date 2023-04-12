@@ -331,8 +331,11 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
     //
     net_device_s* const devPort = lan->portsDevs[srcPort];
 
-    // TODO: SOMENTE SE ELA ESTIVER ATIVA
     if (devPort == NULL)
+        goto drop;
+
+    // SOMENTE SE ELA ESTIVER ATIVA
+    if (devPort->flags & IFF_UP)
         goto drop;
 
     skb->dev = devPort;
@@ -568,7 +571,7 @@ static int __init xlan_init (void) {
         
         if (lan->portsN == 0) {
             printk("XLAN: LAN %u: NO PORTS\n");
-            goto failed;
+            goto failed_free;
         }
 
         // WILL YET DISCOVER THE PHYSICAL INTERFACES
