@@ -77,12 +77,16 @@ typedef struct xlan_cfg_s {
         [ETH_ALEN];
 } xlan_cfg_s;
 
+// TODO: USAR MASK DE PORTAS QUE POSSUI
+// TODO: USAR MASK DE PORTAS USAVEIS
+// TODO: USAR AQUELA PARADA DE BITS
 typedef struct xlan_s {    
     u8 id; // LAN ID    
     u8 host; // HOST ID
     u8 portsN; // HOW MANY PORTS THIS HOST HAS | lan->portsQ[THIS_HOST]    
     net_device_s* portsDevs[XLAN_PORTS_N]; // PHYSICAL INTERFACES    
     u8 portsQ[XLAN_HOSTS_N]; // HOW MANY PORTS EACH HOST HAS | CALCULATED FROM lan->portsMACs[HOST]
+    u8 portsMACs[XLAN_PORTS_N][ETH_ALEN]; // MAC OF EACH PORT
 } xlan_s;
 
 //
