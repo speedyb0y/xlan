@@ -455,7 +455,7 @@ static int xlan_notify_phys (struct notifier_block* const nb, const unsigned lon
                 if (lan->portsDevs[pid] == dev)
                     // ESTA INTERFACE NAO PODE SER USADA NOVAMENTE NA MESMA LAN
                     break;
-            } elif (memcmp(lan->portsMACs[lan->host][pid], mac, ETH_ALEN) == 0) {
+            } elif (memcmp(lan->portsMACs[pid], mac, ETH_ALEN) == 0) {
 
                 const char* fmt;
 
@@ -515,6 +515,7 @@ static int __init xlan_init (void) {
         xlan_cfg_s* const cfg = &cfgs[cid];
 
         const uint lid = cfg->id;
+        const uint hid = cfg->host;
 
         printk("XLAN: LAN %u: CREATING\n", lid);
 
@@ -528,8 +529,8 @@ static int __init xlan_init (void) {
             continue;
         }
 
-        if (cfg->host >= XLAN_HOSTS_N) {
-            printk("XLAN: LAN %u: BAD HOST ID %u\n", lid, cfg->host);
+        if (hid >= XLAN_HOSTS_N) {
+            printk("XLAN: LAN %u: BAD HOST ID %u\n", lid, hid);
             continue;
         }
 
@@ -568,7 +569,11 @@ static int __init xlan_init (void) {
         
         lan->id     = id;
         lan->host   = cfg->host;
-        lan->portsN = lan->portsQ[lan->host];
+        lan->portsN = lan->portsQ[hid];
+
+        memcpy(lan->portsMACs,
+               cfg->portsMACs[hid],
+        sizeof(cfg->portsMACs[hid]));
         
         if (lan->portsN == 0) {
             printk("XLAN: LAN %u: NO PORTS\n");
