@@ -437,17 +437,17 @@ static int xlan_notify_phys (struct notifier_block* const nb, const unsigned lon
 
     foreach (lid, XLAN_LANS_N) {
 
-        net_device_s* const dev = lans[lid];
+        net_device_s* const xdev = lans[lid];
 
-        if (dev == NULL)
+        if (xdev == NULL)
             continue;
 
-        xlan_s* const lan = DEV_LAN(dev);
-
         // NAO PODE CHEGAR AQUI COM EVENTOS DELA MESMA
-        if (dev == lan->dev) {
+        if (xdev == dev) {
             goto done;
         }
+
+        xlan_s* const lan = DEV_LAN(xdev);
 
         foreach (pid, XLAN_PORTS_N) {
 
