@@ -516,7 +516,7 @@ static int __init xlan_init (void) {
 
     foreach (cid, CFGS_N) {
 
-        xlan_cfg_s* const cfg = &cfgs[cid];
+        const xlan_cfg_s* const cfg = &cfgs[cid];
 
         const uint lid = cfg->id;
         const uint hid = cfg->host;
