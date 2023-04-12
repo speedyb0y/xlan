@@ -497,10 +497,10 @@ static int __init xlan_init (void) {
     BUILD_BUG_ON((eth_hid_t)(XLAN_HOSTS_N - 1) != (XLAN_HOSTS_N - 1));
     BUILD_BUG_ON((eth_pid_t)(XLAN_PORTS_N - 1) != (XLAN_PORTS_N - 1));
 
-    BUILD_BUG_ON((typeof(DEV_LAN(lans)->id))      (XLAN_LANS_N  - 1) != (XLAN_LANS_N  - 1));
-    BUILD_BUG_ON((typeof(DEV_LAN(lans)->host))    (XLAN_HOSTS_N - 1) != (XLAN_HOSTS_N - 1));
-    BUILD_BUG_ON((typeof(DEV_LAN(lans)->portsN))   XLAN_PORTS_N      !=  XLAN_PORTS_N);
-    BUILD_BUG_ON((typeof(DEV_LAN(lans)->portsQ[0]))XLAN_PORTS_N      !=  XLAN_PORTS_N);
+    BUILD_BUG_ON((typeof(DEV_LAN(*lans)->id))      (XLAN_LANS_N  - 1) != (XLAN_LANS_N  - 1));
+    BUILD_BUG_ON((typeof(DEV_LAN(*lans)->host))    (XLAN_HOSTS_N - 1) != (XLAN_HOSTS_N - 1));
+    BUILD_BUG_ON((typeof(DEV_LAN(*lans)->portsN))   XLAN_PORTS_N      !=  XLAN_PORTS_N);
+    BUILD_BUG_ON((typeof(DEV_LAN(*lans)->portsQ[0]))XLAN_PORTS_N      !=  XLAN_PORTS_N);
 
     printk("XLAN: INITIALIZING WITH %u CONFIGURED LANS\n", (uint)CFG_N);
 
