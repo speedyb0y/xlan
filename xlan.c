@@ -520,7 +520,7 @@ static int __init xlan_init (void) {
         const uint lid = cfg->lan;
         const uint hid = cfg->host;
 
-        printk("XLAN: LAN %u: CREATING\n", lid);
+        printk("XLAN: LAN %u: CREATING AS HOST %u\n", lid, hid);
 
         if (lid >= XLAN_LANS_N) {
             printk("XLAN: LAN %u: BAD LAN ID\n", lid);
