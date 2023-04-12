@@ -580,7 +580,7 @@ static int __init xlan_init (void) {
         sizeof(cfg->macs[hid]));
         
         if (lan->portsN == 0) {
-            printk("XLAN: LAN %u: NO PORTS\n");
+            printk("XLAN: LAN %u: NO PORTS\n", lid);
             goto failed_free;
         }
 
