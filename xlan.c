@@ -423,14 +423,17 @@ static int xlan_notify_phys (struct notifier_block* const nb, const unsigned lon
 
     // IGNORA EVENTOS DE LANS
     // TODO: FIXME: IDENTIFICAR SE A INTERFACE É UMA LAN
-    if (0)
+    if (dev->addr_len != ETH_ALEN)
         goto done;
 
-    // TODO: FIXME: CONFIRM ADDR LEN == ETH_ALEN
-    const eth_s* const addr = PTR(dev->dev_addr);
+    //
+    const eth_s* const mac =
+        (event == NETDEV_REGISTER) ?
+            PTR(dev->perm_addr) :
+            PTR(dev->dev_addr);
 
     //
-    if (addr == NULL)
+    if (mac == NULL)
         goto done;
 
     foreach (lid, LANS_N) {
@@ -448,7 +451,7 @@ static int xlan_notify_phys (struct notifier_block* const nb, const unsigned lon
                 // NAO ESTA MAIS TENTANDO DESCOBRIR ESTA PORTA
                 continue;
             }
-            if (memcmp(lan->portsMACs[lan->host][pid], addr, ETH_ALEN) == 0) {
+            if (memcmp(lan->portsMACs[lan->host][pid], mac, ETH_ALEN) == 0) {
                 //
                 printk("XLAN: LAN %u: PORT %u: FOUND PHYSICAL INTERFACE %s\n",
                     lid, pid, dev->name);
@@ -569,8 +572,10 @@ static int __init xlan_init (void) {
     printk("XLAN: HAS %u LANS\n", lid);
 
     // COLOCA A PARADA DE EVENTOS
-    if (register_netdevice_notifier(&notifyDevs) < 0)
+    if (register_netdevice_notifier(&notifyDevs) < 0) {
+        printk("XLAN: FAILED TO REGISTER NETWORK DEVICES NOTIFIER\n");
         goto err;
+    }
 
     return 0;
 
