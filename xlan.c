@@ -63,9 +63,6 @@ typedef struct notifier_block notifier_block_s;
 #define UDP_SIZE  8
 #define TCP_SIZE 20
 
-// THIS HOST
-#define HOST 20
-
 // HOW MANY LANS CAN EXIST
 #define XLAN_LANS_N 256
 // HOW MANY HOSTS A LAN CAN HAVE
@@ -118,13 +115,13 @@ typedef struct eth_s {
 } __attribute__((packed)) eth_s;
 
 // HOW MANY LANS THIS HOST HAS
-#define CFG_N (sizeof(cfg)/sizeof(*cfg))
+#define CFGS_N (sizeof(cfgs)/sizeof(*cfgs))
 
 // TODO: ISSO AQUI VAI SER SO UMA CONFIG; DEVERA ARRASTAR TUDO PARA O PRIVATE
-static const xlan_cfg_s cfg[] = { // TODO: const
+static const xlan_cfg_s cfgs[] = { // TODO: const
     { .name = "lan-x",
         .id = 0,
-        .host = HOST,
+        .host = 1,
         .portsMACs = {
             [ 1] = { "\x88\xC9\xB3\xB0\xF1\xEB", "\x88\xC9\xB3\xB0\xF1\xEA" },
             [10] = { "\x00\x00\x00\x00\x00\x00" },
@@ -136,7 +133,7 @@ static const xlan_cfg_s cfg[] = { // TODO: const
     }
 };
 
-static xlan_s lans[LANS_N];
+static xlan_s lans[XLAN_LANS_N];
 
 static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
 
@@ -167,7 +164,7 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
         goto pass;
 
     // VALIDATE LAN
-    if (lid >= LANS_N)
+    if (lid >= XLAN_LANS_N)
         goto drop;
 
     net_device_s* const dev = &lans[lid];
@@ -446,7 +443,7 @@ static int xlan_notify_phys (struct notifier_block* const nb, const unsigned lon
         goto done;
     }
 
-    foreach (lid, LANS_N) {
+    foreach (lid, XLAN_LANS_N) {
 
         xlan_s* const lan = &lans[lid];
 
@@ -524,31 +521,34 @@ static int __init xlan_init (void) {
 
     do {
 
-        xlan_cfg_s* const cfg = &cfg[cid];
+        xlan_cfg_s* const cfg = &cfgs[cid];
 
         const uint lid = cfg->id;
 
+        printk("XLAN: LAN %u: CREATING\n", lid);
+
         if (lid >= XLAN_LANS_N) {
-            printk("XLAN: LAN %u: BAD ID\n", lid);
+            printk("XLAN: LAN %u: BAD LAN ID\n", lid);
             continue;
         }
 
         if (lans[lid]) {
-            printk("XLAN: LAN %u: DUPLICATE ID\n", lid);
+            printk("XLAN: LAN %u: DUPLICATE LAN ID\n", lid);
             continue;
         }
 
-        if (cfg->name == NULL) {
+        if (cfg->host >= XLAN_HOSTS_N) {
+            printk("XLAN: LAN %u: BAD HOST ID %u\n", lid, cfg->host);
+            continue;
+        }
+
+        if (cfg->name == NULL ||
+            cfg->name[0] == '\0') {
             printk("XLAN: LAN %u: MISSING NAME\n", lid);
             continue;
         }
 
-        printk("XLAN: LAN %u: CREATING %s\n", lid, cfg->name);
-
-        if (cfg->host >= XLAN_HOSTS_N) {
-            printk("XLAN: LAN %u: INVALID HOST %u\n", lid, cfg->host);
-            continue;
-        }
+        printk("XLAN: LAN %u: CREATING VIRTUAL INTERFACE %s\n", lid, cfg->name);
 
         // CREATE THE VIRTUAL INTERFACE
         net_device_s* const dev = alloc_netdev(sizeof(xlan_s), cfg->name, NET_NAME_USER, xlan_setup);
@@ -568,23 +568,28 @@ static int __init xlan_init (void) {
         xlan_s* const lan = DEV_LAN(dev);
 
         // CONTA QUANTAS PORTAS TEM EM CADA HOST
-        foreach (h, XLAN_HOSTS_N) {
-            uint p = 0;
-            while (*(u32*)(cfg->portsMACs[h][p]))
-                p++;
-            lan->portsQ[h] = p;
-            printk("XLAN: LAN %u: HOST %u HAS %u PORTS\n", lid, h, p);
+        foreach (hid, XLAN_HOSTS_N) {
+            uint pid = 0;
+            while (*(u32*)(cfg->portsMACs[hid][pid]))
+                pid++;
+            lan->portsQ[hid] = pid;
+            printk("XLAN: LAN %u: HOST %u HAS %u PORTS\n", lid, hid, pid);
         }
         
+        lan->id     = id;
         lan->host   = cfg->host;
         lan->portsN = // SO WE NEED TO SPECIFY IT ONLY ONCE
         lan->portsQ[lan->host];
+
+        // WILL YET DISCOVER THE PHYSICAL INTERFACES
+        foreach (pid, XLAN_PORTS_N)
+            lan->portsDevs[pid] = NULL;
 
         lans[lid] = dev;
 
         printk("XLAN: LAN %u: HAS %u PORTS\n", lid, lan->portsN);
 
-    } while (++cid != CFG_N);
+    } while (++cid != CFGS_N);
 
     printk("XLAN: HAS %u LANS\n", lid);
 
