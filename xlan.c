@@ -85,7 +85,7 @@ typedef struct xlan_s {
     u8 hid; // HOST ID
     u8 P; // HOW MANY PORTS THIS HOST HAS
     u8 PH[XLAN_HOSTS_N]; // HOW MANY PORTS EACH HOST HAS
-    net_device_s* ports[XLAN_PORTS_N]; // PHYSICAL INTERFACES    
+    net_device_s* devs[XLAN_PORTS_N]; // PHYSICAL INTERFACES    
     u8 macs[XLAN_PORTS_N][ETH_ALEN]; // MAC OF EACH PORT
 } xlan_s;
 
