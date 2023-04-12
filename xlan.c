@@ -73,23 +73,28 @@ typedef struct notifier_block notifier_block_s;
 // HOW MANY PORTS A HOST CAN HAVE
 #define XLAN_PORTS_N 4
 
-typedef struct xlan_s {    
-    const char* const name; // O NOME INICIAL DA INTERFACE
+typedef struct xlan_cfg_s {    
+    const char* name; // O NOME INICIAL DA INTERFACE
     u8 id; // LAN ID    
     u8 hostsN; // TODO: IMPLEMENTAR ISSO
     u8 host; // HOST ID
-    u8 portsN; // HOW MANY PORTS THIS HOST HAS | lan->portsQ[THIS_HOST]    
-    net_device_s* dev; // VIRTUAL INTERFACE    
-    net_device_s* portsDevs[XLAN_PORTS_N]; // PHYSICAL INTERFACES    
-    u8 portsQ[XLAN_HOSTS_N]; // HOW MANY PORTS EACH HOST HAS | CALCULATED FROM lan->portsMACs[HOST]
     const u8 portsMACs // MAC OF EACH PORT OF EACH HOST
         [XLAN_HOSTS_N]
         [XLAN_PORTS_N]
         [ETH_ALEN];
+} xlan_cfg_s;
+
+typedef struct xlan_s {    
+    u8 id; // LAN ID    
+    u8 hostsN; // TODO: IMPLEMENTAR ISSO
+    u8 host; // HOST ID
+    u8 portsN; // HOW MANY PORTS THIS HOST HAS | lan->portsQ[THIS_HOST]    
+    net_device_s* portsDevs[XLAN_PORTS_N]; // PHYSICAL INTERFACES    
+    u8 portsQ[XLAN_HOSTS_N]; // HOW MANY PORTS EACH HOST HAS | CALCULATED FROM lan->portsMACs[HOST]
 } xlan_s;
 
 //
-#define DEV_LAN(dev) (*(xlan_s**)netdev_priv(dev))
+#define DEV_LAN(dev) ((xlan_s*)netdev_priv(dev))
 
 //
 #define XLAN_OUI 0x2652U
@@ -119,7 +124,7 @@ typedef struct eth_s {
 
 // TODO: ISSO AQUI VAI SER SO UMA CONFIG; DEVERA ARRASTAR TUDO PARA O PRIVATE
 static xlan_s lans[] = { // TODO: const
-    { .name = "lan",
+    { .name = "lan-x",
         .id = 0,
         .hostsN = 64,
         .host = HOST,
@@ -166,7 +171,16 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
     if (lid >= LANS_N)
         goto drop;
 
-    xlan_s* const lan = &lans[lid];
+    net_device_s* const dev = &lans[lid];
+    
+    if (dev == NULL)
+        goto drop;
+
+    // SE A INTERFACE XLAN ESTIVER DOWN, DROP
+    if (dev->flags & IFF_UP)
+        goto drop;    
+
+    xlan_s* const lan = DEV_LAN(dev);   
 
     // CONFIRM ITS OURS
     if (hid != lan->host)
@@ -179,16 +193,7 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
     // CONFIRM IT CAME ON THE PHYSICAL
     if (skb->dev != lan->portsDevs[pid])
         goto drop;
-
-    net_device_s* const dev = lan->dev;
-
-    if (dev == NULL)
-        goto drop;
-
-    // SE A INTERFACE XLAN ESTIVER DOWN, PASS
-    if (dev->flags & IFF_UP)
-        goto drop;
-
+    
     // PULA O ETHERNET HEADER
     void* const ip = PTR(eth) + ETH_SIZE;
 
@@ -459,8 +464,7 @@ static int xlan_notify_phys (struct notifier_block* const nb, const unsigned lon
             }
             if (memcmp(lan->portsMACs[lan->host][pid], mac, ETH_ALEN) == 0) {
                 //
-                printk("XLAN: LAN %u: PORT %u: FOUND PHYSICAL INTERFACE %s\n",
-                    lid, pid, dev->name);
+                printk("XLAN: LAN %u: PORT %u: FOUND PHYSICAL INTERFACE %s\n", lid, pid, dev->name);
 
                 //rtnl_lock();
 
@@ -502,11 +506,11 @@ static int __init xlan_init (void) {
     BUILD_BUG_ON((eth_hid_t)(XLAN_HOSTS_N - 1) != (XLAN_HOSTS_N - 1));
     BUILD_BUG_ON((eth_pid_t)(XLAN_PORTS_N - 1) != (XLAN_PORTS_N - 1));
 
-    BUILD_BUG_ON((typeof(lans->id))      (XLAN_LANS_N  - 1) != (XLAN_LANS_N  - 1));
-    BUILD_BUG_ON((typeof(lans->host))    (XLAN_HOSTS_N - 1) != (XLAN_HOSTS_N - 1));
-    BUILD_BUG_ON((typeof(lans->hostsN))   XLAN_HOSTS_N      !=  XLAN_HOSTS_N);
-    BUILD_BUG_ON((typeof(lans->portsN))   XLAN_PORTS_N      !=  XLAN_PORTS_N);
-    BUILD_BUG_ON((typeof(lans->portsQ[0]))XLAN_PORTS_N      !=  XLAN_PORTS_N);
+    BUILD_BUG_ON((typeof(DEV_LAN(lans)->id))      (XLAN_LANS_N  - 1) != (XLAN_LANS_N  - 1));
+    BUILD_BUG_ON((typeof(DEV_LAN(lans)->host))    (XLAN_HOSTS_N - 1) != (XLAN_HOSTS_N - 1));
+    BUILD_BUG_ON((typeof(DEV_LAN(lans)->hostsN))   XLAN_HOSTS_N      !=  XLAN_HOSTS_N);
+    BUILD_BUG_ON((typeof(DEV_LAN(lans)->portsN))   XLAN_PORTS_N      !=  XLAN_PORTS_N);
+    BUILD_BUG_ON((typeof(DEV_LAN(lans)->portsQ[0]))XLAN_PORTS_N      !=  XLAN_PORTS_N);
 
     if (LANS_N == 0) {
         printk("XLAN: NO LANS\n");
@@ -522,18 +526,16 @@ static int __init xlan_init (void) {
 
     do {
 
-        xlan_s* const lan = &lans[lid];
+        xlan_cfg_s* const cfg = &lans[cid];
 
         //
         if (lan->name == NULL)
             continue;
 
-        printk("XLAN: LAN %u: CREATING (%s)\n",
-            lid, lan->name);
+        printk("XLAN: LAN %u: CREATING (%s)\n", lid, lan->name);
 
         if (lan->host >= XLAN_HOSTS_N) {
-            printk("XLAN: LAN %u: INVALID HOST %u\n",
-                lid, lan->host);
+            printk("XLAN: LAN %u: INVALID HOST %u\n", lid, lan->host);
             continue;
         }
 
@@ -541,39 +543,38 @@ static int __init xlan_init (void) {
         net_device_s* const dev = alloc_netdev(sizeof(xlan_s*), lan->name, NET_NAME_USER, xlan_setup);
         
         if (dev == NULL) {
-            printk("XLAN: LAN %u: FAILED TO CREATE VIRTUAL\n",
-                lid);
+            printk("XLAN: LAN %u: FAILED TO CREATE VIRTUAL\n", lid);
             continue;
         }
 
         // MAKE IT VISIBLE IN THE SYSTEM
         if (register_netdev(dev)) {
-            printk("XLAN: LAN %u: FAILED TO REGISTER VIRTUAL\n",
-                lid);
+            printk("XLAN: LAN %u: FAILED TO REGISTER VIRTUAL\n", lid);
             free_netdev(dev);
             continue;
         }
 
-        DEV_LAN(dev) = lan;
+        xlan_s* const lan = DEV_LAN(dev);
 
         // CONTA QUANTAS PORTAS TEM EM CADA HOST
-        foreach (h, lan->hostsN) {
+        foreach (h, cfg->hostsN) {
             uint p = 0;
-            while (*(u32*)(lan->portsMACs[h][p]))
+            while (*(u32*)(cfg->portsMACs[h][p]))
                 p++;
             lan->portsQ[h] = p;
-            printk("XLAN: LAN %u: HOST %u HAS %u PORTS\n",
-                lid, h, p);
+            printk("XLAN: LAN %u: HOST %u HAS %u PORTS\n", lid, h, p);
         }
-
-        lan->dev = dev;
+        
+        lan->host   = cfg->host;
+        lan->hostsN = cfg->hostsN;
         lan->portsN = // SO WE NEED TO SPECIFY IT ONLY ONCE
         lan->portsQ[lan->host];
 
-        printk("XLAN: LAN %u: HAS %u PORTS\n",
-            lid, lan->portsN);
+        lans[lid] = dev;
 
-    } while (++lid != LANS_N);
+        printk("XLAN: LAN %u: HAS %u PORTS\n", lid, lan->portsN);
+
+    } while (++cid != LANS_N);
 
     printk("XLAN: HAS %u LANS\n", lid);
 
