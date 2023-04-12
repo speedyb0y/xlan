@@ -472,7 +472,7 @@ static int xlan_notify_phys (struct notifier_block* const nb, const unsigned lon
                     // E NÃO CONSEGUIU HOOKAR
                     fmt = "XLAN: LAN %u: PORT %u: HOOK PHYSICAL %s: FAILED\n";
                 
-                printk(fm, lid, pid, dev->name);
+                printk(fmt, lid, pid, dev->name);
 
                 // ESTA INTERFACE NAO PODE SER USADA NOVAMENTE NA MESMA LAN
                 break;
