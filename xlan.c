@@ -445,12 +445,18 @@ static int xlan_notify_phys (struct notifier_block* const nb, const unsigned lon
 
     foreach (lid, XLAN_LANS_N) {
 
-xlan_s* const lan = lans[lid];
+        net_device_s* const dev = lans[lid];
+
+        if (dev == NULL)
+            continue;
+
+        xlan_s* const lan = DEV_LAN(dev);
 
         // NAO PODE CHEGAR AQUI COM EVENTOS DELA MESMA
         //ASSERT(dev != lan->dev);
 
         foreach (pid, lan->portsN) {
+
             if (lan->portsDevs[pid]) {
                 if (lan->portsDevs[pid] == dev)
                     // ESTA INTERFACE NAO PODE SER USADA NOVAMENTE NA LAN
@@ -458,6 +464,7 @@ xlan_s* const lan = lans[lid];
                 // NAO ESTA MAIS TENTANDO DESCOBRIR ESTA PORTA
                 continue;
             }
+
             if (memcmp(lan->portsMACs[lan->host][pid], mac, ETH_ALEN) == 0) {
                 //
                 printk("XLAN: LAN %u: PORT %u: FOUND PHYSICAL INTERFACE %s\n", lid, pid, dev->name);
