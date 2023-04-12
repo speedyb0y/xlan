@@ -185,7 +185,7 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
 
     // VALIDATE PORT
     // CONFIRM IT CAME ON THE PHYSICAL
-    if (skb->dev != lan->ports[pid])
+    if (skb->dev != lan->devs[pid])
         goto drop;
     
     // PULA O ETHERNET HEADER
@@ -333,7 +333,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
     skb->len              = SKB_TAIL(skb) - PTR(eth);
 
     //
-    net_device_s* const devPort = lan->ports[srcPort];
+    net_device_s* const devPort = lan->devs[srcPort];
 
     if (devPort == NULL)
         goto drop;
@@ -454,8 +454,8 @@ static int xlan_notify_phys (struct notifier_block* const nb, const unsigned lon
 
         foreach (pid, XLAN_PORTS_N) {
 
-            if (lan->ports[pid]) {
-                if (lan->ports[pid] == dev)
+            if (lan->devs[pid]) {
+                if (lan->devs[pid] == dev)
                     // ESTA INTERFACE NAO PODE SER USADA NOVAMENTE NA MESMA LAN
                     break;
             } elif (memcmp(lan->macs[pid], mac, ETH_ALEN) == 0) {
@@ -464,7 +464,7 @@ static int xlan_notify_phys (struct notifier_block* const nb, const unsigned lon
 
                 if (rcu_dereference(dev->rx_handler) == xlan_in        
                     || netdev_rx_handler_register(dev, xlan_in, NULL) == 0) {
-                    dev_hold((lan->ports[pid] = dev));
+                    dev_hold((lan->devs[pid] = dev));
                     fmt = "XLAN: LAN %u: PORT %u: HOOK PHYSICAL %s: SUCCESS\n";
                 } else
                     // NÃO ESTÁ HOOKADA
@@ -585,7 +585,7 @@ static int __init xlan_init (void) {
 
         // WILL YET DISCOVER THE PHYSICAL INTERFACES
         foreach (pid, XLAN_PORTS_N)
-            lan->ports[pid] = NULL;
+            lan->devs[pid] = NULL;
 
         printk("XLAN: LAN %u: HAS %u PORTS\n", lid, lan->P);
 
@@ -641,7 +641,7 @@ static void __exit xlan_exit (void) {
         // UNHOOK PHYSICAL INTERFACES
         foreach (pid, XLAN_PORTS_N) {
 
-            net_device_s* const dev = lan->ports[pid];
+            net_device_s* const dev = lan->devs[pid];
 
             if (dev) {
 
