@@ -427,7 +427,7 @@ static int xlan_notify_phys (struct notifier_block* const nb, const unsigned lon
         goto done;
 
     //
-    const eth_s* const mac =
+    const u8* const mac =
         (event == NETDEV_REGISTER) ?
             PTR(dev->perm_addr) :
             PTR(dev->dev_addr);
