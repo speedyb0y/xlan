@@ -464,25 +464,18 @@ static int xlan_notify_phys (struct notifier_block* const nb, const unsigned lon
                     // ESTA INTERFACE NAO PODE SER USADA NOVAMENTE NA MESMA LAN
                     break;
             } elif (memcmp(lan->portsMACs[lan->host][pid], mac, ETH_ALEN) == 0) {
-                //
+
                 printk("XLAN: LAN %u: PORT %u: FOUND PHYSICAL INTERFACE %s\n", lid, pid, dev->name);
 
-                //rtnl_lock();
-
-                if (rcu_dereference(dev->rx_handler) != xlan_in        
-                    && netdev_rx_handler_register(dev, xlan_in, NULL) != 0)
-                    // NÃO ESTÁ HOOKADA
-                    // E NÃO CONSEGUIU HOOKAR    
-                    dev = NULL;
-
-                //rtnl_unlock();
-
-                if (dev) {
+                if (rcu_dereference(dev->rx_handler) == xlan_in        
+                    || netdev_rx_handler_register(dev, xlan_in, NULL) == 0) {
                     printk("XLAN: HOOKED PHYSICAL\n");
                     dev_hold((lan->portsDevs[pid] = dev));
-                } else 
+                } else
+                    // NÃO ESTÁ HOOKADA
+                    // E NÃO CONSEGUIU HOOKAR    
                     printk("XLAN: FAILED TO HOOK PHYSICAL\n");
-                    
+
                 break;
             }
         }
