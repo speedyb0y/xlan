@@ -71,7 +71,7 @@ typedef struct xlan_cfg_s {
     const char* name; // O NOME INICIAL DA INTERFACE
     u8 id; // LAN ID    
     u8 host; // HOST ID
-    u8 portsMACs // MAC OF EACH PORT OF EACH HOST
+    u8 macs // MAC OF EACH PORT OF EACH HOST
         [XLAN_HOSTS_N]
         [XLAN_PORTS_N]
         [ETH_ALEN];
@@ -81,12 +81,12 @@ typedef struct xlan_cfg_s {
 // TODO: USAR MASK DE PORTAS USAVEIS
 // TODO: USAR AQUELA PARADA DE BITS
 typedef struct xlan_s {    
-    u8 id; // LAN ID    
-    u8 host; // HOST ID
+    u8 lid; // LAN ID    
+    u8 hid; // HOST ID
     u8 portsN; // HOW MANY PORTS THIS HOST HAS | lan->portsQ[THIS_HOST]    
-    net_device_s* portsDevs[XLAN_PORTS_N]; // PHYSICAL INTERFACES    
-    u8 portsQ[XLAN_HOSTS_N]; // HOW MANY PORTS EACH HOST HAS | CALCULATED FROM lan->portsMACs[HOST]
-    u8 portsMACs[XLAN_PORTS_N][ETH_ALEN]; // MAC OF EACH PORT
+    net_device_s* ports[XLAN_PORTS_N]; // PHYSICAL INTERFACES    
+    u8 portsQ[XLAN_HOSTS_N]; // HOW MANY PORTS EACH HOST HAS | CALCULATED FROM lan->macs[HOST]
+    u8 macs[XLAN_PORTS_N][ETH_ALEN]; // MAC OF EACH PORT
 } xlan_s;
 
 //
@@ -123,7 +123,7 @@ static const xlan_cfg_s cfgs[] = { // TODO: const
     { .name = "lan-x",
         .id = 0,
         .host = 1,
-        .portsMACs = {
+        .macs = {
             [ 1] = { "\x88\xC9\xB3\xB0\xF1\xEB", "\x88\xC9\xB3\xB0\xF1\xEA" },
             [10] = { "\x00\x00\x00\x00\x00\x00" },
             [20] = { "\xBC\x5F\xF4\xF9\xE6\x66", "\xBC\x5F\xF4\xF9\xE6\x67" },
@@ -181,12 +181,12 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
     xlan_s* const lan = DEV_LAN(dev);   
 
     // CONFIRM ITS OURS
-    if (hid != lan->host)
+    if (hid != lan->hid)
         goto drop;
 
     // VALIDATE PORT
     // CONFIRM IT CAME ON THE PHYSICAL
-    if (skb->dev != lan->portsDevs[pid])
+    if (skb->dev != lan->ports[pid])
         goto drop;
     
     // PULA O ETHERNET HEADER
@@ -315,12 +315,12 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
         goto drop;
 
     eth->dstOUI   = BE16(XLAN_OUI);
-    eth->dstLan   = BE16(lan->id);
+    eth->dstLan   = BE16(lan->lid);
     eth->dstHost  = dstHost;
     eth->dstPort  = dstPort;
     eth->srcOUI   = BE16(XLAN_OUI);
-    eth->srcLan   = BE16(lan->id);
-    eth->srcHost  = lan->host;
+    eth->srcLan   = BE16(lan->lid);
+    eth->srcHost  = lan->hid;
     eth->srcPort  = srcPort;
     eth->protocol = skb->protocol;
 
@@ -334,7 +334,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
     skb->len              = SKB_TAIL(skb) - PTR(eth);
 
     //
-    net_device_s* const devPort = lan->portsDevs[srcPort];
+    net_device_s* const devPort = lan->ports[srcPort];
 
     if (devPort == NULL)
         goto drop;
@@ -455,17 +455,17 @@ static int xlan_notify_phys (struct notifier_block* const nb, const unsigned lon
 
         foreach (pid, XLAN_PORTS_N) {
 
-            if (lan->portsDevs[pid]) {
-                if (lan->portsDevs[pid] == dev)
+            if (lan->ports[pid]) {
+                if (lan->ports[pid] == dev)
                     // ESTA INTERFACE NAO PODE SER USADA NOVAMENTE NA MESMA LAN
                     break;
-            } elif (memcmp(lan->portsMACs[pid], mac, ETH_ALEN) == 0) {
+            } elif (memcmp(lan->macs[pid], mac, ETH_ALEN) == 0) {
 
                 const char* fmt;
 
                 if (rcu_dereference(dev->rx_handler) == xlan_in        
                     || netdev_rx_handler_register(dev, xlan_in, NULL) == 0) {
-                    dev_hold((lan->portsDevs[pid] = dev));
+                    dev_hold((lan->ports[pid] = dev));
                     fmt = "XLAN: LAN %u: PORT %u: HOOK PHYSICAL %s: SUCCESS\n";
                 } else
                     // NÃO ESTÁ HOOKADA
@@ -565,19 +565,19 @@ static int __init xlan_init (void) {
         // CONTA QUANTAS PORTAS TEM EM CADA HOST
         foreach (hid, XLAN_HOSTS_N) {
             uint pid = 0;
-            while (*(u32*)(cfg->portsMACs[hid][pid]))
+            while (*(u32*)(cfg->macs[hid][pid]))
                 pid++;
             lan->portsQ[hid] = pid;
             printk("XLAN: LAN %u: HOST %u HAS %u PORTS\n", lid, hid, pid);
         }
         
-        lan->id     = id;
-        lan->host   = cfg->host;
+        lan->lid    = lid;
+        lan->hid    = hid;
         lan->portsN = lan->portsQ[hid];
 
-        memcpy(lan->portsMACs,
-               cfg->portsMACs[hid],
-        sizeof(cfg->portsMACs[hid]));
+        memcpy(lan->macs,
+               cfg->macs[hid],
+        sizeof(cfg->macs[hid]));
         
         if (lan->portsN == 0) {
             printk("XLAN: LAN %u: NO PORTS\n");
@@ -586,7 +586,7 @@ static int __init xlan_init (void) {
 
         // WILL YET DISCOVER THE PHYSICAL INTERFACES
         foreach (pid, XLAN_PORTS_N)
-            lan->portsDevs[pid] = NULL;
+            lan->ports[pid] = NULL;
 
         printk("XLAN: LAN %u: HAS %u PORTS\n", lid, lan->portsN);
 
@@ -642,7 +642,7 @@ static void __exit xlan_exit (void) {
         // UNHOOK PHYSICAL INTERFACES
         foreach (pid, XLAN_PORTS_N) {
 
-            net_device_s* const dev = lan->portsDevs[pid];
+            net_device_s* const dev = lan->ports[pid];
 
             if (dev) {
 
