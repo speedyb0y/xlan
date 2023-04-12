@@ -502,14 +502,14 @@ static int __init xlan_init (void) {
     BUILD_BUG_ON((typeof(DEV_LAN(*lans)->portsN))   XLAN_PORTS_N      !=  XLAN_PORTS_N);
     BUILD_BUG_ON((typeof(DEV_LAN(*lans)->portsQ[0]))XLAN_PORTS_N      !=  XLAN_PORTS_N);
 
-    printk("XLAN: INITIALIZING WITH %u CONFIGURED LANS\n", (uint)CFG_N);
+    printk("XLAN: INITIALIZING WITH %u CONFIGURED LANS\n", (uint)CFGS_N);
 
-    if (CFG_N == 0) {
+    if (CFGS_N == 0) {
         printk("XLAN: NO LANS\n");
         goto err;
     }
 
-    if (CFG_N >= XLAN_LANS_N) {
+    if (CFGS_N >= XLAN_LANS_N) {
         printk("XLAN: TOO MANY LANS\n");
         goto err;
     }
