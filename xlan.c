@@ -83,9 +83,9 @@ typedef struct xlan_cfg_s {
 typedef struct xlan_s {    
     u8 lid; // LAN ID    
     u8 hid; // HOST ID
-    u8 portsN; // HOW MANY PORTS THIS HOST HAS | lan->portsQ[THIS_HOST]    
+    u8 P; // HOW MANY PORTS THIS HOST HAS
+    u8 PH[XLAN_HOSTS_N]; // HOW MANY PORTS EACH HOST HAS
     net_device_s* ports[XLAN_PORTS_N]; // PHYSICAL INTERFACES    
-    u8 portsQ[XLAN_HOSTS_N]; // HOW MANY PORTS EACH HOST HAS | CALCULATED FROM lan->macs[HOST]
     u8 macs[XLAN_PORTS_N][ETH_ALEN]; // MAC OF EACH PORT
 } xlan_s;
 
@@ -118,8 +118,7 @@ typedef struct eth_s {
 // HOW MANY LANS THIS HOST HAS
 #define CFGS_N (sizeof(cfgs)/sizeof(*cfgs))
 
-// TODO: ISSO AQUI VAI SER SO UMA CONFIG; DEVERA ARRASTAR TUDO PARA O PRIVATE
-static const xlan_cfg_s cfgs[] = { // TODO: const
+static const xlan_cfg_s cfgs[] = {
     { .name = "lan-x",
         .id = 0,
         .host = 1,
@@ -303,9 +302,9 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
     // CHOOSE MY INTERFACE
     // CHOOSE THEIR INTERFACE
     // TOOD: o caso do ipv6, vai ter que transformar o valor de volta pois esta em hexadecimal
-    const uint srcPort = hash %  lan->portsN;
-                         hash /= lan->portsN;
-    const uint dstPort = hash %  lan->portsQ[dstHost];
+    const uint srcPort = hash %  lan->P;
+                         hash /= lan->P;
+    const uint dstPort = hash %  lan->PH[dstHost];
 
     // INSERT ETHERNET HEADER
     eth_s* const eth = PTR(ip) - ETH_SIZE;
@@ -499,8 +498,8 @@ static int __init xlan_init (void) {
 
     BUILD_BUG_ON((typeof(DEV_LAN(*lans)->lid))     (XLAN_LANS_N  - 1) != (XLAN_LANS_N  - 1));
     BUILD_BUG_ON((typeof(DEV_LAN(*lans)->hid))     (XLAN_HOSTS_N - 1) != (XLAN_HOSTS_N - 1));
-    BUILD_BUG_ON((typeof(DEV_LAN(*lans)->portsN))   XLAN_PORTS_N      !=  XLAN_PORTS_N);
-    BUILD_BUG_ON((typeof(DEV_LAN(*lans)->portsQ[0]))XLAN_PORTS_N      !=  XLAN_PORTS_N);
+    BUILD_BUG_ON((typeof(DEV_LAN(*lans)->P))   XLAN_PORTS_N      !=  XLAN_PORTS_N);
+    BUILD_BUG_ON((typeof(DEV_LAN(*lans)->PH[0]))XLAN_PORTS_N      !=  XLAN_PORTS_N);
 
     printk("XLAN: INITIALIZING WITH %u CONFIGURED LANS\n", (uint)CFGS_N);
 
@@ -567,19 +566,19 @@ static int __init xlan_init (void) {
             uint pid = 0;
             while (*(u32*)(cfg->macs[hid][pid]))
                 pid++;
-            lan->portsQ[hid] = pid;
+            lan->PH[hid] = pid;
             printk("XLAN: LAN %u: HOST %u HAS %u PORTS\n", lid, hid, pid);
         }
         
         lan->lid    = lid;
         lan->hid    = hid;
-        lan->portsN = lan->portsQ[hid];
+        lan->P = lan->PH[hid];
 
         memcpy(lan->macs,
                cfg->macs[hid],
         sizeof(cfg->macs[hid]));
         
-        if (lan->portsN == 0) {
+        if (lan->P == 0) {
             printk("XLAN: LAN %u: NO PORTS\n", lid);
             goto failed_free;
         }
@@ -588,7 +587,7 @@ static int __init xlan_init (void) {
         foreach (pid, XLAN_PORTS_N)
             lan->ports[pid] = NULL;
 
-        printk("XLAN: LAN %u: HAS %u PORTS\n", lid, lan->portsN);
+        printk("XLAN: LAN %u: HAS %u PORTS\n", lid, lan->P);
 
         lans[lid] = dev;
 
