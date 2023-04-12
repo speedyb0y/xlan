@@ -117,7 +117,8 @@ typedef struct eth_s {
 // HOW MANY LANS THIS HOST HAS
 #define LANS_N (sizeof(lans)/sizeof(*lans))
 
-static xlan_s lans[] = {  // TODO: MOSTLY READ
+// TODO: ISSO AQUI VAI SER SO UMA CONFIG; DEVERA ARRASTAR TUDO PARA O PRIVATE
+static xlan_s lans[] = {
     { .name = "lan",
         .id = 0,
         .hostsN = 64,
