@@ -69,7 +69,7 @@ typedef struct notifier_block notifier_block_s;
 
 typedef struct xlan_cfg_s {    
     const char* name; // O NOME INICIAL DA INTERFACE
-    u8 id; // LAN ID    
+    u8 lan; // LAN ID    
     u8 host; // HOST ID
     u8 macs // MAC OF EACH PORT OF EACH HOST
         [XLAN_HOSTS_N]
@@ -496,9 +496,9 @@ static int __init xlan_init (void) {
     BUILD_BUG_ON((eth_hid_t)(XLAN_HOSTS_N - 1) != (XLAN_HOSTS_N - 1));
     BUILD_BUG_ON((eth_pid_t)(XLAN_PORTS_N - 1) != (XLAN_PORTS_N - 1));
 
-    BUILD_BUG_ON((typeof(DEV_LAN(*lans)->lid))     (XLAN_LANS_N  - 1) != (XLAN_LANS_N  - 1));
-    BUILD_BUG_ON((typeof(DEV_LAN(*lans)->hid))     (XLAN_HOSTS_N - 1) != (XLAN_HOSTS_N - 1));
-    BUILD_BUG_ON((typeof(DEV_LAN(*lans)->P))   XLAN_PORTS_N      !=  XLAN_PORTS_N);
+    BUILD_BUG_ON((typeof(DEV_LAN(*lans)->lid)) (XLAN_LANS_N  - 1) != (XLAN_LANS_N  - 1));
+    BUILD_BUG_ON((typeof(DEV_LAN(*lans)->hid)) (XLAN_HOSTS_N - 1) != (XLAN_HOSTS_N - 1));
+    BUILD_BUG_ON((typeof(DEV_LAN(*lans)->P))    XLAN_PORTS_N      !=  XLAN_PORTS_N);
     BUILD_BUG_ON((typeof(DEV_LAN(*lans)->PH[0]))XLAN_PORTS_N      !=  XLAN_PORTS_N);
 
     printk("XLAN: INITIALIZING WITH %u CONFIGURED LANS\n", (uint)CFGS_N);
@@ -517,7 +517,7 @@ static int __init xlan_init (void) {
 
         const xlan_cfg_s* const cfg = &cfgs[cid];
 
-        const uint lid = cfg->id;
+        const uint lid = cfg->lan;
         const uint hid = cfg->host;
 
         printk("XLAN: LAN %u: CREATING\n", lid);
