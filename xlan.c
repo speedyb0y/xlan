@@ -304,7 +304,14 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
     // TOOD: o caso do ipv6, vai ter que transformar o valor de volta pois esta em hexadecimal
     const uint srcPort = hash %  lan->P;
                          hash /= lan->P;
-    const uint dstPort = hash %  lan->PH[dstHost];
+
+    const uint dstPortsN = lan->PH[dstHost];
+
+    if (dstPortsN == 0)
+        // DESTINATION HOST HAS NO PORTS
+        goto drop;
+
+    const uint dstPort = hash % dstPortsN;
 
     // INSERT ETHERNET HEADER
     eth_s* const eth = PTR(ip) - ETH_SIZE;
@@ -339,7 +346,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
         goto drop;
 
     // SOMENTE SE ELA ESTIVER ATIVA
-    if (devPort->flags & IFF_UP)
+    if (!(devPort->flags & IFF_UP))
         goto drop;
 
     skb->dev = devPort;
