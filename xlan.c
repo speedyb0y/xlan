@@ -166,6 +166,7 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
 
     net_device_s* const dev = &lans[lid];
     
+    //
     if (dev == NULL)
         goto drop;
 
