@@ -119,7 +119,7 @@ typedef struct eth_s {
 
 // TODO: ISSO AQUI VAI SER SO UMA CONFIG; DEVERA ARRASTAR TUDO PARA O PRIVATE
 static xlan_s lans[] = {
-    { .name = "lan",
+    { .name = "lan", // O NOME INICIAL DA INTERFACE
         .id = 0,
         .hostsN = 64,
         .host = HOST,
