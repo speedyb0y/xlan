@@ -130,7 +130,7 @@ static const xlan_cfg_s cfgs[] = { // TODO: const
     }
 };
 
-static xlan_s lans[XLAN_LANS_N];
+static net_device_s* lans[XLAN_LANS_N];
 
 static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
 
@@ -164,7 +164,7 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
     if (lid >= XLAN_LANS_N)
         goto drop;
 
-    net_device_s* const dev = &lans[lid];
+    net_device_s* const dev = lans[lid];
     
     //
     if (dev == NULL)
