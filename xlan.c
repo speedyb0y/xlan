@@ -63,7 +63,7 @@ typedef struct notifier_block notifier_block_s;
 #define UDP_SIZE  8
 #define TCP_SIZE 20
 
-#define XLAN_LANS_N 256 // HOW MANY LANS CAN EXIST
+#define XLAN_LANS_N 16 // HOW MANY LANS CAN EXIST
 #define XLAN_HOSTS_N 128 // HOW MANY HOSTS A LAN CAN HAVE
 #define XLAN_PORTS_N 4 // HOW MANY PORTS A HOST CAN HAVE
 
@@ -225,12 +225,9 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
      || PTR(ip) > SKB_TAIL(skb))
         goto drop;
 
-    // MINIMUM SIZE
-    uint hsize;
-    // COMPUTE HASH
-    u64 hash;
-    // IDENTIFY HOST BY IP DESTINATION
-    uint dstHost; 
+    uint dstHost;  // IDENTIFY HOST BY IP DESTINATION
+    uint hsize; // MINIMUM SIZE    
+    uintll hash; // COMPUTE HASH    
 
     // IP VERSION
     switch (*(u8*)ip >> 4) {
@@ -551,8 +548,7 @@ static int __init xlan_init (void) {
         // MAKE IT VISIBLE IN THE SYSTEM
         if (register_netdev(dev)) {
             printk("XLAN: LAN %u: FAILED TO REGISTER VIRTUAL\n", lid);
-            free_netdev(dev);
-            continue;
+            goto failed_free;
         }
 
         xlan_s* const lan = DEV_LAN(dev);
@@ -568,8 +564,12 @@ static int __init xlan_init (void) {
         
         lan->id     = id;
         lan->host   = cfg->host;
-        lan->portsN = // SO WE NEED TO SPECIFY IT ONLY ONCE
-        lan->portsQ[lan->host];
+        lan->portsN = lan->portsQ[lan->host];
+        
+        if (lan->portsN == 0) {
+            printk("XLAN: LAN %u: NO PORTS\n");
+            goto failed;
+        }
 
         // WILL YET DISCOVER THE PHYSICAL INTERFACES
         foreach (pid, XLAN_PORTS_N)
@@ -578,6 +578,11 @@ static int __init xlan_init (void) {
         printk("XLAN: LAN %u: HAS %u PORTS\n", lid, lan->portsN);
 
         lans[lid] = dev;
+
+        continue;
+
+failed_free:
+        free_netdev(dev);        
     }
 
     // COLOCA A PARADA DE EVENTOS
