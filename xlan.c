@@ -517,9 +517,7 @@ static int __init xlan_init (void) {
         goto err;
     }
 
-    uint cid = 0;
-
-    do {
+    foreach (cid, CFGS_N) {
 
         xlan_cfg_s* const cfg = &cfgs[cid];
 
@@ -585,11 +583,10 @@ static int __init xlan_init (void) {
         foreach (pid, XLAN_PORTS_N)
             lan->portsDevs[pid] = NULL;
 
-        lans[lid] = dev;
-
         printk("XLAN: LAN %u: HAS %u PORTS\n", lid, lan->portsN);
 
-    } while (++cid != CFGS_N);
+        lans[lid] = dev;
+    }
 
     // COLOCA A PARADA DE EVENTOS
     if (register_netdevice_notifier(&notifyDevs) < 0) {
@@ -601,9 +598,11 @@ static int __init xlan_init (void) {
 
 err:
     // CLEANUP
-    while (lid) {
+    foreach (lid, XLAN_LANS_N) {
 
-        const xlan_s* const lan = &lans[--lid];
+        net_device_s* const dev = &lans[lid];
+
+        const xlan_s* const lan = DEV_LAN(dev);
 
         if (lan->dev) {
             unregister_netdev(lan->dev);
