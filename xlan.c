@@ -437,7 +437,7 @@ static int xlan_notify_phys (struct notifier_block* const nb, const unsigned lon
         goto done;
 
     if (!rtnl_is_locked()) {
-        printk("XLAN: RTNL IS NOT LOCKED");
+        printk("XLAN: ERROR: RTNL IS NOT LOCKED");
         goto done;
     }
 
