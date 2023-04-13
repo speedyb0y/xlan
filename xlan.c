@@ -263,26 +263,40 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
 
         case 4: // TODO: VER DENTRO DAS MENSAGENS ICMP E GERAR O MESMO HASH DESSES AQUI
 
-            dstHost = BE32(*(u32*)(ip + 16));
+            dstHost = BE32(*(u32*)(ip + IP4_O_DST));
+#define IP4_NET       0xC0A80000U
+#define IP4_MASK_NET  0xFFFFFF00U
+#define IP4_MASK_HOST 0x000000FFU
 
-            if ((dstHost & 0xFFFFFF00U) == 0xC0A80000U)
-                dstHost &= 0x000000FFU;
+#define IP6_NET       0x00000000622500FCULL // TODO: BE64()
+            
+#define IP6_O_PROTO  5
+#define IP6_O_SRC1   8
+#define IP6_O_SRC2  16
+#define IP6_O_DST1  24
+#define IP6_O_DST2  32
+            
+#define IP4_O_PROTO 9
+#define IP4_O_SRC 12
+#define IP4_O_DST 16
+            if ((dstHost & IP4_MASK_NET) == IP4_NET)
+                dstHost &= IP4_MASK_HOST;
             else // GW
                 dstHost = 1;
             
             // IP PROTOCOL
-            switch ((hash = *(u8*)(ip + 9))) {
+            switch ((hash = *(u8*)(ip + IP4_O_PROTO))) {
                 case IPPROTO_TCP:
                 case IPPROTO_UDP:
                 case IPPROTO_UDPLITE:
                 case IPPROTO_SCTP:
                 case IPPROTO_DCCP:
-                    hash += *(u64*)(ip + 12); // SRC ADDR, DST ADDR
-                    hash += *(u32*)(ip + 20); // SRC PORT, DST PORT
+                    hash += *(u64*)(ip + IP4_O_SRC); // SRC ADDR, DST ADDR
+                    hash += *(u32*)(ip + IP4_SIZE); // SRC PORT, DST PORT
                     hsize = IP4_SIZE + UDP_SIZE;
                     break;
                 default:
-                    hash += *(u64*)(ip + 12); // SRC ADDR, DST ADDR
+                    hash += *(u64*)(ip + IP4_O_SRC); // SRC ADDR, DST ADDR
                     hsize = IP4_SIZE;
             }
 
@@ -290,31 +304,31 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
 
         case 6:
 
-            if (*(u64*)(ip + 24) == 0x00000000622500FCULL) {
+            if (*(u64*)(ip + IP6_O_DST1) == IP6_NET) {
                 dstHost = *(u8*)(ip + IP6_SIZE - 1);
                 dstHost = (dstHost >> 4)*10 + (dstHost & 0xF);
             } else // GW
                 dstHost = 1;
 
             // IP PROTOCOL
-            switch ((hash = *(u8*)(ip + 5))) {
+            switch ((hash = *(u8*)(ip + IP6_O_PROTO))) {
                 case IPPROTO_TCP:
                 case IPPROTO_UDP:
                 case IPPROTO_UDPLITE:
                 case IPPROTO_SCTP: // TODO: CONSIDER IPV6 FLOW?
                 case IPPROTO_DCCP:
-                    hash += *(u64*)(ip +  8); // SRC ADDR
-                    hash += *(u64*)(ip + 16); // SRC ADDR
-                    hash += *(u64*)(ip + 24); // DST ADDR
-                    hash += *(u64*)(ip + 32); // DST ADDR
-                    hash += *(u32*)(ip + 40); // SRC PORT, DST PORT
+                    hash += *(u64*)(ip + IP6_O_SRC1); // SRC ADDR
+                    hash += *(u64*)(ip + IP6_O_SRC2); // SRC ADDR
+                    hash += *(u64*)(ip + IP6_O_DST1); // DST ADDR
+                    hash += *(u64*)(ip + IP6_O_DST2); // DST ADDR
+                    hash += *(u32*)(ip + IP6_SIZE); // SRC PORT, DST PORT
                     hsize = IP6_SIZE + UDP_SIZE;
                     break;
                 default:
-                    hash += *(u64*)(ip +  8); // SRC ADDR
-                    hash += *(u64*)(ip + 16); // SRC ADDR
-                    hash += *(u64*)(ip + 24); // DST ADDR
-                    hash += *(u64*)(ip + 32); // DST ADDR
+                    hash += *(u64*)(ip + IP6_O_SRC1); // SRC ADDR
+                    hash += *(u64*)(ip + IP6_O_SRC2); // SRC ADDR
+                    hash += *(u64*)(ip + IP6_O_DST1); // DST ADDR
+                    hash += *(u64*)(ip + IP6_O_DST2); // DST ADDR
                     hsize = IP6_SIZE;
             }
 
