@@ -198,7 +198,8 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
     
     // CONFIRM IT CAME ON THE PHYSICAL
     if (skb->dev != lan->devs[pid]) {
-        xlan_dbg("skb->dev != lan->devs[pid]");
+        xlan_dbg("skb->dev %s != lan->devs[pid %u] %s",
+            skb->dev->name, pid, lan->devs[pid] ? lan->devs[pid]->name : "-");
         goto drop;
     }
     
