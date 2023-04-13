@@ -218,7 +218,8 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
     skb->len              = SKB_TAIL(skb) - PTR(ip);
     skb->dev              = dev;
 
-    xlan_dbg("IN: PASSED ON %s LEN %u", skb->dev->name, skb->len);
+    xlan_dbg("IN: PASS: skb->dev %s skb->len %u",
+        skb->dev->name, skb->len);
     
     return RX_HANDLER_ANOTHER;
 
@@ -377,7 +378,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
 
     skb->dev = devPort;
 
-    xlan_dbg("OUT: PASSED ON %s LEN %u dstHost %u srcPort %u dstPort %u",
+    xlan_dbg("OUT: PASS: skb->dev %s skb->len %u dstHost %u srcPort %u dstPort %u",
         skb->dev->name, skb->len, dstHost, srcPort, dstPort);
 
     // -- THE FUNCTION CAN BE CALLED FROM AN INTERRUPT
