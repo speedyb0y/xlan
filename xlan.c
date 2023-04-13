@@ -175,11 +175,15 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
 
     xlan_s* const lan = DEV_LAN(dev);   
 
+    // VALIDATE HOST
     // CONFIRM ITS OURS
     if (hid != lan->hid)
         goto drop;
 
     // VALIDATE PORT
+    if (pid >= XLAN_PORTS_N)
+        goto drop;
+    
     // CONFIRM IT CAME ON THE PHYSICAL
     if (skb->dev != lan->devs[pid])
         goto drop;
