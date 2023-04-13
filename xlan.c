@@ -220,6 +220,7 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
     skb->network_header   = PTR(ip);
 #endif
     skb->len              = SKB_TAIL(skb) - PTR(ip);
+    skb->pkt_type         = PACKET_HOST;
     skb->dev              = dev;
 
     xlan_dbg("IN: PASS: skb->dev %s skb->len %u",
