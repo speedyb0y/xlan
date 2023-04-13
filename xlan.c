@@ -263,7 +263,12 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
 
         case 4: // TODO: VER DENTRO DAS MENSAGENS ICMP E GERAR O MESMO HASH DESSES AQUI
 
-            dstHost = *(u8*)(ip + IP4_SIZE - 1);
+            dstHost = BE32(*(u32*)(ip + 16));
+
+            if ((dstHost & 0xFFFFFF00U) == 0xC0A80000U)
+                dstHost &= 0x000000FFU;
+            else // GW
+                dstHost = 1;
             
             // IP PROTOCOL
             switch ((hash = *(u8*)(ip + 9))) {
@@ -285,8 +290,11 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
 
         case 6:
 
-            dstHost = *(u8*)(ip + IP6_SIZE - 1);
-            dstHost = (dstHost >> 4)*10 + (dstHost & 0xF);
+            if (*(u64*)(ip + 24) == 0x00000000622500FCULL) {
+                dstHost = *(u8*)(ip + IP6_SIZE - 1);
+                dstHost = (dstHost >> 4)*10 + (dstHost & 0xF);
+            } else // GW
+                dstHost = 1;
 
             // IP PROTOCOL
             switch ((hash = *(u8*)(ip + 5))) {
