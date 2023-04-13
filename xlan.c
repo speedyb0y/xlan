@@ -135,7 +135,11 @@ static const xlan_cfg_s cfgs[] = {
 
 static net_device_s* lans[XLAN_LANS_N];
 
+#if 0
 #define xlan_dbg(fmt, ...) printk("XLAN: " fmt "\n", ##__VA_ARGS__)
+#else
+#define xlan_dbg(fmt, ...) ({})
+#endif
 
 static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
 
