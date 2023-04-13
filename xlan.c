@@ -326,7 +326,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
 
     if (dstPortsN == 0) {
         // DESTINATION HOST HAS NO PORTS
-        xlan_dbg("OUT: dstPortsN == 0");
+        xlan_dbg("OUT: lan->PH[dstHost %u] == dstPortsN == 0", dstHost);
         goto drop;
     }
     
