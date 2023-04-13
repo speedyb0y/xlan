@@ -304,13 +304,10 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
     if (dstPortsN == 0)
         // DESTINATION HOST HAS NO PORTS
         goto drop;
-
-    // CHOOSE MY INTERFACE
-    // CHOOSE THEIR INTERFACE
-    // TOOD: o caso do ipv6, vai ter que transformar o valor de volta pois esta em hexadecimal
-    const uint dstPort = hash %  dstPortsN;
+    
+    const uint dstPort = hash %  dstPortsN; // CHOOSE THEIR INTERFACE
                          hash /= dstPortsN;
-    const uint srcPort = hash %  lan->P;    
+    const uint srcPort = hash %  lan->P; // CHOOSE MY INTERFACE
 
     // INSERT ETHERNET HEADER
     eth_s* const eth = PTR(ip) - ETH_SIZE;
