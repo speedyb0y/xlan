@@ -217,7 +217,7 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
     skb->len              = SKB_TAIL(skb) - PTR(ip);
     skb->dev              = dev;
 
-    xlan_dbg("PASSED");
+    xlan_dbg("PASSED ON %s LEN %u", skb->dev->name, skb->len);
     
     return RX_HANDLER_ANOTHER;
 
