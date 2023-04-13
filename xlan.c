@@ -67,6 +67,22 @@ typedef struct notifier_block notifier_block_s;
 #define XLAN_HOSTS_N 128 // HOW MANY HOSTS A LAN CAN HAVE
 #define XLAN_PORTS_N 4 // HOW MANY PORTS A HOST CAN HAVE
 
+#define IP4_NET       0xC0A80000U
+#define IP4_MASK_NET  0xFFFFFF00U
+#define IP4_MASK_HOST 0x000000FFU
+
+#define IP6_NET       0x00000000622500FCULL // TODO: BE64()
+            
+#define IP6_O_PROTO  5
+#define IP6_O_SRC1   8
+#define IP6_O_SRC2  16
+#define IP6_O_DST1  24
+#define IP6_O_DST2  32
+            
+#define IP4_O_PROTO 9
+#define IP4_O_SRC 12
+#define IP4_O_DST 16
+
 typedef struct xlan_cfg_s {    
     const char* name; // O NOME INICIAL DA INTERFACE
     u8 lan; // LAN ID    
@@ -264,21 +280,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
         case 4: // TODO: VER DENTRO DAS MENSAGENS ICMP E GERAR O MESMO HASH DESSES AQUI
 
             dstHost = BE32(*(u32*)(ip + IP4_O_DST));
-#define IP4_NET       0xC0A80000U
-#define IP4_MASK_NET  0xFFFFFF00U
-#define IP4_MASK_HOST 0x000000FFU
 
-#define IP6_NET       0x00000000622500FCULL // TODO: BE64()
-            
-#define IP6_O_PROTO  5
-#define IP6_O_SRC1   8
-#define IP6_O_SRC2  16
-#define IP6_O_DST1  24
-#define IP6_O_DST2  32
-            
-#define IP4_O_PROTO 9
-#define IP4_O_SRC 12
-#define IP4_O_DST 16
             if ((dstHost & IP4_MASK_NET) == IP4_NET)
                 dstHost &= IP4_MASK_HOST;
             else // GW
