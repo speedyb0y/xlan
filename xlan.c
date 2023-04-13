@@ -120,7 +120,7 @@ typedef struct eth_s {
 
 static const xlan_cfg_s cfgs[] = {
     { .name = "lan-x",
-        .id = 0,
+        .lan = 0,
         .host = 1,
         .macs = {
             [ 1] = { "\x88\xC9\xB3\xB0\xF1\xEB", "\x88\xC9\xB3\xB0\xF1\xEA" },
