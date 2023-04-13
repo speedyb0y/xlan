@@ -205,17 +205,14 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
 
     return RX_HANDLER_ANOTHER;
 
-pass:
-    return RX_HANDLER_PASS;
-
 drop: // TODO: dev_kfree_skb ?
 #if 0
     kfree_skb(skb);
 
     return RX_HANDLER_CONSUMED;
-#else
-    return RX_HANDLER_PASS;
 #endif
+pass:
+    return RX_HANDLER_PASS;
 }
 
 static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
