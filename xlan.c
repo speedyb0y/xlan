@@ -576,9 +576,10 @@ static int __init xlan_init (void) {
         foreach (hid, XLAN_HOSTS_N) {
             uint pid = 0;
             while (*(u32*)(cfg->macs[hid][pid]))
-                pid++;
+                pid++;            
+            if (pid)
+                printk("XLAN: LAN %u: HOST %u HAS %u PORTS\n", lid, hid, pid);
             lan->PH[hid] = pid;
-            printk("XLAN: LAN %u: HOST %u HAS %u PORTS\n", lid, hid, pid);
         }
         
         lan->lid = lid;
