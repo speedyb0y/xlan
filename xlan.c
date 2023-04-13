@@ -576,9 +576,10 @@ static int __init xlan_init (void) {
             printk("XLAN: LAN %u: HOST %u HAS %u PORTS\n", lid, hid, pid);
         }
         
-        lan->lid    = lid;
-        lan->hid    = hid;
-        lan->P = lan->PH[hid];
+        lan->lid = lid;
+        lan->hid = hid;
+        lan->P   = //
+        lan->PH[hid];
 
         memcpy(lan->macs,
                cfg->macs[hid],
