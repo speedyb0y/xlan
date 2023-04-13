@@ -135,6 +135,8 @@ static const xlan_cfg_s cfgs[] = {
 
 static net_device_s* lans[XLAN_LANS_N];
 
+#define xlan_dbg(fmt, ...) printk("XLAN: " fmt "\n", ##_VA_ARGS_)
+
 static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
 
     sk_buff_s* const skb = *pskb;
@@ -160,33 +162,45 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
         goto pass;
 
     // VALIDATE LAN
-    if (lid >= XLAN_LANS_N)
+    if (lid >= XLAN_LANS_N) {
+        xlan_dbg("lid >= XLAN_LANS_N");
         goto drop;
+    }
 
     net_device_s* const dev = lans[lid];
     
     //
-    if (dev == NULL)
+    if (dev == NULL) {
+        xlan_dbg("dev == NULL");
         goto drop;
+    }
 
     // SE A INTERFACE XLAN ESTIVER DOWN, DROP
-    if (!(dev->flags & IFF_UP))
+    if (!(dev->flags & IFF_UP)) {
+        xlan_dbg("!(dev->flags & IFF_UP)");
         goto drop;    
+    }
 
     xlan_s* const lan = DEV_LAN(dev);   
 
     // VALIDATE HOST
     // CONFIRM ITS OURS
-    if (hid != lan->hid)
+    if (hid != lan->hid) {
+        xlan_dbg("hid != lan->hid");
         goto drop;
+    }
 
     // VALIDATE PORT
-    if (pid >= XLAN_PORTS_N)
+    if (pid >= XLAN_PORTS_N) {
+        xlan_dbg("pid >= XLAN_PORTS_N");
         goto drop;
+    }
     
     // CONFIRM IT CAME ON THE PHYSICAL
-    if (skb->dev != lan->devs[pid])
+    if (skb->dev != lan->devs[pid]) {
+        xlan_dbg("skb->dev != lan->devs[pid]");
         goto drop;
+    }
     
     // PULA O ETHERNET HEADER
     void* const ip = PTR(eth) + ETH_SIZE;
@@ -203,6 +217,8 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
     skb->len              = SKB_TAIL(skb) - PTR(ip);
     skb->dev              = dev;
 
+    xlan_dbg("PASSED");
+    
     return RX_HANDLER_ANOTHER;
 
 drop: // TODO: dev_kfree_skb ?
