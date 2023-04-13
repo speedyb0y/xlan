@@ -329,7 +329,14 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
         xlan_dbg("OUT: lan->PH[dstHost %u] == dstPortsN == 0", dstHost);
         goto drop;
     }
-    
+
+#if 1 // IMPOSSIVEL
+    if (lan->P == 0) {
+        xlan_dbg("OUT: lan->P == 0");
+        goto drop;
+    }
+#endif
+
     const uint dstPort = hash %  dstPortsN; // CHOOSE THEIR INTERFACE
                          hash /= dstPortsN;
     const uint srcPort = hash %  lan->P; // CHOOSE MY INTERFACE
