@@ -314,7 +314,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
     }
 
     if (skb->len < hsize) {
-        xlan_dbg("OUT: skb->len < hsize");
+        xlan_dbg("OUT: skb->len %u < hsize %u", skb->len, hsize);
         goto drop;
     }
 
