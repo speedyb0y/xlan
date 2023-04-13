@@ -163,7 +163,7 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
 
     // VALIDATE LAN
     if (lid >= XLAN_LANS_N) {
-        xlan_dbg("lid >= XLAN_LANS_N");
+        xlan_dbg("lid %u >= XLAN_LANS_N", lid);
         goto drop;
     }
 
@@ -186,13 +186,13 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
     // VALIDATE HOST
     // CONFIRM ITS OURS
     if (hid != lan->hid) {
-        xlan_dbg("hid != lan->hid");
+        xlan_dbg("hid %u != lan->hid %u", hid, lan->hid);
         goto drop;
     }
 
     // VALIDATE PORT
     if (pid >= XLAN_PORTS_N) {
-        xlan_dbg("pid >= XLAN_PORTS_N");
+        xlan_dbg("pid %u >= XLAN_PORTS_N %u", pid, XLAN_PORTS_N);
         goto drop;
     }
     
