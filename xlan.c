@@ -121,7 +121,7 @@ typedef struct eth_s {
 static const xlan_cfg_s cfgs[] = {
     { .name = "lan-x",
         .lan = 0,
-        .host = 1,
+        .host = 20,
         .macs = {
             [ 1] = { "\x88\xC9\xB3\xB0\xF1\xEB", "\x88\xC9\xB3\xB0\xF1\xEA" },
             [10] = { "\x00\x00\x00\x00\x00\x00" },
@@ -506,6 +506,8 @@ static int __init xlan_init (void) {
     BUILD_BUG_ON((typeof(DEV_LAN(*lans)->hid)) (XLAN_HOSTS_N - 1) != (XLAN_HOSTS_N - 1));
     BUILD_BUG_ON((typeof(DEV_LAN(*lans)->P))    XLAN_PORTS_N      !=  XLAN_PORTS_N);
     BUILD_BUG_ON((typeof(DEV_LAN(*lans)->PH[0]))XLAN_PORTS_N      !=  XLAN_PORTS_N);
+
+    BUILD_BUG_ON(sizeof(DEV_LAN(*lans)->macs) != sizeof(cfgs->macs[0]));
 
     printk("XLAN: INITIALIZING WITH %u CONFIGURED LANS\n", (uint)CFGS_N);
 
