@@ -429,6 +429,9 @@ static int xlan_notify_phys (struct notifier_block* const nb, const unsigned lon
 
     net_device_s* dev = netdev_notifier_info_to_dev(info);
 
+    // TODO: FILTRAR LOOPBACK
+    // TODO: FILTRAR ETHERNET
+
     // IGNORA EVENTOS DE LANS
     // TODO: FIXME: IDENTIFICAR SE A INTERFACE É UMA LAN
     if (dev->addr_len != ETH_ALEN)
