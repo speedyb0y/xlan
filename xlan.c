@@ -121,7 +121,7 @@ typedef struct eth_s {
 static const xlan_cfg_s cfgs[] = {
     { .name = "lan-x",
         .lan = 0,
-        .host = 20,
+        .host = 1,
         .macs = {
             [ 1] = { "\x88\xC9\xB3\xB0\xF1\xEB", "\x88\xC9\xB3\xB0\xF1\xEA" },
             [10] = { "\x00\x00\x00\x00\x00\x00" },
@@ -163,7 +163,7 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
 
     // VALIDATE LAN
     if (lid >= XLAN_LANS_N) {
-        xlan_dbg("lid %u >= XLAN_LANS_N", lid);
+        xlan_dbg("IN: lid %u >= XLAN_LANS_N", lid);
         goto drop;
     }
 
@@ -171,13 +171,13 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
     
     //
     if (dev == NULL) {
-        xlan_dbg("dev == NULL");
+        xlan_dbg("IN: dev == NULL");
         goto drop;
     }
 
     // SE A INTERFACE XLAN ESTIVER DOWN, DROP
     if (!(dev->flags & IFF_UP)) {
-        xlan_dbg("!(dev->flags & IFF_UP)");
+        xlan_dbg("IN: !(dev->flags & IFF_UP)");
         goto drop;    
     }
 
@@ -186,19 +186,19 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
     // VALIDATE HOST
     // CONFIRM ITS OURS
     if (hid != lan->hid) {
-        xlan_dbg("hid %u != lan->hid %u", hid, lan->hid);
+        xlan_dbg("IN: hid %u != lan->hid %u", hid, lan->hid);
         goto drop;
     }
 
     // VALIDATE PORT
     if (pid >= XLAN_PORTS_N) {
-        xlan_dbg("pid %u >= XLAN_PORTS_N %u", pid, XLAN_PORTS_N);
+        xlan_dbg("IN: pid %u >= XLAN_PORTS_N %u", pid, XLAN_PORTS_N);
         goto drop;
     }
     
     // CONFIRM IT CAME ON THE PHYSICAL
     if (skb->dev != lan->devs[pid]) {
-        xlan_dbg("skb->dev %s != lan->devs[pid %u] %s",
+        xlan_dbg("IN: skb->dev %s != lan->devs[pid %u] %s",
             skb->dev->name, pid, lan->devs[pid] ? lan->devs[pid]->name : "-");
         goto drop;
     }
@@ -218,7 +218,7 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
     skb->len              = SKB_TAIL(skb) - PTR(ip);
     skb->dev              = dev;
 
-    xlan_dbg("PASSED ON %s LEN %u", skb->dev->name, skb->len);
+    xlan_dbg("IN: PASSED ON %s LEN %u", skb->dev->name, skb->len);
     
     return RX_HANDLER_ANOTHER;
 
@@ -243,8 +243,10 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
     void* const ip = SKB_NETWORK(skb);
 
     if (PTR(ip) < SKB_HEAD(skb)
-     || PTR(ip) > SKB_TAIL(skb))
+     || PTR(ip) > SKB_TAIL(skb)) {
+        xlan_dbg("OUT: ???");
         goto drop;
+     }
 
     uint dstHost;  // IDENTIFY HOST BY IP DESTINATION
     uint hsize; // MINIMUM SIZE    
@@ -306,11 +308,14 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
 
         default:
             // UNSUPORTED
+            xlan_dbg("OUT: NOT IPV4/IPV6");
             goto drop;
     }
 
-    if (skb->len < hsize)
+    if (skb->len < hsize) {
+        xlan_dbg("OUT: skb->len < hsize");
         goto drop;
+    }
 
     hash += hash >> 32;
     hash += hash >> 16;
@@ -318,9 +323,11 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
 
     const uint dstPortsN = lan->PH[dstHost];
 
-    if (dstPortsN == 0)
+    if (dstPortsN == 0) {
         // DESTINATION HOST HAS NO PORTS
+        xlan_dbg("OUT: dstPortsN == 0");
         goto drop;
+    }
     
     const uint dstPort = hash %  dstPortsN; // CHOOSE THEIR INTERFACE
                          hash /= dstPortsN;
@@ -329,9 +336,11 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
     // INSERT ETHERNET HEADER
     eth_s* const eth = PTR(ip) - ETH_SIZE;
 
-    if (PTR(eth) < SKB_HEAD(skb))
+    if (PTR(eth) < SKB_HEAD(skb)) {
         // SEM ESPACO PARA COLOCAR O MAC HEADER
+        xlan_dbg("OUT: PTR(eth) < SKB_HEAD(skb)");
         goto drop;
+    }
 
     eth->dstOUI   = BE16(XLAN_OUI);
     eth->dstLan   = BE16(lan->lid);
@@ -355,14 +364,21 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
     //
     net_device_s* const devPort = lan->devs[srcPort];
 
-    if (devPort == NULL)
+    if (devPort == NULL) {
+        xlan_dbg("OUT: devPort == NULL");
         goto drop;
+    }
 
     // SOMENTE SE ELA ESTIVER ATIVA
-    if (!(devPort->flags & IFF_UP))
+    if (!(devPort->flags & IFF_UP)) {
+        xlan_dbg("OUT: devPort %s NOT UP", devPort->name);
         goto drop;
+    }
 
     skb->dev = devPort;
+
+    xlan_dbg("OUT: PASSED ON %s LEN %u dstHost %u srcPort %u dstPort %u",
+        skb->dev->name, skb->len, dstHost, srcPort, dstPort);
 
     // -- THE FUNCTION CAN BE CALLED FROM AN INTERRUPT
     // -- WHEN CALLING THIS METHOD, INTERRUPTS MUST BE ENABLED
