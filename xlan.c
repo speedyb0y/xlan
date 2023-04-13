@@ -461,7 +461,7 @@ static int xlan_notify_phys (struct notifier_block* const nb, const unsigned lon
 
         xlan_s* const lan = DEV_LAN(xdev);
 
-        foreach (pid, XLAN_PORTS_N) {
+        foreach (pid, lan->P) {
 
             if (lan->devs[pid]) {
                 if (lan->devs[pid] == dev)
@@ -651,7 +651,7 @@ static void __exit xlan_exit (void) {
         const xlan_s* const lan = DEV_LAN(dev);
 
         // UNHOOK PHYSICAL INTERFACES
-        foreach (pid, XLAN_PORTS_N) {
+        foreach (pid, lan->P) {
 
             net_device_s* const dev = lan->devs[pid];
 
