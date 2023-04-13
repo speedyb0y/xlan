@@ -139,21 +139,17 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
 
     sk_buff_s* const skb = *pskb;
 
-    eth_s* eth = SKB_MAC(skb);
+    if (skb_linearize(skb))
+        goto pass;
+    
+    eth_s* const eth = SKB_MAC(skb);
 
     if (PTR(eth) < SKB_HEAD(skb)
-    || (PTR(eth) + ETH_SIZE) > SKB_TAIL(skb)) {
-        // TENTAR NOVAMENTE, MAS APÓS LINEARIZAR
+    || (PTR(eth) + ETH_SIZE) > SKB_TAIL(skb))
         // TODO: FIXME: pskb vs skb??? sera que vai te rque fazer skb_copy() e depois *pskb = skb ?
         // e aí faz ou não kfree_skb()?
-        if (skb_linearize(skb))
-            goto pass;
-        eth = SKB_MAC(skb);
-        if (PTR(eth) < SKB_HEAD(skb)
-        || (PTR(eth) + ETH_SIZE) > SKB_TAIL(skb))
-            goto pass;
-    }
-
+        goto pass;
+    
     const uint oui = BE16(eth->dstOUI);
     const uint lid = BE16(eth->dstLan);
     const uint hid =      eth->dstHost;
