@@ -271,7 +271,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xdev) {
 
     memcpy(eth->h_dest,   macs[dstHost][dstPort], ETH_ALEN);
     memcpy(eth->h_source, macs[HOST]   [srcPort], ETH_ALEN);
-           eth->protocol = skb->protocol;
+           eth->h_proto = skb->protocol;
 
     skb->data       = PTR(eth);
     skb->len        = SKB_TAIL(skb) - PTR(eth);
