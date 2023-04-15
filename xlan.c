@@ -133,6 +133,7 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
             goto drop;
     }
 
+#if 0
     if (skb_linearize(skb))
         goto drop;
 
@@ -145,6 +146,7 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
 
     skb->data       = PTR(ip);
     skb->len        = SKB_TAIL(skb) - PTR(ip);
+#endif
     // NOTE: skb->network_header JA ESTA CORRETO
 #ifdef NET_SKBUFF_DATA_USES_OFFSET
     skb->mac_header = skb->network_header;
