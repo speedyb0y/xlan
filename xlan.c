@@ -281,30 +281,30 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xdev) {
     memcpy(eth->h_source, macs[HOST]   [srcPort], ETH_ALEN);
            eth->protocol = skb->protocol;
 
-    skb->mac_len          = ETH_HLEN;
-    skb->data             = PTR(eth);
+    skb->data       = PTR(eth);
+    skb->len        = SKB_TAIL(skb) - PTR(eth);
 #ifdef NET_SKBUFF_DATA_USES_OFFSET
-    skb->mac_header       = PTR(eth) - SKB_HEAD(skb);
+    skb->mac_header = PTR(eth) - SKB_HEAD(skb);
 #else
-    skb->mac_header       = PTR(eth);
+    skb->mac_header = PTR(eth);
 #endif
-    skb->len              = SKB_TAIL(skb) - PTR(eth);
+    skb->mac_len    = ETH_HLEN;
 
     //
     net_device_s* const dev = devs[srcPort];
 
     // SOMENTE SE ELA ESTIVER ATIVA
-    if (!(dev && dev->flags & IFF_UP))
-        goto drop;
+    if (dev && dev->flags & IFF_UP) {
 
-    skb->dev = dev;
+        skb->dev = dev;
 
-    // -- THE FUNCTION CAN BE CALLED FROM AN INTERRUPT
-    // -- WHEN CALLING THIS METHOD, INTERRUPTS MUST BE ENABLED
-    // -- REGARDLESS OF THE RETURN VALUE, THE SKB IS CONSUMED
-    dev_queue_xmit(skb);
+        // -- THE FUNCTION CAN BE CALLED FROM AN INTERRUPT
+        // -- WHEN CALLING THIS METHOD, INTERRUPTS MUST BE ENABLED
+        // -- REGARDLESS OF THE RETURN VALUE, THE SKB IS CONSUMED
+        dev_queue_xmit(skb);
 
-    return NETDEV_TX_OK;
+        return NETDEV_TX_OK;
+    }
 
 drop:
     dev_kfree_skb(skb);
