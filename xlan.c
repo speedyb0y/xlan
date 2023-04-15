@@ -83,19 +83,12 @@ typedef struct notifier_block notifier_block_s;
 #define IP4_O_SRC 12
 #define IP4_O_DST 16
 
-// TODO: USAR MASK DE PORTAS QUE POSSUI
-// TODO: USAR MASK DE PORTAS USAVEIS
-// TODO: USAR AQUELA PARADA DE BITS
-typedef struct xlan_s {    
-    u8 P; // HOW MANY PORTS THIS HOST HAS
-    u8 PH[XLAN_HOSTS_N]; // HOW MANY PORTS EACH HOST HAS
-    
-} xlan_s;
-
 #define XLAN_NAME "lan-x"
 
 static net_device_s* xdev;
 static net_device_s* devs[XLAN_PORTS_N]; // PHYSICAL INTERFACES    
+static uint devsN; // HOW MANY PORTS THIS HOST HAS
+static u8 portsQ[XLAN_HOSTS_N]; // HOW MANY PORTS EACH HOST HAS
 
 // MAC OF EACH PORT OF EACH HOST
 static const u8 macs [XLAN_HOSTS_N] [XLAN_PORTS_N] [ETH_ALEN] = {
@@ -254,8 +247,8 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xdev) {
 
     const uint dstPortsN = portsQ[dstHost];
 
+    // CONFIRM DESTINATION HOST HAS PORTS
     if (dstPortsN == 0)
-        // DESTINATION HOST HAS NO PORTS
         goto drop;
 
     const uint dstPort = hash %  dstPortsN; // CHOOSE THEIR INTERFACE
@@ -263,17 +256,17 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xdev) {
     const uint srcPort = hash %  devsN; // CHOOSE MY INTERFACE
 
     // INSERT ETHERNET HEADER
-    eth_s* const eth = PTR(ip) - ETH_SIZE;
+    ethhdr_s* const eth = PTR(ip) - ETH_HLEN;
 
+    // CONFIRMA ESPACO
     if (PTR(eth) < SKB_HEAD(skb))
-        // SEM ESPACO PARA COLOCAR O MAC HEADER
         goto drop;
 
     memcpy(eth->h_dest,   macs[dstHost][dstPort], ETH_ALEN);
     memcpy(eth->h_source, macs[HOST]   [srcPort], ETH_ALEN);
            eth->protocol = skb->protocol;
 
-    skb->mac_len          = ETH_SIZE;
+    skb->mac_len          = ETH_HLEN;
     skb->data             = PTR(eth);
 #ifdef NET_SKBUFF_DATA_USES_OFFSET
     skb->mac_header       = PTR(eth) - SKB_HEAD(skb);
