@@ -152,30 +152,36 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
 
     sk_buff_s* const skb = *pskb;
 
+    switch (skb->protocol) {
+        case BE16(ETH_P_IP):
+        case BE16(ETH_P_IPV6):
+            break;
+        case BE16(ETH_P_ARP):
+            goto drop;
+        default:
+            goto drop;
+    }
+
+
     if (skb_linearize(skb))
-        goto pass;
+        goto drop;
 
     // WHEN IN PROMISCUOUS MODE
     //if (skb->pkt_type == PACKET_OTHERHOST)
         //goto pass;
     
-    eth_s* const eth = SKB_MAC(skb);
+    // PULA O ETHERNET HEADER
+    void* const ip = SKB_NETWORK(skb);
 
-    if (PTR(eth) < SKB_HEAD(skb)
-    || (PTR(eth) + ETH_SIZE) > SKB_TAIL(skb))
-        // TODO: FIXME: pskb vs skb??? sera que vai te rque fazer skb_copy() e depois *pskb = skb ?
-        // e aí faz ou não kfree_skb()?
-        goto pass;
+    if (PTR(ip) < SKB_HEAD(skb)
+     || PTR(ip) > SKB_TAIL(skb))
+        goto drop;
     
     // SE A INTERFACE XLAN ESTIVER DOWN, DROP
     if (!(xdev->flags & IFF_UP))
         goto drop;    
    
-    // PULA O ETHERNET HEADER
-    void* const ip = PTR(eth) + ETH_SIZE;
-
     // NOTE: skb->network_header JA ESTA CORRETO
-
     skb->mac_len          = 0;
 #ifdef NET_SKBUFF_DATA_USES_OFFSET
     skb->mac_header       = skb->network_header;
