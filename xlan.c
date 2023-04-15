@@ -105,32 +105,6 @@ typedef struct xlan_s {
     u8 macs[XLAN_PORTS_N][ETH_ALEN]; // MAC OF EACH PORT
 } xlan_s;
 
-//
-#define DEV_LAN(dev) ((xlan_s*)netdev_priv(dev))
-
-//
-#define XLAN_OUI 0x26520000U
-
-typedef u32 eth_oui_t;
-typedef u8  eth_hid_t;
-typedef u8  eth_pid_t;
-typedef u16 eth_proto_t;
-
-// ETHERNET HEADER
-typedef struct eth_s {
-    eth_oui_t dstOUI; // XLAN_OUI
-    eth_hid_t dstHost;
-    eth_pid_t dstPort;
-    eth_oui_t srcOUI; // XLAN_OUI
-    eth_hid_t srcHost;
-    eth_pid_t srcPort;
-    eth_proto_t protocol;
-    u16 _align;
-} __attribute__((packed)) eth_s;
-
-// HOW MANY LANS THIS HOST HAS
-#define CFGS_N (sizeof(cfgs)/sizeof(*cfgs))
-
 static const xlan_cfg_s cfgs[] = {
     { .name = "lan-x",
         .lan = 0,
@@ -161,7 +135,6 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
         default:
             goto drop;
     }
-
 
     if (skb_linearize(skb))
         goto drop;
@@ -205,8 +178,6 @@ drop: // TODO: dev_kfree_skb ?
 }
 
 static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xdev) {
-
-    xlan_s* const lan = DEV_LAN(dev);
 
     if (skb_linearize(skb))
         // NON LINEAR
@@ -313,13 +284,9 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xdev) {
         // SEM ESPACO PARA COLOCAR O MAC HEADER
         goto drop;
 
-    eth->dstOUI   = BE16(XLAN_OUI);
-    eth->dstHost  = dstHost;
-    eth->dstPort  = dstPort;
-    eth->srcOUI   = BE16(XLAN_OUI);
-    eth->srcHost  = HOST;
-    eth->srcPort  = srcPort;
-    eth->protocol = skb->protocol;
+    memcpy(eth->h_dest,   macs[dstHost][dstPort], ETH_ALEN);
+    memcpy(eth->h_source, macs[HOST]   [srcPort], ETH_ALEN);
+           eth->protocol = skb->protocol;
 
     skb->mac_len          = ETH_SIZE;
     skb->data             = PTR(eth);
@@ -352,16 +319,16 @@ drop:
     return NETDEV_TX_OK;
 }
 
-static int xlan_up (net_device_s* const dev) {
+static int xlan_up (net_device_s* const xdev) {
 
-    printk("XLAN: LAN %u: UP %s\n", DEV_LAN(dev)->lid, dev->name);
+    printk("XLAN: UP\n");
 
     return 0;
 }
 
-static int xlan_down (net_device_s* const dev) {
+static int xlan_down (net_device_s* const xdev) {
 
-    printk("XLAN: LAN %u: DOWN %s\n", DEV_LAN(dev)->lid, dev->name);
+    printk("XLAN: DOWN\n");
 
     return 0;
 }
@@ -473,16 +440,6 @@ static notifier_block_s notifyDevs = {
 
 static int __init xlan_init (void) {
 
-    BUILD_BUG_ON(offsetof(eth_s, _align) != ETH_SIZE);
-
-    BUILD_BUG_ON((eth_oui_t) XLAN_OUI          !=  XLAN_OUI);
-    BUILD_BUG_ON((eth_hid_t)(XLAN_HOSTS_N - 1) != (XLAN_HOSTS_N - 1));
-    BUILD_BUG_ON((eth_pid_t)(XLAN_PORTS_N - 1) != (XLAN_PORTS_N - 1));
-
-    BUILD_BUG_ON((typeof(DEV_LAN(*lans)->hid)) (XLAN_HOSTS_N - 1) != (XLAN_HOSTS_N - 1));
-    BUILD_BUG_ON((typeof(DEV_LAN(*lans)->P))    XLAN_PORTS_N      !=  XLAN_PORTS_N);
-    BUILD_BUG_ON((typeof(DEV_LAN(*lans)->PH[0]))XLAN_PORTS_N      !=  XLAN_PORTS_N);
-
     printk("XLAN: INITIALIZING AS HOST %u\n", HOST);
 
     const xlan_cfg_s* const cfg = &cfgs[cid];
@@ -497,13 +454,13 @@ static int __init xlan_init (void) {
     // CREATE THE VIRTUAL INTERFACE
     xdev = alloc_netdev(sizeof(xlan_s), cfg->name, NET_NAME_USER, xlan_setup);
     
-    if (dev == NULL) {
+    if (xdev == NULL) {
         printk("XLAN: FAILED TO CREATE VIRTUAL\n");
         goto err;
     }
 
     // MAKE IT VISIBLE IN THE SYSTEM
-    if (register_netdev(dev)) {
+    if (register_netdev(xdev)) {
         printk("XLAN: FAILED TO REGISTER VIRTUAL\n");
         goto err_free;
     }
@@ -518,11 +475,7 @@ static int __init xlan_init (void) {
         lan->PH[hid] = pid;
     }
     
-    devsN    = lan->PH[hid];
-
-    memcpy(lan->macs,
-            cfg->macs[hid],
-    sizeof(cfg->macs[hid]));
+    devsN = lan->PH[hid];
     
     if (devsN == 0) {
         printk("XLAN: NO PORTS\n");
@@ -534,7 +487,10 @@ static int __init xlan_init (void) {
         devs[pid] = NULL;
 
     printk("XLAN: HAS %u PORTS\n", devsN);
-        
+
+    //
+    memcpy(lan->macs, cfg->macs[hid], sizeof(cfg->macs[hid]));
+
     // COLOCA A PARADA DE EVENTOS
     if (register_netdevice_notifier(&notifyDevs) < 0) {
         printk("XLAN: FAILED TO REGISTER NETWORK DEVICES NOTIFIER\n");
@@ -557,8 +513,6 @@ static void __exit xlan_exit (void) {
 
     // PARA DE MONITORAR OS EVENTOS
     unregister_netdevice_notifier(&notifyDevs);
-
-    const xlan_s* const lan = DEV_LAN(dev);
 
     // UNHOOK PHYSICAL INTERFACES
     foreach (pid, devsN) {
