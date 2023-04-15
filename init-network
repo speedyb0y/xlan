@@ -46,15 +46,16 @@ LO=lo
 LO_4=127.0.0.0/8
 LO_6=::1/128
 
+LAN=lan
 LAN_0=lan-0
 LAN_1=lan-1
-LAN_W=lan-w
-LAN_X=lan-x
 
 LAN_MTU_0=9186
 LAN_MTU_1=9186
-LAN_MTU_W=1500
-LAN_MTU_X=9186
+LAN_MTU=9186
+
+WIFI=lan-w
+WIFI_MTU=1500
 
 LAN_4_PREFIX=192.168.0.
 LAN_6_PREFIX=fc00:2562::
@@ -63,34 +64,13 @@ LAN_4_NETWORK=${LAN_4_PREFIX}0
 LAN_6_NETWORK=${LAN_6_PREFIX} # SEM O ZERO
 
 LAN_4_NETMASK=24
-LAN_4_NETMASK_0=32
-LAN_4_NETMASK_W=25
-LAN_4_NETMASK_X=25
-
 LAN_6_NETMASK=64
-LAN_6_NETMASK_0=128
-LAN_6_NETMASK_W=120
-LAN_6_NETMASK_X=120
 
 LAN_4_NET=$LAN_4_NETWORK/$LAN_4_NETMASK
-LAN_4_NET_0=$LAN_4_NETWORK/$LAN_4_NETMASK_0
-LAN_4_NET_W=$LAN_4_NETWORK/$LAN_4_NETMASK_W
-LAN_4_NET_X=$LAN_4_NETWORK/$LAN_4_NETMASK_X
-
 LAN_6_NET=$LAN_6_NETWORK/$LAN_6_NETMASK
-LAN_6_NET_0=$LAN_6_NETWORK/$LAN_6_NETMASK_0
-LAN_6_NET_W=$LAN_6_NETWORK/$LAN_6_NETMASK_W
-LAN_6_NET_X=$LAN_6_NETWORK/$LAN_6_NETMASK_X
 
 LAN_4_BROADCAST=${LAN_4_PREFIX}255
-LAN_4_BROADCAST_0=LAN_4_BROADCAST_0
-LAN_4_BROADCAST_W=${LAN_4_PREFIX}255
-LAN_4_BROADCAST_X=${LAN_4_PREFIX}127
-
 LAN_6_BROADCAST=LAN_6_BROADCAST
-LAN_6_BROADCAST_0=LAN_6_BROADCAST_0
-LAN_6_BROADCAST_W=LAN_6_BROADCAST_W
-LAN_6_BROADCAST_X=LAN_6_BROADCAST_X
 
 LAN_4_GW=${LAN_4_PREFIX}1
 LAN_6_GW=${LAN_6_PREFIX}1
@@ -104,8 +84,8 @@ LAN_4_PC2=${LAN_4_PREFIX}30
 LAN_6_PC2=${LAN_6_PREFIX}30
 LAN_4_XTRADER=${LAN_4_PREFIX}40
 LAN_6_XTRADER=${LAN_6_PREFIX}40
-LAN_4_XQUOTES=${LAN_4_PREFIX}50
-LAN_6_XQUOTES=${LAN_6_PREFIX}50
+LAN_4_TEST=${LAN_4_PREFIX}70
+LAN_6_TEST=${LAN_6_PREFIX}70
 
 # ETHERNET
 LAN_ITFC_SWITCH=50:d4:f7:48:c2:ee
@@ -132,42 +112,46 @@ itfc_rename () {
 
 itfc_rename $LAN_0 $LAN_ITFC_SPEEDYB0Y_0
 itfc_rename $LAN_1 $LAN_ITFC_SPEEDYB0Y_1
-itfc_rename $LAN_W $LAN_ITFC_SPEEDYB0Y_W
+itfc_rename $WIFI  $LAN_ITFC_SPEEDYB0Y_W
 
 insmod /xlan.ko
 
 sleep 1
 
-ip link set dev $LAN_0 mtu $LAN_MTU_X
-ip link set dev $LAN_1 mtu $LAN_MTU_X
-ip link set dev $LAN_W mtu $LAN_MTU_W
-ip link set dev $LAN_X mtu $LAN_MTU_X
+ip link set dev $LAN_0 mtu $LAN_0
+ip link set dev $LAN_1 mtu $LAN_1
+ip link set dev $LAN   mtu $LAN_MTU
+ip link set dev $WIFI  mtu $WIFI_MTU
 
 ip link set dev $LAN_0 txqueuelen 65536
 ip link set dev $LAN_1 txqueuelen 65536
-ip link set dev $LAN_W txqueuelen 65536
+ip link set dev $WIFI  txqueuelen 65536
 
-for ITFC in $LAN_0 $LAN_1 $LAN_W ; do
+for ITFC in $LAN_0 $LAN_1 ; do
 
-    : ethtool --offload $ITFC rx on
-    : ethtool --offload $ITFC tx on
-    : ethtool --offload $ITFC tx-checksum-ip-generic on
-    : ethtool --offload $ITFC tx-checksum-ipv4 on
-    : ethtool --offload $ITFC tx-checksum-ipv6 on
-    : ethtool --offload $ITFC rx-vlan-offload off
-    : ethtool --offload $ITFC tx-vlan-offload off
-    : ethtool --offload $ITFC generic-segmentation-offload off
-    : ethtool --offload $ITFC generic-receive-offload off
-    : ethtool --offload $ITFC tcp-segmentation-offload off
-    : ethtool --offload $ITFC tx-tcp-segmentation off
-    : ethtool --offload $ITFC tx-tcp6-segmentation off
+    ethtool --offload $ITFC rx off
+    ethtool --offload $ITFC tx off
+    ethtool --offload $ITFC tx-checksum-ip-generic off
+    ethtool --offload $ITFC tx-checksum-ipv4 off
+    ethtool --offload $ITFC tx-checksum-ipv6 off
+    ethtool --offload $ITFC rx-vlan-offload off
+    ethtool --offload $ITFC tx-vlan-offload off
+    ethtool --offload $ITFC generic-segmentation-offload off
+    ethtool --offload $ITFC generic-receive-offload off
+    ethtool --offload $ITFC tcp-segmentation-offload off
+    ethtool --offload $ITFC tx-tcp-segmentation off
+    ethtool --offload $ITFC tx-tcp6-segmentation off
+
+done
+
+for ITFC in $LAN_0 $LAN_1 $WIFI ; do
 
     ethtool --pause $ITFC autoneg off
     ethtool --pause $ITFC rx off
     ethtool --pause $ITFC tx off
 
-    : ethtool --coalesce $ITFC rx-usecs 2000
-    : ethtool --coalesce $ITFC tx-usecs 2000
+    ethtool --coalesce $ITFC rx-usecs 500
+    ethtool --coalesce $ITFC tx-usecs 500
 
 done
 
@@ -190,7 +174,7 @@ echo 2 > /proc/sys/net/core/dev_weight_rx_bias
 #echo 1000 > /proc/sys/net/ipv4/tcp_max_reordering
 #echo 500 > /proc/sys/net/ipv4/tcp_reordering
 
-for ITFC in default all $LAN_0 $LAN_1 $LAN_W ; do
+for ITFC in default all $LAN_0 $LAN_1 $WIFI ; do
 
     echo 1 > /proc/sys/net/ipv4/conf/$ITFC/arp_announce
     echo 1 > /proc/sys/net/ipv4/conf/$ITFC/arp_ignore # REPLY ONLY IF THE TARGET IP ADDRESS IS LOCAL ADDRESS CONFIGURED ON THE INCOMING INTERFACE TODO: O MESMO COM O IPV6?
@@ -211,56 +195,73 @@ done
 ip link set up dev $LO
 ip link set up dev $LAN_0
 ip link set up dev $LAN_1
-ip link set up dev $LAN_W
-ip link set up dev $LAN_X
+ip link set up dev $LAN
+ip link set up dev $WIFI
 
-for ITFC in $LAN_0 $LAN_1 $LAN_W ; do
+# TODO: RETIRAR A PARADA DE CHECKSUM OFFLOAD DO XLAN
+# TODO: PARA O SWITCH, VAI TER QUE COMPUTAR O CHECKSUM SIM :S
+for ITFC in $LAN_0 $LAN_1 ; do
 
-    : ethtool --offload $ITFC rx on
-    : ethtool --offload $ITFC tx on
-    : ethtool --offload $ITFC tx-checksum-ip-generic on
-    : ethtool --offload $ITFC tx-checksum-ipv4 on
-    : ethtool --offload $ITFC tx-checksum-ipv6 on
-    : ethtool --offload $ITFC rx-vlan-offload off
-    : ethtool --offload $ITFC tx-vlan-offload off
-    : ethtool --offload $ITFC generic-segmentation-offload off
-    : ethtool --offload $ITFC generic-receive-offload off
-    : ethtool --offload $ITFC tcp-segmentation-offload off
-    : ethtool --offload $ITFC tx-tcp-segmentation off
-    : ethtool --offload $ITFC tx-tcp6-segmentation off
+    ethtool --offload $ITFC rx off
+    ethtool --offload $ITFC tx off
+    ethtool --offload $ITFC tx-checksum-ip-generic off
+    ethtool --offload $ITFC tx-checksum-ipv4 off
+    ethtool --offload $ITFC tx-checksum-ipv6 off
+    ethtool --offload $ITFC rx-vlan-offload off
+    ethtool --offload $ITFC tx-vlan-offload off
+    ethtool --offload $ITFC generic-segmentation-offload off
+    ethtool --offload $ITFC generic-receive-offload off
+    ethtool --offload $ITFC tcp-segmentation-offload off
+    ethtool --offload $ITFC tx-tcp-segmentation off
+    ethtool --offload $ITFC tx-tcp6-segmentation off
+
+done
+
+for ITFC in $LAN_0 $LAN_1 $WIFI ; do
 
     ethtool --pause $ITFC autoneg off
     ethtool --pause $ITFC rx off
     ethtool --pause $ITFC tx off
 
-    : ethtool --coalesce $ITFC rx-usecs 2000
-    : ethtool --coalesce $ITFC tx-usecs 2000
+    ethtool --coalesce $ITFC rx-usecs 500
+    ethtool --coalesce $ITFC tx-usecs 500
 
 done
 
 ip -4 addr add dev $LO $LO_4
 ip -6 addr add dev $LO $LO_6
 
-ip -4 addr add noprefixroute nodad dev $LAN_0 $LAN_4_IP/$LAN_4_NETMASK_0
-ip -4 addr add noprefixroute nodad dev $LAN_W $LAN_4_IP/$LAN_4_NETMASK_W
-ip -4 addr add noprefixroute nodad dev $LAN_X $LAN_4_IP/$LAN_4_NETMASK_X
+ip -4 addr add noprefixroute nodad dev $LAN_0 $LAN_4_IP/$LAN_4_NETMASK
+ip -6 addr add noprefixroute nodad dev $LAN_0 $LAN_6_IP/$LAN_6_NETMASK
 
-ip -6 addr add noprefixroute nodad dev $LAN_0 $LAN_6_IP/$LAN_6_NETMASK_0
-ip -6 addr add noprefixroute nodad dev $LAN_W $LAN_6_IP/$LAN_6_NETMASK_W
-ip -6 addr add noprefixroute nodad dev $LAN_X $LAN_6_IP/$LAN_6_NETMASK_X
+ip -4 addr add noprefixroute nodad dev $LAN $LAN_4_IP/$LAN_4_NETMASK
+ip -6 addr add noprefixroute nodad dev $LAN $LAN_6_IP/$LAN_6_NETMASK
+
+ip -4 addr add noprefixroute nodad dev $WIFI $LAN_4_IP/$LAN_4_NETMASK
+ip -6 addr add noprefixroute nodad dev $WIFI $LAN_6_IP/$LAN_6_NETMASK
+
+ip -4 route add dev $WIFI mtu $WIFI_MTU advmss $((WIFI_MTU-20-20)) src $LAN_4_IP $LAN_4_NET
+ip -6 route add dev $WIFI mtu $WIFI_MTU advmss $((WIFI_MTU-40-20)) src $LAN_6_IP $LAN_6_NET
 
 # SWITCH
-ip -4 route add dev $LAN_0 mtu lock $LAN_MTU_0 advmss $((LAN_MTU_0-20-20)) src $LAN_4_IP $LAN_4_SWITCH
-ip -4 route add dev $LAN_W mtu lock $LAN_MTU_W advmss $((LAN_MTU_W-20-20)) src $LAN_4_IP $LAN_4_NET_W
-ip -4 route add dev $LAN_X mtu lock $LAN_MTU_X advmss $((LAN_MTU_X-20-20)) src $LAN_4_IP $LAN_4_NET_X
+#ip -4 route add dev $LAN_0 mtu lock $LAN_MTU_0 advmss $((LAN_MTU_0-20-20)) src $LAN_4_IP $LAN_4_SWITCH
+#ip -6 route add dev $LAN_0 mtu lock $LAN_MTU_0 advmss $((LAN_MTU_0-20-20)) src $LAN_6_IP $LAN_6_SWITCH
 
-ip -6 route add dev $LAN_0 mtu lock $LAN_MTU_0 advmss $((LAN_MTU_0-20-20)) src $LAN_6_IP $LAN_6_SWITCH
-ip -6 route add dev $LAN_W mtu lock $LAN_MTU_W advmss $((LAN_MTU_W-40-20)) src $LAN_6_IP $LAN_6_NET_W
-ip -6 route add dev $LAN_X mtu lock $LAN_MTU_X advmss $((LAN_MTU_X-40-20)) src $LAN_6_IP $LAN_6_NET_X
+ip -4 route add dev $LAN mtu lock $LAN_MTU advmss $((LAN_MTU-20-20)) src $LAN_4_IP $LAN_4_GW
+ip -6 route add dev $LAN mtu lock $LAN_MTU advmss $((LAN_MTU-40-20)) src $LAN_6_IP $LAN_6_GW
+
+ip -4 route add dev $LAN mtu lock $LAN_MTU advmss $((LAN_MTU-20-20)) src $LAN_4_IP $LAN_4_XTRADER
+ip -6 route add dev $LAN mtu lock $LAN_MTU advmss $((LAN_MTU-40-20)) src $LAN_6_IP $LAN_6_XTRADER
+
+ip -4 route add dev $LAN mtu lock $LAN_MTU advmss $((LAN_MTU-20-20)) src $LAN_4_IP $LAN_4_PC2
+ip -6 route add dev $LAN mtu lock $LAN_MTU advmss $((LAN_MTU-40-20)) src $LAN_6_IP $LAN_6_PC2
+
+ip -4 route add dev $LAN mtu lock $LAN_MTU advmss $((LAN_MTU-20-20)) src $LAN_4_IP $LAN_4_TEST
+ip -6 route add dev $LAN mtu lock $LAN_MTU advmss $((LAN_MTU-40-20)) src $LAN_6_IP $LAN_6_TEST
 
 # TODO: FIXME: MTU E MSS
-ip -4 route add dev $LAN_X mtu 1420 advmss $((1420-20-20)) src $LAN_4_IP default
-ip -6 route add dev $LAN_X mtu 1420 advmss $((1420-40-20)) src $LAN_6_IP default
+ip -4 route add dev $LAN mtu 1420 advmss $((1420-20-20)) src $LAN_4_IP default
+ip -6 route add dev $LAN mtu 1420 advmss $((1420-40-20)) src $LAN_6_IP default
 
 # NAS INTERFACES HOOKADAS, SO DEIXAR PASSAR ARP???
 
