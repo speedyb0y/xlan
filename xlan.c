@@ -82,7 +82,12 @@ typedef struct notifier_block notifier_block_s;
 #define IP4_O_SRC 12
 #define IP4_O_DST 16
 
-#define XLAN_NAME "lan-x"
+#if HOST < 0 || HOST >= XLAN_HOSTS_N
+#error
+#endif
+
+#define HOST 20 // THIS HOST
+#define XLAN_NAME "lan-x" // INITIAL INTERFACE NAME
 
 static net_device_s* xdev;
 static net_device_s* devs[XLAN_PORTS_N]; // PHYSICAL INTERFACES    
@@ -429,11 +434,6 @@ static notifier_block_s notifyDevs = {
 static int __init xlan_init (void) {
 
     printk("XLAN: INITIALIZING AS HOST %u PORTS %u VIRTUAL %s\n", HOST, portsQ[HOST], XLAN_NAME);
-
-    if (HOST >= XLAN_HOSTS_N) {
-        printk("XLAN: BAD HOST ID\n");
-        goto err;
-    }
 
     if (portsQ[HOST] == 0) {
         printk("XLAN: NO PORTS\n");
