@@ -118,6 +118,10 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
 
     sk_buff_s* const skb = *pskb;
 
+    // WHEN IN PROMISCUOUS MODE
+    //if (skb->pkt_type == PACKET_OTHERHOST)
+        //goto pass;
+    
     switch (skb->protocol) {
         case BE16(ETH_P_IP):
         case BE16(ETH_P_IPV6):
@@ -131,10 +135,6 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
     if (skb_linearize(skb))
         goto drop;
 
-    // WHEN IN PROMISCUOUS MODE
-    //if (skb->pkt_type == PACKET_OTHERHOST)
-        //goto pass;
-    
     // PULA O ETHERNET HEADER
     void* const ip = SKB_NETWORK(skb);
 
