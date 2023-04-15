@@ -83,7 +83,7 @@ typedef struct notifier_block notifier_block_s;
 #define IP4_O_DST 16
 
 #define HOST 20 // THIS HOST
-#define XLAN_NAME "lan-x" // INITIAL INTERFACE NAME
+#define XLAN_NAME "lan" // INITIAL INTERFACE NAME
 
 #if HOST < 0 || HOST >= XLAN_HOSTS_N
 #error
