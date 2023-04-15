@@ -87,7 +87,6 @@ typedef struct notifier_block notifier_block_s;
 
 static net_device_s* xdev;
 static net_device_s* devs[XLAN_PORTS_N]; // PHYSICAL INTERFACES    
-static uint devsN; // HOW MANY PORTS THIS HOST HAS
 static u8 portsQ[XLAN_HOSTS_N]; // HOW MANY PORTS EACH HOST HAS
 
 // MAC OF EACH PORT OF EACH HOST
@@ -245,6 +244,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xdev) {
     hash += hash >> 16;
     hash += hash >> 8;
 
+    const uint srcPortsN = portsQ[HOST];
     const uint dstPortsN = portsQ[dstHost];
 
     // CONFIRM DESTINATION HOST HAS PORTS
@@ -253,7 +253,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xdev) {
 
     const uint dstPort = hash %  dstPortsN; // CHOOSE THEIR INTERFACE
                          hash /= dstPortsN;
-    const uint srcPort = hash %  devsN; // CHOOSE MY INTERFACE
+    const uint srcPort = hash %  srcPortsN; // CHOOSE MY INTERFACE
 
     // INSERT ETHERNET HEADER
     ethhdr_s* const eth = PTR(ip) - ETH_HLEN;
@@ -382,7 +382,7 @@ static int xlan_notify_phys (struct notifier_block* const nb, const unsigned lon
     if (mac == NULL)
         goto done;
 
-    foreach (pid, devsN) {
+    foreach (pid, XLAN_PORTS_N) {
 
         if (devs[pid]) {
             if (devs[pid] == dev)
@@ -418,10 +418,20 @@ static notifier_block_s notifyDevs = {
 
 static int __init xlan_init (void) {
 
-    printk("XLAN: INITIALIZING AS HOST %u VIRTUAL %s\n", HOST, XLAN_NAME);
+    printk("XLAN: INITIALIZING AS HOST %u PORTS %u VIRTUAL %s\n", HOST, portsQ[HOST], XLAN_NAME);
 
     if (HOST >= XLAN_HOSTS_N) {
         printk("XLAN: BAD HOST ID\n");
+        goto err;
+    }
+
+    if (portsQ[HOST] == 0) {
+        printk("XLAN: NO PORTS\n");
+        goto err;
+    }
+
+    if (portsQ[HOST] >= XLAN_PORTS_N) {
+        printk("XLAN: BAD NUMBER OF PORTS\n");
         goto err;
     }
 
@@ -449,18 +459,9 @@ static int __init xlan_init (void) {
         portsQ[hid] = pid;
     }
     
-    devsN = portsQ[HOST];
-    
-    if (devsN == 0) {
-        printk("XLAN: NO PORTS\n");
-        goto err_unregister;
-    }
-
     // WILL YET DISCOVER THE PHYSICAL INTERFACES
     foreach (pid, XLAN_PORTS_N)
         devs[pid] = NULL;
-
-    printk("XLAN: HAS %u PORTS\n", devsN);
 
     // COLOCA A PARADA DE EVENTOS
     if (register_netdevice_notifier(&notifyDevs) < 0) {
@@ -486,7 +487,7 @@ static void __exit xlan_exit (void) {
     unregister_netdevice_notifier(&notifyDevs);
 
     // UNHOOK PHYSICAL INTERFACES
-    foreach (pid, devsN) {
+    foreach (pid, XLAN_PORTS_N) {
 
         net_device_s* const dev = devs[pid];
 
