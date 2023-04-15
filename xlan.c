@@ -118,10 +118,11 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
 
     sk_buff_s* const skb = *pskb;
 
-    // WHEN IN PROMISCUOUS MODE
+#if 0 // WHEN IN PROMISCUOUS MODE
     if (skb->pkt_type == PACKET_OTHERHOST)
         goto pass;
-    
+#endif
+
     switch (skb->protocol) {
         case BE16(ETH_P_IP):
         case BE16(ETH_P_IPV6):
