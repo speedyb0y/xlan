@@ -374,8 +374,11 @@ static int xlan_notify_phys (struct notifier_block* const nb, const unsigned lon
     if (dev == xdev)
         goto done;
 
-    // TODO: FILTRAR LOOPBACK
-    // TODO: FILTRAR ETHERNET
+    // FILTRAR LOOPBACK
+    if (dev->flags & IFF_LOOPBACK)
+        goto done;
+
+    // FILTRAR ETHERNET
     if (dev->addr_len != ETH_ALEN)
         goto done;
 
@@ -387,6 +390,10 @@ static int xlan_notify_phys (struct notifier_block* const nb, const unsigned lon
 
     //
     if (mac == NULL)
+        goto done;
+    
+    //
+    if (*(u32*)mac == 0)
         goto done;
 
     foreach (pid, XLAN_PORTS_N) {
