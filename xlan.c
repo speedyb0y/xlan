@@ -87,11 +87,22 @@ typedef struct notifier_block notifier_block_s;
 
 static net_device_s* xdev;
 static net_device_s* devs[XLAN_PORTS_N]; // PHYSICAL INTERFACES    
-static u8 portsQ[XLAN_HOSTS_N]; // HOW MANY PORTS EACH HOST HAS
+
+// HOW MANY PORTS EACH HOST HAS
+static const u8 portsQ [XLAN_HOSTS_N] = {
+    [ 1] = 2,
+    [ 5] = 1,
+    [10] = 2,
+    [20] = 2,
+    [30] = 1,
+    [40] = 1,
+    [70] = 1,
+};
 
 // MAC OF EACH PORT OF EACH HOST
 static const u8 macs [XLAN_HOSTS_N] [XLAN_PORTS_N] [ETH_ALEN] = {
     [ 1] = { "\x88\xC9\xB3\xB0\xF1\xEB", "\x88\xC9\xB3\xB0\xF1\xEA" },
+    [ 5] = { "\x00\x00\x00\x00\x00\x00" },
     [10] = { "\x00\x00\x00\x00\x00\x00" },
     [20] = { "\xBC\x5F\xF4\xF9\xE6\x66", "\xBC\x5F\xF4\xF9\xE6\x67" },
     [30] = { "\x00\x00\x00\x00\x00\x00" },
@@ -449,16 +460,6 @@ static int __init xlan_init (void) {
         goto err_free;
     }
 
-    // CONTA QUANTAS PORTAS TEM EM CADA HOST
-    foreach (hid, XLAN_HOSTS_N) {
-        uint pid = 0;
-        while (*(u32*)(macs[hid][pid]))
-            pid++;            
-        if (pid)
-            printk("XLAN: HOST %u HAS %u PORTS\n", hid, pid);
-        portsQ[hid] = pid;
-    }
-    
     // WILL YET DISCOVER THE PHYSICAL INTERFACES
     foreach (pid, XLAN_PORTS_N)
         devs[pid] = NULL;
