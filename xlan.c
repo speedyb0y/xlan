@@ -109,10 +109,9 @@ typedef struct xlan_s {
 #define DEV_LAN(dev) ((xlan_s*)netdev_priv(dev))
 
 //
-#define XLAN_OUI 0x2652U
+#define XLAN_OUI 0x26520000U
 
-typedef u16 eth_oui_t;
-typedef u16 eth_lid_t;
+typedef u32 eth_oui_t;
 typedef u8  eth_hid_t;
 typedef u8  eth_pid_t;
 typedef u16 eth_proto_t;
@@ -120,11 +119,9 @@ typedef u16 eth_proto_t;
 // ETHERNET HEADER
 typedef struct eth_s {
     eth_oui_t dstOUI; // XLAN_OUI
-    eth_lid_t dstLan;
     eth_hid_t dstHost;
     eth_pid_t dstPort;
     eth_oui_t srcOUI; // XLAN_OUI
-    eth_lid_t srcLan;
     eth_hid_t srcHost;
     eth_pid_t srcPort;
     eth_proto_t protocol;
@@ -149,13 +146,7 @@ static const xlan_cfg_s cfgs[] = {
     }
 };
 
-static net_device_s* lans[XLAN_LANS_N];
-
-#if 0
-#define xlan_dbg(fmt, ...) printk("XLAN: " fmt "\n", ##__VA_ARGS__)
-#else
-#define xlan_dbg(fmt, ...) ({})
-#endif
+static net_device_s* xdev;
 
 static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
 
@@ -182,46 +173,32 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
         goto pass;
 
     // VALIDATE LAN
-    if (lid >= XLAN_LANS_N) {
-        xlan_dbg("IN: lid %u >= XLAN_LANS_N", lid);
+    if (lid >= XLAN_LANS_N)
         goto drop;
-    }
 
     net_device_s* const dev = lans[lid];
     
     //
-    if (dev == NULL) {
-        xlan_dbg("IN: dev == NULL");
+    if (dev == NULL)
         goto drop;
-    }
 
     // SE A INTERFACE XLAN ESTIVER DOWN, DROP
-    if (!(dev->flags & IFF_UP)) {
-        xlan_dbg("IN: !(dev->flags & IFF_UP)");
+    if (!(dev->flags & IFF_UP))
         goto drop;    
-    }
 
     xlan_s* const lan = DEV_LAN(dev);   
 
-    // VALIDATE HOST
     // CONFIRM ITS OURS
-    if (hid != lan->hid) {
-        xlan_dbg("IN: hid %u != lan->hid %u", hid, lan->hid);
+    if (hid != HOST)
         goto drop;
-    }
 
     // VALIDATE PORT
-    if (pid >= XLAN_PORTS_N) {
-        xlan_dbg("IN: pid %u >= XLAN_PORTS_N %u", pid, XLAN_PORTS_N);
+    if (pid >= devsN)
         goto drop;
-    }
     
     // CONFIRM IT CAME ON THE PHYSICAL
-    if (skb->dev != lan->devs[pid]) {
-        xlan_dbg("IN: skb->dev %s != lan->devs[pid %u] %s",
-            skb->dev->name, pid, lan->devs[pid] ? lan->devs[pid]->name : "-");
+    if (skb->dev != devs[pid])
         goto drop;
-    }
     
     // PULA O ETHERNET HEADER
     void* const ip = PTR(eth) + ETH_SIZE;
@@ -239,9 +216,6 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
     skb->pkt_type         = PACKET_HOST;
     skb->dev              = dev;
 
-    xlan_dbg("IN: PASS: skb->dev %s skb->len %u",
-        skb->dev->name, skb->len);
-    
     return RX_HANDLER_ANOTHER;
 
 drop: // TODO: dev_kfree_skb ?
@@ -254,7 +228,7 @@ pass:
     return RX_HANDLER_PASS;
 }
 
-static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
+static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xdev) {
 
     xlan_s* const lan = DEV_LAN(dev);
 
@@ -265,10 +239,8 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
     void* const ip = SKB_NETWORK(skb);
 
     if (PTR(ip) < SKB_HEAD(skb)
-     || PTR(ip) > SKB_TAIL(skb)) {
-        xlan_dbg("OUT: ???");
+     || PTR(ip) > SKB_TAIL(skb))
         goto drop;
-     }
 
     uint dstHost;  // IDENTIFY HOST BY IP DESTINATION
     uint hsize; // MINIMUM SIZE    
@@ -338,14 +310,11 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
 
         default:
             // UNSUPORTED
-            xlan_dbg("OUT: NOT IPV4/IPV6");
             goto drop;
     }
 
-    if (skb->len < hsize) {
-        xlan_dbg("OUT: skb->len %u < hsize %u", skb->len, hsize);
+    if (skb->len < hsize)
         goto drop;
-    }
 
     hash += hash >> 32;
     hash += hash >> 16;
@@ -353,31 +322,20 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
 
     const uint dstPortsN = lan->PH[dstHost];
 
-    if (dstPortsN == 0) {
+    if (dstPortsN == 0)
         // DESTINATION HOST HAS NO PORTS
-        xlan_dbg("OUT: lan->PH[dstHost %u] == dstPortsN == 0", dstHost);
         goto drop;
-    }
-
-#if 1 // IMPOSSIVEL
-    if (lan->P == 0) {
-        xlan_dbg("OUT: lan->P == 0");
-        goto drop;
-    }
-#endif
 
     const uint dstPort = hash %  dstPortsN; // CHOOSE THEIR INTERFACE
                          hash /= dstPortsN;
-    const uint srcPort = hash %  lan->P; // CHOOSE MY INTERFACE
+    const uint srcPort = hash %  devsN; // CHOOSE MY INTERFACE
 
     // INSERT ETHERNET HEADER
     eth_s* const eth = PTR(ip) - ETH_SIZE;
 
-    if (PTR(eth) < SKB_HEAD(skb)) {
+    if (PTR(eth) < SKB_HEAD(skb))
         // SEM ESPACO PARA COLOCAR O MAC HEADER
-        xlan_dbg("OUT: PTR(eth) < SKB_HEAD(skb)");
         goto drop;
-    }
 
     eth->dstOUI   = BE16(XLAN_OUI);
     eth->dstLan   = BE16(lan->lid);
@@ -385,7 +343,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
     eth->dstPort  = dstPort;
     eth->srcOUI   = BE16(XLAN_OUI);
     eth->srcLan   = BE16(lan->lid);
-    eth->srcHost  = lan->hid;
+    eth->srcHost  = HOST;
     eth->srcPort  = srcPort;
     eth->protocol = skb->protocol;
 
@@ -399,23 +357,13 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
     skb->len              = SKB_TAIL(skb) - PTR(eth);
 
     //
-    net_device_s* const devPort = lan->devs[srcPort];
-
-    if (devPort == NULL) {
-        xlan_dbg("OUT: devPort == NULL");
-        goto drop;
-    }
+    net_device_s* const dev = devs[srcPort];
 
     // SOMENTE SE ELA ESTIVER ATIVA
-    if (!(devPort->flags & IFF_UP)) {
-        xlan_dbg("OUT: devPort %s NOT UP", devPort->name);
+    if (!(dev && dev->flags & IFF_UP))
         goto drop;
-    }
 
-    skb->dev = devPort;
-
-    xlan_dbg("OUT: PASS: skb->dev %s skb->len %u dstHost %u srcPort %u dstPort %u",
-        skb->dev->name, skb->len, dstHost, srcPort, dstPort);
+    skb->dev = dev;
 
     // -- THE FUNCTION CAN BE CALLED FROM AN INTERRUPT
     // -- WHEN CALLING THIS METHOD, INTERRUPTS MUST BE ENABLED
@@ -496,11 +444,12 @@ static int xlan_notify_phys (struct notifier_block* const nb, const unsigned lon
 
     net_device_s* dev = netdev_notifier_info_to_dev(info);
 
+    // IGNORA EVENTOS DELA MESMA
+    if (dev == xdev)
+        goto done;
+
     // TODO: FILTRAR LOOPBACK
     // TODO: FILTRAR ETHERNET
-
-    // IGNORA EVENTOS DE LANS
-    // TODO: FIXME: IDENTIFICAR SE A INTERFACE É UMA LAN
     if (dev->addr_len != ETH_ALEN)
         goto done;
 
@@ -514,44 +463,29 @@ static int xlan_notify_phys (struct notifier_block* const nb, const unsigned lon
     if (mac == NULL)
         goto done;
 
-    foreach (lid, XLAN_LANS_N) {
+    foreach (pid, devsN) {
 
-        net_device_s* const xdev = lans[lid];
-
-        if (xdev == NULL)
-            continue;
-
-        // NAO PODE CHEGAR AQUI COM EVENTOS DELA MESMA
-        if (xdev == dev) {
-            goto done;
-        }
-
-        xlan_s* const lan = DEV_LAN(xdev);
-
-        foreach (pid, lan->P) {
-
-            if (lan->devs[pid]) {
-                if (lan->devs[pid] == dev)
-                    // ESTA INTERFACE NAO PODE SER USADA NOVAMENTE NA MESMA LAN
-                    break;
-            } elif (memcmp(lan->macs[pid], mac, ETH_ALEN) == 0) {
-
-                const char* fmt;
-
-                if (rcu_dereference(dev->rx_handler) == xlan_in        
-                    || netdev_rx_handler_register(dev, xlan_in, NULL) == 0) {
-                    dev_hold((lan->devs[pid] = dev));
-                    fmt = "XLAN: LAN %u: PORT %u: HOOK PHYSICAL %s: SUCCESS\n";
-                } else
-                    // NÃO ESTÁ HOOKADA
-                    // E NÃO CONSEGUIU HOOKAR
-                    fmt = "XLAN: LAN %u: PORT %u: HOOK PHYSICAL %s: FAILED\n";
-                
-                printk(fmt, lid, pid, dev->name);
-
+        if (devs[pid]) {
+            if (devs[pid] == dev)
                 // ESTA INTERFACE NAO PODE SER USADA NOVAMENTE NA MESMA LAN
                 break;
-            }
+        } elif (memcmp(lan->macs[pid], mac, ETH_ALEN) == 0) {
+
+            const char* fmt;
+
+            if (rcu_dereference(dev->rx_handler) == xlan_in        
+                || netdev_rx_handler_register(dev, xlan_in, NULL) == 0) {
+                dev_hold((devs[pid] = dev));
+                fmt = "XLAN: PORT %u: HOOK PHYSICAL %s: SUCCESS\n";
+            } else
+                // NÃO ESTÁ HOOKADA
+                // E NÃO CONSEGUIU HOOKAR
+                fmt = "XLAN: PORT %u: HOOK PHYSICAL %s: FAILED\n";
+            
+            printk(fmt, pid, dev->name);
+
+            // ESTA INTERFACE NAO PODE SER USADA NOVAMENTE NA MESMA LAN
+            break;
         }
     }
 
@@ -568,135 +502,78 @@ static int __init xlan_init (void) {
     BUILD_BUG_ON(offsetof(eth_s, _align) != ETH_SIZE);
 
     BUILD_BUG_ON((eth_oui_t) XLAN_OUI          !=  XLAN_OUI);
-    BUILD_BUG_ON((eth_lid_t)(XLAN_LANS_N  - 1) != (XLAN_LANS_N  - 1));
     BUILD_BUG_ON((eth_hid_t)(XLAN_HOSTS_N - 1) != (XLAN_HOSTS_N - 1));
     BUILD_BUG_ON((eth_pid_t)(XLAN_PORTS_N - 1) != (XLAN_PORTS_N - 1));
 
-    BUILD_BUG_ON((typeof(DEV_LAN(*lans)->lid)) (XLAN_LANS_N  - 1) != (XLAN_LANS_N  - 1));
     BUILD_BUG_ON((typeof(DEV_LAN(*lans)->hid)) (XLAN_HOSTS_N - 1) != (XLAN_HOSTS_N - 1));
     BUILD_BUG_ON((typeof(DEV_LAN(*lans)->P))    XLAN_PORTS_N      !=  XLAN_PORTS_N);
     BUILD_BUG_ON((typeof(DEV_LAN(*lans)->PH[0]))XLAN_PORTS_N      !=  XLAN_PORTS_N);
 
-    BUILD_BUG_ON(sizeof(DEV_LAN(*lans)->macs) != sizeof(cfgs->macs[0]));
+    printk("XLAN: INITIALIZING AS HOST %u\n", HOST);
 
-    printk("XLAN: INITIALIZING WITH %u CONFIGURED LANS\n", (uint)CFGS_N);
+    const xlan_cfg_s* const cfg = &cfgs[cid];
 
-    if (CFGS_N == 0) {
-        printk("XLAN: NO LANS\n");
+    if (HOST >= XLAN_HOSTS_N) {
+        printk("XLAN: BAD HOST ID\n");
         goto err;
     }
 
-    if (CFGS_N >= XLAN_LANS_N) {
-        printk("XLAN: TOO MANY LANS\n");
+    printk("XLAN: CREATING VIRTUAL INTERFACE %s\n", cfg->name);
+
+    // CREATE THE VIRTUAL INTERFACE
+    xdev = alloc_netdev(sizeof(xlan_s), cfg->name, NET_NAME_USER, xlan_setup);
+    
+    if (dev == NULL) {
+        printk("XLAN: FAILED TO CREATE VIRTUAL\n");
         goto err;
     }
 
-    foreach (cid, CFGS_N) {
-
-        const xlan_cfg_s* const cfg = &cfgs[cid];
-
-        const uint lid = cfg->lan;
-        const uint hid = cfg->host;
-
-        printk("XLAN: LAN %u: CREATING AS HOST %u\n", lid, hid);
-
-        if (lid >= XLAN_LANS_N) {
-            printk("XLAN: LAN %u: BAD LAN ID\n", lid);
-            continue;
-        }
-
-        if (lans[lid]) {
-            printk("XLAN: LAN %u: DUPLICATE LAN ID\n", lid);
-            continue;
-        }
-
-        if (hid >= XLAN_HOSTS_N) {
-            printk("XLAN: LAN %u: BAD HOST ID %u\n", lid, hid);
-            continue;
-        }
-
-        if (cfg->name == NULL ||
-            cfg->name[0] == '\0') {
-            printk("XLAN: LAN %u: MISSING NAME\n", lid);
-            continue;
-        }
-
-        printk("XLAN: LAN %u: CREATING VIRTUAL INTERFACE %s\n", lid, cfg->name);
-
-        // CREATE THE VIRTUAL INTERFACE
-        net_device_s* const dev = alloc_netdev(sizeof(xlan_s), cfg->name, NET_NAME_USER, xlan_setup);
-        
-        if (dev == NULL) {
-            printk("XLAN: LAN %u: FAILED TO CREATE VIRTUAL\n", lid);
-            continue;
-        }
-
-        // MAKE IT VISIBLE IN THE SYSTEM
-        if (register_netdev(dev)) {
-            printk("XLAN: LAN %u: FAILED TO REGISTER VIRTUAL\n", lid);
-            goto failed_free;
-        }
-
-        xlan_s* const lan = DEV_LAN(dev);
-
-        // CONTA QUANTAS PORTAS TEM EM CADA HOST
-        foreach (hid, XLAN_HOSTS_N) {
-            uint pid = 0;
-            while (*(u32*)(cfg->macs[hid][pid]))
-                pid++;            
-            if (pid)
-                printk("XLAN: LAN %u: HOST %u HAS %u PORTS\n", lid, hid, pid);
-            lan->PH[hid] = pid;
-        }
-        
-        lan->lid = lid;
-        lan->hid = hid;
-        lan->P   = //
-        lan->PH[hid];
-
-        memcpy(lan->macs,
-               cfg->macs[hid],
-        sizeof(cfg->macs[hid]));
-        
-        if (lan->P == 0) {
-            printk("XLAN: LAN %u: NO PORTS\n", lid);
-            goto failed_free;
-        }
-
-        // WILL YET DISCOVER THE PHYSICAL INTERFACES
-        foreach (pid, XLAN_PORTS_N)
-            lan->devs[pid] = NULL;
-
-        printk("XLAN: LAN %u: HAS %u PORTS\n", lid, lan->P);
-
-        lans[lid] = dev;
-
-        continue;
-
-failed_free:
-        free_netdev(dev);        
+    // MAKE IT VISIBLE IN THE SYSTEM
+    if (register_netdev(dev)) {
+        printk("XLAN: FAILED TO REGISTER VIRTUAL\n");
+        goto err_free;
     }
 
+    // CONTA QUANTAS PORTAS TEM EM CADA HOST
+    foreach (hid, XLAN_HOSTS_N) {
+        uint pid = 0;
+        while (*(u32*)(cfg->macs[hid][pid]))
+            pid++;            
+        if (pid)
+            printk("XLAN: HOST %u HAS %u PORTS\n", hid, pid);
+        lan->PH[hid] = pid;
+    }
+    
+    devsN    = lan->PH[hid];
+
+    memcpy(lan->macs,
+            cfg->macs[hid],
+    sizeof(cfg->macs[hid]));
+    
+    if (devsN == 0) {
+        printk("XLAN: NO PORTS\n");
+        goto err_unregister;
+    }
+
+    // WILL YET DISCOVER THE PHYSICAL INTERFACES
+    foreach (pid, XLAN_PORTS_N)
+        devs[pid] = NULL;
+
+    printk("XLAN: HAS %u PORTS\n", devsN);
+        
     // COLOCA A PARADA DE EVENTOS
     if (register_netdevice_notifier(&notifyDevs) < 0) {
         printk("XLAN: FAILED TO REGISTER NETWORK DEVICES NOTIFIER\n");
-        goto err;
+        goto err_unregister;
     }
 
     return 0;
 
+err_unregister:
+    unregister_netdev(xdev);
+err_free:
+    free_netdev(xdev);
 err:
-    // CLEANUP
-    foreach (lid, XLAN_LANS_N) {
-
-        net_device_s* const dev = lans[lid];
-
-        if (dev) {
-            unregister_netdev(dev);
-            free_netdev(dev);
-        }
-    }
-
     return -1;
 }
 
@@ -707,44 +584,34 @@ static void __exit xlan_exit (void) {
     // PARA DE MONITORAR OS EVENTOS
     unregister_netdevice_notifier(&notifyDevs);
 
-    foreach (lid, XLAN_LANS_N) {
+    const xlan_s* const lan = DEV_LAN(dev);
 
-        net_device_s* const dev = lans[lid];
+    // UNHOOK PHYSICAL INTERFACES
+    foreach (pid, devsN) {
 
-        if (dev == NULL)
-            continue;
+        net_device_s* const dev = devs[pid];
 
-        printk("XLAN: LAN %u: DESTROYING\n", lid);
+        if (dev) {
 
-        const xlan_s* const lan = DEV_LAN(dev);
+            printk("XLAN: PORT %u: UNHOOKING PHYSICAL %s\n", pid, dev->name);
 
-        // UNHOOK PHYSICAL INTERFACES
-        foreach (pid, lan->P) {
+            rtnl_lock();
 
-            net_device_s* const dev = lan->devs[pid];
+            if (rcu_dereference(dev->rx_handler) == xlan_in)
+                netdev_rx_handler_unregister(dev);
 
-            if (dev) {
+            rtnl_unlock();
 
-                printk("XLAN: LAN %u: PORT %u: UNHOOKING PHYSICAL %s\n", lid, pid, dev->name);
-
-                rtnl_lock();
-
-                if (rcu_dereference(dev->rx_handler) == xlan_in)
-                    netdev_rx_handler_unregister(dev);
-
-                rtnl_unlock();
-
-                dev_put(dev);
-            }
+            dev_put(dev);
         }
-
-        printk("XLAN: LAN %u: DESTROYING VIRTUAL %s\n", lid, dev->name);
-
-        // DESTROY VIRTUAL INTERFACE
-        unregister_netdev(dev);
-
-        free_netdev(dev);
     }
+
+    printk("XLAN: DESTROYING VIRTUAL %s\n", xdev->name);
+
+    // DESTROY VIRTUAL INTERFACE
+    unregister_netdev(xdev);
+
+    free_netdev(xdev);
 }
 
 module_init(xlan_init);
