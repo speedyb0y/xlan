@@ -142,23 +142,20 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
     if (PTR(ip) < SKB_HEAD(skb)
      || PTR(ip) > SKB_TAIL(skb))
         goto drop;
-    
-    // SE A INTERFACE XLAN ESTIVER DOWN, DROP
-    if (!(xdev->flags & IFF_UP))
-        goto drop;    
-   
+
+    skb->data       = PTR(ip);
+    skb->len        = SKB_TAIL(skb) - PTR(ip);
     // NOTE: skb->network_header JA ESTA CORRETO
-    skb->mac_len    = 0;
 #ifdef NET_SKBUFF_DATA_USES_OFFSET
     skb->mac_header = skb->network_header;
 #else
     skb->mac_header = skb->network_header;
 #endif
-    skb->data       = PTR(ip);
-    skb->len        = SKB_TAIL(skb) - PTR(ip);
-    skb->dev        = xdev;
-
-    return RX_HANDLER_ANOTHER;
+    skb->mac_len    = 0;
+   
+    // SO SE A INTERFACE XLAN ESTIVER UP
+    if ((skb->dev = xdev))->flags & IFF_UP)
+        return RX_HANDLER_ANOTHER;
 
 pass:
     return RX_HANDLER_PASS;
