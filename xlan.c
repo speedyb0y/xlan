@@ -83,44 +83,29 @@ typedef struct notifier_block notifier_block_s;
 #define IP4_O_SRC 12
 #define IP4_O_DST 16
 
-typedef struct xlan_cfg_s {    
-    const char* name; // O NOME INICIAL DA INTERFACE
-    u8 lan; // LAN ID    
-    u8 host; // HOST ID
-    u8 macs // MAC OF EACH PORT OF EACH HOST
-        [XLAN_HOSTS_N]
-        [XLAN_PORTS_N]
-        [ETH_ALEN];
-} xlan_cfg_s;
-
 // TODO: USAR MASK DE PORTAS QUE POSSUI
 // TODO: USAR MASK DE PORTAS USAVEIS
 // TODO: USAR AQUELA PARADA DE BITS
 typedef struct xlan_s {    
-    u8 lid; // LAN ID    
-    u8 hid; // HOST ID
     u8 P; // HOW MANY PORTS THIS HOST HAS
     u8 PH[XLAN_HOSTS_N]; // HOW MANY PORTS EACH HOST HAS
-    net_device_s* devs[XLAN_PORTS_N]; // PHYSICAL INTERFACES    
-    u8 macs[XLAN_PORTS_N][ETH_ALEN]; // MAC OF EACH PORT
+    
 } xlan_s;
 
-static const xlan_cfg_s cfgs[] = {
-    { .name = "lan-x",
-        .lan = 0,
-        .host = 1,
-        .macs = {
-            [ 1] = { "\x88\xC9\xB3\xB0\xF1\xEB", "\x88\xC9\xB3\xB0\xF1\xEA" },
-            [10] = { "\x00\x00\x00\x00\x00\x00" },
-            [20] = { "\xBC\x5F\xF4\xF9\xE6\x66", "\xBC\x5F\xF4\xF9\xE6\x67" },
-            [30] = { "\x00\x00\x00\x00\x00\x00" },
-            [40] = { "\x00\x00\x00\x00\x00\x00" },
-            [70] = { "\x00\x00\x00\x00\x00\x00" },
-        }
-    }
-};
+#define XLAN_NAME "lan-x"
 
 static net_device_s* xdev;
+static net_device_s* devs[XLAN_PORTS_N]; // PHYSICAL INTERFACES    
+
+// MAC OF EACH PORT OF EACH HOST
+static const u8 macs [XLAN_HOSTS_N] [XLAN_PORTS_N] [ETH_ALEN] = {
+    [ 1] = { "\x88\xC9\xB3\xB0\xF1\xEB", "\x88\xC9\xB3\xB0\xF1\xEA" },
+    [10] = { "\x00\x00\x00\x00\x00\x00" },
+    [20] = { "\xBC\x5F\xF4\xF9\xE6\x66", "\xBC\x5F\xF4\xF9\xE6\x67" },
+    [30] = { "\x00\x00\x00\x00\x00\x00" },
+    [40] = { "\x00\x00\x00\x00\x00\x00" },
+    [70] = { "\x00\x00\x00\x00\x00\x00" },
+};
 
 static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
 
@@ -267,7 +252,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xdev) {
     hash += hash >> 16;
     hash += hash >> 8;
 
-    const uint dstPortsN = lan->PH[dstHost];
+    const uint dstPortsN = portsQ[dstHost];
 
     if (dstPortsN == 0)
         // DESTINATION HOST HAS NO PORTS
@@ -410,7 +395,7 @@ static int xlan_notify_phys (struct notifier_block* const nb, const unsigned lon
             if (devs[pid] == dev)
                 // ESTA INTERFACE NAO PODE SER USADA NOVAMENTE NA MESMA LAN
                 break;
-        } elif (memcmp(lan->macs[pid], mac, ETH_ALEN) == 0) {
+        } elif (memcmp(macs[HOST][pid], mac, ETH_ALEN) == 0) {
 
             const char* fmt;
 
@@ -440,19 +425,15 @@ static notifier_block_s notifyDevs = {
 
 static int __init xlan_init (void) {
 
-    printk("XLAN: INITIALIZING AS HOST %u\n", HOST);
-
-    const xlan_cfg_s* const cfg = &cfgs[cid];
+    printk("XLAN: INITIALIZING AS HOST %u VIRTUAL %s\n", HOST, XLAN_NAME);
 
     if (HOST >= XLAN_HOSTS_N) {
         printk("XLAN: BAD HOST ID\n");
         goto err;
     }
 
-    printk("XLAN: CREATING VIRTUAL INTERFACE %s\n", cfg->name);
-
     // CREATE THE VIRTUAL INTERFACE
-    xdev = alloc_netdev(sizeof(xlan_s), cfg->name, NET_NAME_USER, xlan_setup);
+    xdev = alloc_netdev(0, XLAN_NAME, NET_NAME_USER, xlan_setup);
     
     if (xdev == NULL) {
         printk("XLAN: FAILED TO CREATE VIRTUAL\n");
@@ -468,14 +449,14 @@ static int __init xlan_init (void) {
     // CONTA QUANTAS PORTAS TEM EM CADA HOST
     foreach (hid, XLAN_HOSTS_N) {
         uint pid = 0;
-        while (*(u32*)(cfg->macs[hid][pid]))
+        while (*(u32*)(macs[hid][pid]))
             pid++;            
         if (pid)
             printk("XLAN: HOST %u HAS %u PORTS\n", hid, pid);
-        lan->PH[hid] = pid;
+        portsQ[hid] = pid;
     }
     
-    devsN = lan->PH[hid];
+    devsN = portsQ[HOST];
     
     if (devsN == 0) {
         printk("XLAN: NO PORTS\n");
@@ -487,9 +468,6 @@ static int __init xlan_init (void) {
         devs[pid] = NULL;
 
     printk("XLAN: HAS %u PORTS\n", devsN);
-
-    //
-    memcpy(lan->macs, cfg->macs[hid], sizeof(cfg->macs[hid]));
 
     // COLOCA A PARADA DE EVENTOS
     if (register_netdevice_notifier(&notifyDevs) < 0) {
@@ -534,7 +512,7 @@ static void __exit xlan_exit (void) {
         }
     }
 
-    printk("XLAN: DESTROYING VIRTUAL %s\n", xdev->name);
+    printk("XLAN: DESTROYING VIRTUAL\n");
 
     // DESTROY VIRTUAL INTERFACE
     unregister_netdev(xdev);
