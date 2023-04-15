@@ -156,7 +156,7 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
     skb->mac_len    = 0;
    
     // SO SE A INTERFACE XLAN ESTIVER UP
-    if ((skb->dev = xdev))->flags & IFF_UP)
+    if ((skb->dev = xdev)->flags & IFF_UP)
         return RX_HANDLER_ANOTHER;
 
 pass:
