@@ -182,15 +182,15 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
         goto drop;    
    
     // NOTE: skb->network_header JA ESTA CORRETO
-    skb->mac_len          = 0;
+    skb->mac_len    = 0;
 #ifdef NET_SKBUFF_DATA_USES_OFFSET
-    skb->mac_header       = skb->network_header;
+    skb->mac_header = skb->network_header;
 #else
-    skb->mac_header       = skb->network_header;
+    skb->mac_header = skb->network_header;
 #endif
-    skb->data             = PTR(ip);
-    skb->len              = SKB_TAIL(skb) - PTR(ip);
-    skb->dev              = xdev;
+    skb->data       = PTR(ip);
+    skb->len        = SKB_TAIL(skb) - PTR(ip);
+    skb->dev        = xdev;
 
     return RX_HANDLER_ANOTHER;
 
