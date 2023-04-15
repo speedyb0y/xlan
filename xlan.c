@@ -118,11 +118,6 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
 
     sk_buff_s* const skb = *pskb;
 
-#if 0 // WHEN IN PROMISCUOUS MODE
-    if (skb->pkt_type == PACKET_OTHERHOST)
-        goto pass;
-#endif
-
     switch (skb->protocol) {
         case BE16(ETH_P_IP):
         case BE16(ETH_P_IPV6):
@@ -158,9 +153,6 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
     // SO SE A INTERFACE XLAN ESTIVER UP
     if ((skb->dev = xdev)->flags & IFF_UP)
         return RX_HANDLER_ANOTHER;
-
-pass:
-    return RX_HANDLER_PASS;
 
 drop: // TODO: dev_kfree_skb ?
 
