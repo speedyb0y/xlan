@@ -154,6 +154,10 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
 
     if (skb_linearize(skb))
         goto pass;
+
+    // WHEN IN PROMISCUOUS MODE
+    //if (skb->pkt_type == PACKET_OTHERHOST)
+        //goto pass;
     
     eth_s* const eth = SKB_MAC(skb);
 
@@ -163,69 +167,35 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
         // e aí faz ou não kfree_skb()?
         goto pass;
     
-    const uint oui = BE16(eth->dstOUI);
-    const uint lid = BE16(eth->dstLan);
-    const uint hid =      eth->dstHost;
-    const uint pid =      eth->dstPort;
-
-    // CONFIRM ITS XLAN
-    if (oui != XLAN_OUI)
-        goto pass;
-
-    // VALIDATE LAN
-    if (lid >= XLAN_LANS_N)
-        goto drop;
-
-    net_device_s* const dev = lans[lid];
-    
-    //
-    if (dev == NULL)
-        goto drop;
-
     // SE A INTERFACE XLAN ESTIVER DOWN, DROP
-    if (!(dev->flags & IFF_UP))
+    if (!(xdev->flags & IFF_UP))
         goto drop;    
-
-    xlan_s* const lan = DEV_LAN(dev);   
-
-    // CONFIRM ITS OURS
-    if (hid != HOST)
-        goto drop;
-
-    // VALIDATE PORT
-    if (pid >= devsN)
-        goto drop;
-    
-    // CONFIRM IT CAME ON THE PHYSICAL
-    if (skb->dev != devs[pid])
-        goto drop;
-    
+   
     // PULA O ETHERNET HEADER
     void* const ip = PTR(eth) + ETH_SIZE;
 
+    // NOTE: skb->network_header JA ESTA CORRETO
+
     skb->mac_len          = 0;
-    skb->data             = PTR(ip);
 #ifdef NET_SKBUFF_DATA_USES_OFFSET
-    skb->mac_header       = PTR(ip) - SKB_HEAD(skb);
-    skb->network_header   = PTR(ip) - SKB_HEAD(skb);
+    skb->mac_header       = skb->network_header;
 #else
-    skb->mac_header       = PTR(ip);
-    skb->network_header   = PTR(ip);
+    skb->mac_header       = skb->network_header;
 #endif
+    skb->data             = PTR(ip);
     skb->len              = SKB_TAIL(skb) - PTR(ip);
-    skb->pkt_type         = PACKET_HOST;
-    skb->dev              = dev;
+    skb->dev              = xdev;
 
     return RX_HANDLER_ANOTHER;
 
+pass:
+    return RX_HANDLER_PASS;
+
 drop: // TODO: dev_kfree_skb ?
-#if 0
+
     kfree_skb(skb);
 
     return RX_HANDLER_CONSUMED;
-#endif
-pass:
-    return RX_HANDLER_PASS;
 }
 
 static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xdev) {
@@ -338,11 +308,9 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xdev) {
         goto drop;
 
     eth->dstOUI   = BE16(XLAN_OUI);
-    eth->dstLan   = BE16(lan->lid);
     eth->dstHost  = dstHost;
     eth->dstPort  = dstPort;
     eth->srcOUI   = BE16(XLAN_OUI);
-    eth->srcLan   = BE16(lan->lid);
     eth->srcHost  = HOST;
     eth->srcPort  = srcPort;
     eth->protocol = skb->protocol;
