@@ -82,12 +82,12 @@ typedef struct notifier_block notifier_block_s;
 #define IP4_O_SRC 12
 #define IP4_O_DST 16
 
+#define HOST 20 // THIS HOST
+#define XLAN_NAME "lan-x" // INITIAL INTERFACE NAME
+
 #if HOST < 0 || HOST >= XLAN_HOSTS_N
 #error
 #endif
-
-#define HOST 20 // THIS HOST
-#define XLAN_NAME "lan-x" // INITIAL INTERFACE NAME
 
 static net_device_s* xdev;
 static net_device_s* devs[XLAN_PORTS_N]; // PHYSICAL INTERFACES    
