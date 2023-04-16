@@ -63,92 +63,38 @@ typedef struct notifier_block notifier_block_s;
 #define UDP_SIZE  8
 #define TCP_SIZE 20
 
-#define XLAN_HOSTS_N 128 // HOW MANY HOSTS EXIST
-#define XLAN_PORTS_N 4 // HOW MANY PORTS A HOST CAN HAVE
-
-#define IP4_NET       0xC0A80000U
-#define IP4_MASK_NET  0xFFFFFF00U
-#define IP4_MASK_HOST 0x000000FFU
-
-#define IP6_NET       0x00000000622500FCULL // TODO: BE64()
-            
-#define IP6_O_PROTO  5
-#define IP6_O_SRC1   8
-#define IP6_O_SRC2  16
-#define IP6_O_DST1  24
-#define IP6_O_DST2  32
-            
-#define IP4_O_PROTO 9
-#define IP4_O_SRC 12
-#define IP4_O_DST 16
-
-#define HOST 20 // THIS HOST
-#define XLAN_NAME "lan" // INITIAL INTERFACE NAME
-
-#if HOST < 0 || HOST >= XLAN_HOSTS_N
-#error
-#endif
-
 static net_device_s* xdev;
 static net_device_s* devs[XLAN_PORTS_N]; // PHYSICAL INTERFACES    
 
-// HOW MANY PORTS EACH HOST HAS
-static const u8 portsQ [XLAN_HOSTS_N] = {
-    [ 1] = 2,
-    [ 5] = 1,
-    [10] = 2,
-    [20] = 2,
-    [30] = 1,
-    [40] = 1,
-    [70] = 1,
-};
-
-// MAC OF EACH PORT OF EACH HOST
-static const u8 macs [XLAN_HOSTS_N] [XLAN_PORTS_N] [ETH_ALEN] = {
-    [ 1] = { "\x88\xC9\xB3\xB0\xF1\xEB", "\x88\xC9\xB3\xB0\xF1\xEA" },
-    [ 5] = { "\x50\xD4\xF7\x48\xC2\xEE" },
-    [10] = { "\x00\x00\x00\x00\x00\x00" },
-    [20] = { "\xBC\x5F\xF4\xF9\xE6\x66", "\xBC\x5F\xF4\xF9\xE6\x67" },
-    [30] = { "\x00\x00\x00\x00\x00\x00" },
-    [40] = { "\x00\x00\x00\x00\x00\x00" },
-    [70] = { "\x00\x00\x00\x00\x00\x00" },
-};
-
-static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
+static rx_handler_result_t xisp_in (sk_buff_s** const pskb) {
 
     sk_buff_s* const skb = *pskb;
 
-    switch (skb->protocol) {
-        case BE16(ETH_P_IP):
-        case BE16(ETH_P_IPV6):
-            break;
-        case BE16(ETH_P_ARP):
-            goto drop;
-        default:
-            goto drop;
-    }
+    if (skb->protocol != ETH_P_8021Q)
+        goto pass;
 
-#if 0
     if (skb_linearize(skb))
         goto drop;
 
     // PULA O ETHERNET HEADER
-    void* const ip = SKB_NETWORK(skb);
+    void* const ip = SKB_MAC(skb);
 
     if (PTR(ip) < SKB_HEAD(skb)
      || PTR(ip) > SKB_TAIL(skb))
         goto drop;
 
+    memmove(ip + 2, ip, 12);
+
     skb->data       = PTR(ip);
     skb->len        = SKB_TAIL(skb) - PTR(ip);
-#endif
     // NOTE: skb->network_header JA ESTA CORRETO
 #ifdef NET_SKBUFF_DATA_USES_OFFSET
-    skb->mac_header = skb->network_header;
+    skb->mac_header = ;
 #else
     skb->mac_header = skb->network_header;
 #endif
-    skb->mac_len    = 0;
+    skb->network_header = skb->mac_header;
+    skb->mac_len    = ETH_HLEN;
    
     // SO SE A INTERFACE XLAN ESTIVER UP
     if ((skb->dev = xdev)->flags & IFF_UP)
@@ -161,7 +107,7 @@ drop: // TODO: dev_kfree_skb ?
     return RX_HANDLER_CONSUMED;
 }
 
-static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xdev) {
+static netdev_tx_t xisp_out (sk_buff_s* const skb, net_device_s* const xdev) {
 
     if (skb_linearize(skb))
         // NON LINEAR
@@ -173,83 +119,6 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xdev) {
      || PTR(ip) > SKB_TAIL(skb))
         goto drop;
 
-    uint dstHost;  // IDENTIFY HOST BY IP DESTINATION
-    uint hsize; // MINIMUM SIZE    
-    uintll hash; // COMPUTE HASH    
-
-    // IP VERSION
-    switch (*(u8*)ip >> 4) {
-
-        case 4: // TODO: VER DENTRO DAS MENSAGENS ICMP E GERAR O MESMO HASH DESSES AQUI
-
-            dstHost = BE32(*(u32*)(ip + IP4_O_DST));
-
-            if ((dstHost & IP4_MASK_NET) == IP4_NET)
-                dstHost &= IP4_MASK_HOST;
-            else // GW
-                dstHost = 1;
-            
-            // IP PROTOCOL
-            switch ((hash = *(u8*)(ip + IP4_O_PROTO))) {
-                case IPPROTO_TCP:
-                case IPPROTO_UDP:
-                case IPPROTO_UDPLITE:
-                case IPPROTO_SCTP:
-                case IPPROTO_DCCP:
-                    hash += *(u64*)(ip + IP4_O_SRC); // SRC ADDR, DST ADDR
-                    hash += *(u32*)(ip + IP4_SIZE); // SRC PORT, DST PORT
-                    hsize = IP4_SIZE + UDP_SIZE;
-                    break;
-                default:
-                    hash += *(u64*)(ip + IP4_O_SRC); // SRC ADDR, DST ADDR
-                    hsize = IP4_SIZE;
-            }
-
-            break;
-
-        case 6:
-
-            if (*(u64*)(ip + IP6_O_DST1) == IP6_NET) {
-                dstHost = *(u8*)(ip + IP6_SIZE - 1);
-                dstHost = (dstHost >> 4)*10 + (dstHost & 0xF);
-            } else // GW
-                dstHost = 1;
-
-            // IP PROTOCOL
-            switch ((hash = *(u8*)(ip + IP6_O_PROTO))) {
-                case IPPROTO_TCP:
-                case IPPROTO_UDP:
-                case IPPROTO_UDPLITE:
-                case IPPROTO_SCTP: // TODO: CONSIDER IPV6 FLOW?
-                case IPPROTO_DCCP:
-                    hash += *(u64*)(ip + IP6_O_SRC1); // SRC ADDR
-                    hash += *(u64*)(ip + IP6_O_SRC2); // SRC ADDR
-                    hash += *(u64*)(ip + IP6_O_DST1); // DST ADDR
-                    hash += *(u64*)(ip + IP6_O_DST2); // DST ADDR
-                    hash += *(u32*)(ip + IP6_SIZE); // SRC PORT, DST PORT
-                    hsize = IP6_SIZE + UDP_SIZE;
-                    break;
-                default:
-                    hash += *(u64*)(ip + IP6_O_SRC1); // SRC ADDR
-                    hash += *(u64*)(ip + IP6_O_SRC2); // SRC ADDR
-                    hash += *(u64*)(ip + IP6_O_DST1); // DST ADDR
-                    hash += *(u64*)(ip + IP6_O_DST2); // DST ADDR
-                    hsize = IP6_SIZE;
-            }
-
-            break;
-
-        default:
-            // UNSUPORTED
-            goto drop;
-    }
-
-    if (skb->len < hsize)
-        goto drop;
-
-    hash += hash >> 32;
-    hash += hash >> 16;
-    hash += hash >> 8;
 
     const uint srcPortsN = portsQ[HOST];
     const uint dstPortsN = portsQ[dstHost];
@@ -304,32 +173,32 @@ drop:
     return NETDEV_TX_OK;
 }
 
-static int xlan_up (net_device_s* const xdev) {
+static int xisp_up (net_device_s* const xdev) {
 
     printk("XLAN: UP\n");
 
     return 0;
 }
 
-static int xlan_down (net_device_s* const xdev) {
+static int xisp_down (net_device_s* const xdev) {
 
     printk("XLAN: DOWN\n");
 
     return 0;
 }
 
-static const net_device_ops_s xlanDevOps = {
+static const net_device_ops_s xispDevOps = {
     .ndo_init             =  NULL,
-    .ndo_open             =  xlan_up,
-    .ndo_stop             =  xlan_down,
-    .ndo_start_xmit       =  xlan_out,
+    .ndo_open             =  xisp_up,
+    .ndo_stop             =  xisp_down,
+    .ndo_start_xmit       =  xisp_out,
     .ndo_set_mac_address  =  NULL,
     // TODO: SET MTU - NAO EH PARA SETAR AQUI E SIM NO ROUTE
 };
 
-static void xlan_setup (net_device_s* const dev) {
+static void xisp_setup (net_device_s* const dev) {
 
-    dev->netdev_ops      = &xlanDevOps;
+    dev->netdev_ops      = &xispDevOps;
     dev->header_ops      = NULL;
     dev->type            = ARPHRD_NONE;
     dev->addr_len        = 0;
@@ -359,7 +228,7 @@ static void xlan_setup (net_device_s* const dev) {
         ;
 }
 
-static int xlan_notify_phys (struct notifier_block* const nb, const unsigned long event, void* const info) {
+static int xisp_notify_phys (struct notifier_block* const nb, const unsigned long event, void* const info) {
 
     // ASSERT: rtnl_is_locked()
 
@@ -371,7 +240,10 @@ static int xlan_notify_phys (struct notifier_block* const nb, const unsigned lon
     net_device_s* dev = netdev_notifier_info_to_dev(info);
 
     // IGNORA EVENTOS DELA MESMA
-    if (dev == xdev)
+    if (dev == isp1v
+     || dev == isp2v
+     || dev == isp1
+     || dev == isp2)
         goto done;
 
     // FILTRAR LOOPBACK
@@ -396,28 +268,12 @@ static int xlan_notify_phys (struct notifier_block* const nb, const unsigned lon
     if (*(u32*)mac == 0)
         goto done;
 
-    foreach (pid, XLAN_PORTS_N) {
-
-        if (devs[pid]) {
-            if (devs[pid] == dev)
-                // ESTA INTERFACE NAO PODE SER USADA NOVAMENTE
-                break;
-        } elif (memcmp(macs[HOST][pid], mac, ETH_ALEN) == 0) {
-
-            const char* fmt;
-
-            if (netdev_rx_handler_register(dev, xlan_in, NULL) == 0) {
-                dev_hold((devs[pid] = dev));
-                fmt = "XLAN: PORT %u: HOOK PHYSICAL %s: SUCCESS\n";
-            } else
-                // JÁ ESTÁ HOOKADA / NÃO CONSEGUIU HOOKAR
-                fmt = "XLAN: PORT %u: HOOK PHYSICAL %s: FAILED\n";
-            
-            printk(fmt, pid, dev->name);
-
-            // ESTA INTERFACE NAO PODE SER USADA NOVAMENTE NA MESMA LAN
-            break;
-        }
+    if (isp1 == NULL && memcmp("\x00\x00\x00\x00\x00\x01", mac, ETH_ALEN) == 0) {
+        if (netdev_rx_handler_register(dev, xisp_in, NULL) == 0)
+            dev_hold((isp1 = dev));
+    } elif (isp2 == NULL && memcmp("\x00\x00\x00\x00\x00\x02", mac, ETH_ALEN) == 0) {
+        if (netdev_rx_handler_register(dev, xisp_in, NULL) == 0)
+            dev_hold((isp2 = dev));
     }
 
 done:
@@ -425,58 +281,41 @@ done:
 }
 
 static notifier_block_s notifyDevs = {
-    .notifier_call = xlan_notify_phys
+    .notifier_call = xisp_notify_phys
 };
 
-static int __init xlan_init (void) {
+static int __init xisp_init (void) {
 
-    printk("XLAN: INITIALIZING AS HOST %u PORTS %u VIRTUAL %s\n", HOST, portsQ[HOST], XLAN_NAME);
-
-    if (portsQ[HOST] == 0) {
-        printk("XLAN: NO PORTS\n");
-        goto err;
-    }
-
-    if (portsQ[HOST] >= XLAN_PORTS_N) {
-        printk("XLAN: BAD NUMBER OF PORTS\n");
-        goto err;
-    }
-
-    // CREATE THE VIRTUAL INTERFACE
-    xdev = alloc_netdev(0, XLAN_NAME, NET_NAME_USER, xlan_setup);
-    
-    if (xdev == NULL) {
-        printk("XLAN: FAILED TO CREATE VIRTUAL\n");
-        goto err;
-    }
-
-    // MAKE IT VISIBLE IN THE SYSTEM
-    if (register_netdev(xdev)) {
-        printk("XLAN: FAILED TO REGISTER VIRTUAL\n");
-        goto err_free;
-    }
+    printk("XLAN: INIT\n");
 
     // WILL YET DISCOVER THE PHYSICAL INTERFACES
-    foreach (pid, XLAN_PORTS_N)
-        devs[pid] = NULL;
+    isp1 = NULL;
+    isp2 = NULL;
+
+    // CREATE THE VIRTUAL INTERFACE
+    isp1v = alloc_netdev(0, "isp-1-v", NET_NAME_USER, xisp_setup);
+    isp2v = alloc_netdev(0, "isp-2-v", NET_NAME_USER, xisp_setup);
+
+    // MAKE IT VISIBLE IN THE SYSTEM
+    register_netdev(isp1v);
+    register_netdev(isp2v);
 
     // COLOCA A PARADA DE EVENTOS
-    if (register_netdevice_notifier(&notifyDevs) < 0) {
-        printk("XLAN: FAILED TO REGISTER NETWORK DEVICES NOTIFIER\n");
-        goto err_unregister;
-    }
+    if (register_netdevice_notifier(&notifyDevs) >= 0)
+        return 0;
 
-    return 0;
+    printk("XLAN: FAILED TO REGISTER NETWORK DEVICES NOTIFIER\n");
 
-err_unregister:
-    unregister_netdev(xdev);
-err_free:
-    free_netdev(xdev);
-err:
+    unregister_netdev(isp1v);
+    unregister_netdev(isp2v);
+
+    free_netdev(isp1v);
+    free_netdev(isp2v);
+
     return -1;
 }
 
-static void __exit xlan_exit (void) {
+static void __exit xisp_exit (void) {
 
     printk("XLAN: EXIT\n");
 
@@ -484,37 +323,28 @@ static void __exit xlan_exit (void) {
     unregister_netdevice_notifier(&notifyDevs);
 
     // UNHOOK PHYSICAL INTERFACES
-    foreach (pid, XLAN_PORTS_N) {
+    rtnl_lock();
 
-        net_device_s* const dev = devs[pid];
+    if (isp1v) netdev_rx_handler_unregister(isp1v);
+    if (isp2v) netdev_rx_handler_unregister(isp2v);
 
-        if (dev) {
+    rtnl_unlock();
 
-            printk("XLAN: PORT %u: UNHOOKING PHYSICAL %s\n", pid, dev->name);
-
-            rtnl_lock();
-
-            if (rcu_dereference(dev->rx_handler) == xlan_in)
-                netdev_rx_handler_unregister(dev);
-
-            rtnl_unlock();
-
-            dev_put(dev);
-        }
-    }
-
-    printk("XLAN: DESTROYING VIRTUAL\n");
+    if (isp1v) dev_put(isp1v);
+    if (isp2v) dev_put(isp2v);
 
     // DESTROY VIRTUAL INTERFACE
-    unregister_netdev(xdev);
+    unregister_netdev(isp1v);
+    unregister_netdev(isp2v);
 
-    free_netdev(xdev);
+    free_netdev(isp1v);
+    free_netdev(isp2v);
 }
 
-module_init(xlan_init);
-module_exit(xlan_exit);
+module_init(xisp_init);
+module_exit(xisp_exit);
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("speedyb0y");
-MODULE_DESCRIPTION("XLAN");
+MODULE_DESCRIPTION("XISP");
 MODULE_VERSION("0.1");
