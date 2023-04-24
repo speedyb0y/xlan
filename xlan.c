@@ -130,24 +130,49 @@ static netdev_tx_t xnic_out (sk_buff_s* const skb, net_device_s* const xdev) {
         goto drop;
 
     // INSERT ETHERNET HEADER
-    void* const eth = SKB_NETWORK(skb) - ETH_HLEN;
+    u16* const eth = SKB_NETWORK(skb) - ETH_HLEN;
 
     // CONFIRMA ESPACO
     if (PTR(eth) < SKB_HEAD(skb)
      || PTR(eth) > SKB_TAIL(skb))
         goto drop;
 
-    uint v; // IP VERSION
+    // BUILD HEADER
+#if IS_SPEEDYB0Y
+    eth[0] = 0x0000;
+    eth[1] = 0xAAAA;
+    eth[2] = 0xAAAA;
+    eth[3] = 0x0000;
+    eth[4] = 0xBBBB;
+    eth[5] = 0xBBBB;
+#else
+    eth[0] = 0x0000;
+    eth[1] = 0xBBBB;
+    eth[2] = 0xBBBB;
+    eth[3] = 0x0000;
+    eth[4] = 0xAAAA;
+    eth[5] = 0xAAAA;
+#endif
+    eth[6] = skb->protocol;
+
+    // UPDATE SKB
+    skb->data       = PTR(eth);
+#ifdef NET_SKBUFF_DATA_USES_OFFSET
+    skb->mac_header = PTR(eth) - SKB_HEAD(skb);
+#else
+    skb->mac_header = PTR(eth);
+#endif
+    skb->len        = SKB_TAIL(skb) - PTR(eth);
+    skb->mac_len    = ETH_HLEN;
+
     uint p; // PORT
 
     if (skb->protocol == BE16(ETH_P_IP) {
-
-        v = 0;
+        
         p = 0; // TODO: COMPUTE THE HASH
 
     } else {
 
-        v = 1;
         p = 0;
     }
 
@@ -158,27 +183,6 @@ static netdev_tx_t xnic_out (sk_buff_s* const skb, net_device_s* const xdev) {
         counter++;
 
     p = current;
-
-    memcpy(eth, v ?
-#if IS_SPEEDYB0Y
-            "\x00\x00\xAA\xAA\xAA\xAA" "\x00\x00\xBB\xBB\xBB\xBB" "\x08\x00" :
-            "\x00\x00\xAA\xAA\xAA\xAA" "\x00\x00\xBB\xBB\xBB\xBB" "\x86\xDD"
-#else
-            "\x00\x00\xBB\xBB\xBB\xBB" "\x00\x00\xAA\xAA\xAA\xAA" "\x08\x00" :
-            "\x00\x00\xBB\xBB\xBB\xBB" "\x00\x00\xAA\xAA\xAA\xAA" "\x86\xDD"
-#endif
-            ,
-        ETH_ALEN
-    );
-
-    skb->data       = PTR(eth);
-#ifdef NET_SKBUFF_DATA_USES_OFFSET
-    skb->mac_header = PTR(eth) - SKB_HEAD(skb);
-#else
-    skb->mac_header = PTR(eth);
-#endif
-    skb->len        = SKB_TAIL(skb) - PTR(eth);
-    skb->mac_len    = ETH_HLEN;
 
     //
     net_device_s* x = phys[ p];
