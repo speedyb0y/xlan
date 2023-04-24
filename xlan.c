@@ -168,10 +168,11 @@ static netdev_tx_t xnic_out (sk_buff_s* const skb, net_device_s* const xdev) {
     skb->len        = SKB_TAIL(skb) - PTR(eth);
     skb->mac_len    = ETH_HLEN;
 
-    // SOMENTE SE ELA ESTIVER ATIVA
+    //
     net_device_s* x = phys[ p];
     net_device_s* y = phys[!p];
 
+    // SOMENTE SE ELA ESTIVER ATIVA
     if (!(x && x->flags & IFF_UP)) {
         if (!(y && y->flags & IFF_UP))
             goto drop;
