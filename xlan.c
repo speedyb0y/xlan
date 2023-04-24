@@ -118,6 +118,9 @@ drop: // TODO: dev_kfree_skb ?
     return RX_HANDLER_CONSUMED;
 }
 
+static uint current = 0;
+static uint counter = 0;
+
 static netdev_tx_t xnic_out (sk_buff_s* const skb, net_device_s* const xdev) {
 
     if (skb_linearize(skb))
@@ -149,13 +152,21 @@ static netdev_tx_t xnic_out (sk_buff_s* const skb, net_device_s* const xdev) {
     if (skb->protocol == BE16(ETH_P_IP) {
 
         v = 0;
-        p = 0;
+        p = 0; // TODO: COMPUTE THE HASH
 
     } else {
 
         v = 1;
         p = 0;
     }
+
+    if (counter >= 500) {
+        counter  = 0;
+        current ^= 1;
+    } else
+        counter++;
+
+    p = current;
 
     memcpy(eth, hdrs[v][p], ETH_ALEN);
 
