@@ -26,9 +26,7 @@ typedef unsigned long long int uintll;
 typedef struct sk_buff sk_buff_s;
 typedef struct net_device net_device_s;
 typedef struct net net_s;
-typedef struct header_ops header_ops_s;
 typedef struct net_device_ops net_device_ops_s;
-typedef struct ethhdr ethhdr_s;
 typedef struct notifier_block notifier_block_s;
 
 #define SKB_HEAD(skb) PTR((skb)->head)
@@ -80,9 +78,8 @@ typedef struct notifier_block notifier_block_s;
 #define MAC_B_DST MAC_S_B
 #endif
 
-static net_device_s* devX; // VIRTUAL INTERFACE
-static net_device_s* devA; // PHYSICAL INTERFACES    
-static net_device_s* devB;
+static net_device_s* virt; // VIRTUAL INTERFACE
+static net_device_s* phys[2]; // PHYSICAL INTERFACES    
 
 static rx_handler_result_t xnic_in (sk_buff_s** const pskb) {
 
@@ -111,7 +108,7 @@ static rx_handler_result_t xnic_in (sk_buff_s** const pskb) {
     skb->mac_len        = 0;
    
     // SO SE A INTERFACE XNIC ESTIVER UP
-    if ((skb->dev = devX)->flags & IFF_UP)
+    if ((skb->dev = virt)->flags & IFF_UP)
         return RX_HANDLER_ANOTHER;
 
 drop: // TODO: dev_kfree_skb ?
@@ -127,42 +124,48 @@ static netdev_tx_t xnic_out (sk_buff_s* const skb, net_device_s* const xdev) {
         // NON LINEAR
         goto drop;
 
-    void* const ip = SKB_NETWORK(skb);
-
-    if (PTR(ip) < SKB_HEAD(skb)
-     || PTR(ip) > SKB_TAIL(skb))
-        goto drop;
-
-
-    const uint srcPortsN = portsQ[HOST];
-    const uint dstPortsN = portsQ[dstHost];
-
-    // CONFIRM DESTINATION HOST HAS PORTS
-    if (dstPortsN == 0)
-        goto drop;
-
-    const uint dstPort = hash %  dstPortsN; // CHOOSE THEIR INTERFACE
-                         hash /= dstPortsN;
-    const uint srcPort = hash %  srcPortsN; // CHOOSE MY INTERFACE
-
     // INSERT ETHERNET HEADER
-    ethhdr_s* const eth = PTR(ip) - ETH_HLEN;
+    void* const eth = SKB_NETWORK(skb) - ETH_HLEN;
 
     // CONFIRMA ESPACO
-    if (PTR(eth) < SKB_HEAD(skb))
+    if (PTR(eth) < SKB_HEAD(skb)
+     || PTR(eth) > SKB_TAIL(skb))
         goto drop;
 
-    memcpy(eth->h_dest,   macs[dstHost][dstPort], ETH_ALEN);
-    memcpy(eth->h_source, macs[HOST]   [srcPort], ETH_ALEN);
-           eth->h_proto = skb->protocol;
+    // hdrs[v][port]
+    static const u8 hdrs[2][2][ETH_ALEN] = {
+        { // v4
+            MAC_A_DST MAC_A_SRC "\x08\x00",
+            MAC_B_DST MAC_B_SRC "\x08\x00",
+        }, { // v6
+            MAC_A_DST MAC_A_SRC "\x86\xDD",
+            MAC_B_DST MAC_B_SRC "\x86\xDD",
+        }
+    };
+
+    uint v; // IP VERSION
+    uint p; // PORT
+
+    if (skb->protocol == BE16(ETH_P_IP) {
+
+        v = 0;
+        p = 0;
+
+    } else {
+
+        v = 0;
+        p = 0;
+    }
+
+    memcpy(eth, hdrs[v][p], ETH_ALEN);
 
     skb->data       = PTR(eth);
-    skb->len        = SKB_TAIL(skb) - PTR(eth);
 #ifdef NET_SKBUFF_DATA_USES_OFFSET
     skb->mac_header = PTR(eth) - SKB_HEAD(skb);
 #else
     skb->mac_header = PTR(eth);
 #endif
+    skb->len        = SKB_TAIL(skb) - PTR(eth);
     skb->mac_len    = ETH_HLEN;
 
     //
@@ -187,14 +190,14 @@ drop:
     return NETDEV_TX_OK;
 }
 
-static int xnic_up (net_device_s* const xdev) {
+static int xnic_up (net_device_s* const dev) {
 
     printk("XNIC: UP\n");
 
     return 0;
 }
 
-static int xnic_down (net_device_s* const xdev) {
+static int xnic_down (net_device_s* const dev) {
 
     printk("XNIC: DOWN\n");
 
@@ -254,9 +257,9 @@ static int xnic_notify_phys (struct notifier_block* const nb, const unsigned lon
     net_device_s* const dev = netdev_notifier_info_to_dev(info);
 
     // IGNORA EVENTOS DELA MESMA
-    if (dev == devA
-     || dev == devB
-     || dev == devX)
+    if (dev == virt
+     || dev == phys[0]
+     || dev == phys[1])
         goto done;
 
     // FILTRAR LOOPBACK
@@ -281,12 +284,12 @@ static int xnic_notify_phys (struct notifier_block* const nb, const unsigned lon
     if (*(u32*)mac == 0)
         goto done;
 
-    if (devA == NULL && memcmp(MAC_A_SRC, mac, ETH_ALEN) == 0) {
+    if (phys[0] == NULL && memcmp(MAC_A_SRC, mac, ETH_ALEN) == 0) {
         if (netdev_rx_handler_register(dev, xnic_in, NULL) == 0)
-            dev_hold((devA = dev));
-    } elif (devB == NULL && memcmp(MAC_B_SRC, mac, ETH_ALEN) == 0) {
+            dev_hold((phys[0] = dev));
+    } elif (phys[1] == NULL && memcmp(MAC_B_SRC, mac, ETH_ALEN) == 0) {
         if (netdev_rx_handler_register(dev, xnic_in, NULL) == 0)
-            dev_hold((devB = dev));
+            dev_hold((phys[1] = dev));
     }
 
 done:
@@ -302,14 +305,14 @@ static int __init xnic_init (void) {
     printk("XNIC: INIT\n");
 
     // WILL YET DISCOVER THE PHYSICAL INTERFACES
-    devA = NULL;
-    devB = NULL;
+    phys[0] = NULL;
+    phys[1] = NULL;
 
     // CREATE THE VIRTUAL INTERFACE
-    devX = alloc_netdev(0, "xnic", NET_NAME_USER, xnic_setup);
+    virt = alloc_netdev(0, "xnic", NET_NAME_USER, xnic_setup);
 
     // MAKE IT VISIBLE IN THE SYSTEM
-    register_netdev(devX);
+    register_netdev(virt);
 
     // COLOCA A PARADA DE EVENTOS
     if (register_netdevice_notifier(&notifyDevs) >= 0)
@@ -317,9 +320,9 @@ static int __init xnic_init (void) {
 
     printk("XNIC: FAILED TO REGISTER NETWORK DEVICES NOTIFIER\n");
 
-    unregister_netdev(devX);
+    unregister_netdev(virt);
 
-    free_netdev(devX);
+    free_netdev(virt);
 
     return -1;
 }
@@ -334,18 +337,18 @@ static void __exit xnic_exit (void) {
     // UNHOOK PHYSICAL INTERFACES
     rtnl_lock();
 
-    if (devA) netdev_rx_handler_unregister(devA);
-    if (devB) netdev_rx_handler_unregister(devB);
+    if (phys[0]) netdev_rx_handler_unregister(phys[0]);
+    if (phys[1]) netdev_rx_handler_unregister(phys[1]);
 
     rtnl_unlock();
 
-    if (devA) dev_put(devA);
-    if (devB) dev_put(devB);
+    if (phys[0]) dev_put(phys[0]);
+    if (phys[1]) dev_put(phys[1]);
 
     // DESTROY VIRTUAL INTERFACE
-    unregister_netdev(devX);
+    unregister_netdev(virt);
 
-    free_netdev(devX);
+    free_netdev(virt);
 }
 
 module_init(xnic_init);
