@@ -61,12 +61,14 @@ typedef struct notifier_block notifier_block_s;
 #define UDP_SIZE  8
 #define TCP_SIZE 20
 
+#define IS_SPEEDYB0Y 1 // speedyb0y
+
 #define MAC_S_A "\xbc\x5f\xf4\xf9\xe6\x66"
 #define MAC_S_B "\xbc\x5f\xf4\xf9\xe6\x66"
 #define MAC_G_A "\x88\xc9\xb3\xb0\xf1\xeb"
 #define MAC_G_B "\x88\xc9\xb3\xb0\xf1\xea"
 
-#if 1 // speedyb0y
+#if IS_SPEEDYB0Y
 #define MAC_A_SRC MAC_S_A
 #define MAC_A_DST MAC_G_A
 #define MAC_B_SRC MAC_S_B
@@ -135,17 +137,6 @@ static netdev_tx_t xnic_out (sk_buff_s* const skb, net_device_s* const xdev) {
      || PTR(eth) > SKB_TAIL(skb))
         goto drop;
 
-    // hdrs[v][port]
-    static const u8 hdrs[2][2][ETH_ALEN] = {
-        { // v4
-            MAC_A_DST MAC_A_SRC "\x08\x00",
-            MAC_B_DST MAC_B_SRC "\x08\x00",
-        }, { // v6
-            MAC_A_DST MAC_A_SRC "\x86\xDD",
-            MAC_B_DST MAC_B_SRC "\x86\xDD",
-        }
-    };
-
     uint v; // IP VERSION
     uint p; // PORT
 
@@ -168,7 +159,17 @@ static netdev_tx_t xnic_out (sk_buff_s* const skb, net_device_s* const xdev) {
 
     p = current;
 
-    memcpy(eth, hdrs[v][p], ETH_ALEN);
+    memcpy(eth, v ?
+#if IS_SPEEDYB0Y
+            "\x00\x00\xAA\xAA\xAA\xAA" "\x00\x00\xBB\xBB\xBB\xBB" "\x08\x00" :
+            "\x00\x00\xAA\xAA\xAA\xAA" "\x00\x00\xBB\xBB\xBB\xBB" "\x86\xDD"
+#else
+            "\x00\x00\xBB\xBB\xBB\xBB" "\x00\x00\xAA\xAA\xAA\xAA" "\x08\x00" :
+            "\x00\x00\xBB\xBB\xBB\xBB" "\x00\x00\xAA\xAA\xAA\xAA" "\x86\xDD"
+#endif
+            ,
+        ETH_ALEN
+    );
 
     skb->data       = PTR(eth);
 #ifdef NET_SKBUFF_DATA_USES_OFFSET
