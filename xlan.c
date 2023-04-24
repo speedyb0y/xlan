@@ -84,8 +84,8 @@ typedef struct notifier_block notifier_block_s;
 static net_device_s* virt; // VIRTUAL INTERFACE
 static net_device_s* phys[2]; // PHYSICAL INTERFACES    
 
-static uint current = 0;
-static uint counter = 0;
+static uint current;
+static uint counter;
 
 static rx_handler_result_t xnic_in (sk_buff_s** const pskb) {
 
@@ -325,6 +325,9 @@ static notifier_block_s notifyDevs = {
 static int __init xnic_init (void) {
 
     printk("XNIC: INIT\n");
+
+    current = 0;
+    counter = 0;
 
     // WILL YET DISCOVER THE PHYSICAL INTERFACES
     phys[0] = NULL;
