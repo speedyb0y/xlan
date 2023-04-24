@@ -88,9 +88,6 @@ static rx_handler_result_t xnic_in (sk_buff_s** const pskb) {
 
     sk_buff_s* const skb = *pskb;
 
-    if (skb->protocol != ETH_P_8021Q)
-        goto pass;
-
     if (skb_linearize(skb))
         goto drop;
 
@@ -101,21 +98,20 @@ static rx_handler_result_t xnic_in (sk_buff_s** const pskb) {
      || PTR(ip) > SKB_TAIL(skb))
         goto drop;
 
-    memmove(ip + 2, ip, 12);
-
-    skb->data       = PTR(ip);
-    skb->len        = SKB_TAIL(skb) - PTR(ip);
     // NOTE: skb->network_header JA ESTA CORRETO
+    skb->data           = PTR(ip);
 #ifdef NET_SKBUFF_DATA_USES_OFFSET
-    skb->mac_header = ;
+    skb->network_header = PTR(ip) - SKB_HEAD(skb);
+    skb->mac_header     = PTR(ip) - SKB_HEAD(skb);
 #else
-    skb->mac_header = skb->network_header;
-#endif
-    skb->network_header = skb->mac_header;
-    skb->mac_len    = ETH_HLEN;
+    skb->network_header = PTR(ip);
+    skb->mac_header     = PTR(ip);
+#endif    
+    skb->len            = SKB_TAIL(skb) - PTR(ip);
+    skb->mac_len        = 0;
    
     // SO SE A INTERFACE XNIC ESTIVER UP
-    if ((skb->dev = xdev)->flags & IFF_UP)
+    if ((skb->dev = devX)->flags & IFF_UP)
         return RX_HANDLER_ANOTHER;
 
 drop: // TODO: dev_kfree_skb ?
