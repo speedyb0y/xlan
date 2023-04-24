@@ -63,10 +63,28 @@ typedef struct notifier_block notifier_block_s;
 #define UDP_SIZE  8
 #define TCP_SIZE 20
 
-static net_device_s* xdev;
-static net_device_s* devs[XLAN_PORTS_N]; // PHYSICAL INTERFACES    
+#define MAC_S_A "\xbc\x5f\xf4\xf9\xe6\x66"
+#define MAC_S_B "\xbc\x5f\xf4\xf9\xe6\x66"
+#define MAC_G_A "\x88\xc9\xb3\xb0\xf1\xeb"
+#define MAC_G_B "\x88\xc9\xb3\xb0\xf1\xea"
 
-static rx_handler_result_t xisp_in (sk_buff_s** const pskb) {
+#if 1 // speedyb0y
+#define MAC_A_SRC MAC_S_A
+#define MAC_A_DST MAC_G_A
+#define MAC_B_SRC MAC_S_B
+#define MAC_B_DST MAC_G_B
+#else
+#define MAC_A_SRC MAC_G_A
+#define MAC_A_DST MAC_S_A
+#define MAC_B_SRC MAC_G_B
+#define MAC_B_DST MAC_S_B
+#endif
+
+static net_device_s* devX; // VIRTUAL INTERFACE
+static net_device_s* devA; // PHYSICAL INTERFACES    
+static net_device_s* devB;
+
+static rx_handler_result_t xnic_in (sk_buff_s** const pskb) {
 
     sk_buff_s* const skb = *pskb;
 
@@ -96,7 +114,7 @@ static rx_handler_result_t xisp_in (sk_buff_s** const pskb) {
     skb->network_header = skb->mac_header;
     skb->mac_len    = ETH_HLEN;
    
-    // SO SE A INTERFACE XLAN ESTIVER UP
+    // SO SE A INTERFACE XNIC ESTIVER UP
     if ((skb->dev = xdev)->flags & IFF_UP)
         return RX_HANDLER_ANOTHER;
 
@@ -107,7 +125,7 @@ drop: // TODO: dev_kfree_skb ?
     return RX_HANDLER_CONSUMED;
 }
 
-static netdev_tx_t xisp_out (sk_buff_s* const skb, net_device_s* const xdev) {
+static netdev_tx_t xnic_out (sk_buff_s* const skb, net_device_s* const xdev) {
 
     if (skb_linearize(skb))
         // NON LINEAR
@@ -173,30 +191,30 @@ drop:
     return NETDEV_TX_OK;
 }
 
-static int xisp_up (net_device_s* const xdev) {
+static int xnic_up (net_device_s* const xdev) {
 
-    printk("XLAN: UP\n");
+    printk("XNIC: UP\n");
 
     return 0;
 }
 
-static int xisp_down (net_device_s* const xdev) {
+static int xnic_down (net_device_s* const xdev) {
 
-    printk("XLAN: DOWN\n");
+    printk("XNIC: DOWN\n");
 
     return 0;
 }
 
 static const net_device_ops_s xispDevOps = {
     .ndo_init             =  NULL,
-    .ndo_open             =  xisp_up,
-    .ndo_stop             =  xisp_down,
-    .ndo_start_xmit       =  xisp_out,
+    .ndo_open             =  xnic_up,
+    .ndo_stop             =  xnic_down,
+    .ndo_start_xmit       =  xnic_out,
     .ndo_set_mac_address  =  NULL,
     // TODO: SET MTU - NAO EH PARA SETAR AQUI E SIM NO ROUTE
 };
 
-static void xisp_setup (net_device_s* const dev) {
+static void xnic_setup (net_device_s* const dev) {
 
     dev->netdev_ops      = &xispDevOps;
     dev->header_ops      = NULL;
@@ -228,7 +246,7 @@ static void xisp_setup (net_device_s* const dev) {
         ;
 }
 
-static int xisp_notify_phys (struct notifier_block* const nb, const unsigned long event, void* const info) {
+static int xnic_notify_phys (struct notifier_block* const nb, const unsigned long event, void* const info) {
 
     // ASSERT: rtnl_is_locked()
 
@@ -237,13 +255,12 @@ static int xisp_notify_phys (struct notifier_block* const nb, const unsigned lon
      && event != NETDEV_CHANGEADDR)
         goto done;
 
-    net_device_s* dev = netdev_notifier_info_to_dev(info);
+    net_device_s* const dev = netdev_notifier_info_to_dev(info);
 
     // IGNORA EVENTOS DELA MESMA
-    if (dev == isp1v
-     || dev == isp2v
-     || dev == isp1
-     || dev == isp2)
+    if (dev == devA
+     || dev == devB
+     || dev == devX)
         goto done;
 
     // FILTRAR LOOPBACK
@@ -268,12 +285,12 @@ static int xisp_notify_phys (struct notifier_block* const nb, const unsigned lon
     if (*(u32*)mac == 0)
         goto done;
 
-    if (isp1 == NULL && memcmp("\x00\x00\x00\x00\x00\x01", mac, ETH_ALEN) == 0) {
-        if (netdev_rx_handler_register(dev, xisp_in, NULL) == 0)
-            dev_hold((isp1 = dev));
-    } elif (isp2 == NULL && memcmp("\x00\x00\x00\x00\x00\x02", mac, ETH_ALEN) == 0) {
-        if (netdev_rx_handler_register(dev, xisp_in, NULL) == 0)
-            dev_hold((isp2 = dev));
+    if (devA == NULL && memcmp(MAC_A_SRC, mac, ETH_ALEN) == 0) {
+        if (netdev_rx_handler_register(dev, xnic_in, NULL) == 0)
+            dev_hold((devA = dev));
+    } elif (devB == NULL && memcmp(MAC_B_SRC, mac, ETH_ALEN) == 0) {
+        if (netdev_rx_handler_register(dev, xnic_in, NULL) == 0)
+            dev_hold((devB = dev));
     }
 
 done:
@@ -281,43 +298,39 @@ done:
 }
 
 static notifier_block_s notifyDevs = {
-    .notifier_call = xisp_notify_phys
+    .notifier_call = xnic_notify_phys
 };
 
-static int __init xisp_init (void) {
+static int __init xnic_init (void) {
 
-    printk("XLAN: INIT\n");
+    printk("XNIC: INIT\n");
 
     // WILL YET DISCOVER THE PHYSICAL INTERFACES
-    isp1 = NULL;
-    isp2 = NULL;
+    devA = NULL;
+    devB = NULL;
 
     // CREATE THE VIRTUAL INTERFACE
-    isp1v = alloc_netdev(0, "isp-1-v", NET_NAME_USER, xisp_setup);
-    isp2v = alloc_netdev(0, "isp-2-v", NET_NAME_USER, xisp_setup);
+    devX = alloc_netdev(0, "xnic", NET_NAME_USER, xnic_setup);
 
     // MAKE IT VISIBLE IN THE SYSTEM
-    register_netdev(isp1v);
-    register_netdev(isp2v);
+    register_netdev(devX);
 
     // COLOCA A PARADA DE EVENTOS
     if (register_netdevice_notifier(&notifyDevs) >= 0)
         return 0;
 
-    printk("XLAN: FAILED TO REGISTER NETWORK DEVICES NOTIFIER\n");
+    printk("XNIC: FAILED TO REGISTER NETWORK DEVICES NOTIFIER\n");
 
-    unregister_netdev(isp1v);
-    unregister_netdev(isp2v);
+    unregister_netdev(devX);
 
-    free_netdev(isp1v);
-    free_netdev(isp2v);
+    free_netdev(devX);
 
     return -1;
 }
 
-static void __exit xisp_exit (void) {
+static void __exit xnic_exit (void) {
 
-    printk("XLAN: EXIT\n");
+    printk("XNIC: EXIT\n");
 
     // PARA DE MONITORAR OS EVENTOS
     unregister_netdevice_notifier(&notifyDevs);
@@ -325,26 +338,24 @@ static void __exit xisp_exit (void) {
     // UNHOOK PHYSICAL INTERFACES
     rtnl_lock();
 
-    if (isp1v) netdev_rx_handler_unregister(isp1v);
-    if (isp2v) netdev_rx_handler_unregister(isp2v);
+    if (devA) netdev_rx_handler_unregister(devA);
+    if (devB) netdev_rx_handler_unregister(devB);
 
     rtnl_unlock();
 
-    if (isp1v) dev_put(isp1v);
-    if (isp2v) dev_put(isp2v);
+    if (devA) dev_put(devA);
+    if (devB) dev_put(devB);
 
     // DESTROY VIRTUAL INTERFACE
-    unregister_netdev(isp1v);
-    unregister_netdev(isp2v);
+    unregister_netdev(devX);
 
-    free_netdev(isp1v);
-    free_netdev(isp2v);
+    free_netdev(devX);
 }
 
-module_init(xisp_init);
-module_exit(xisp_exit);
+module_init(xnic_init);
+module_exit(xnic_exit);
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("speedyb0y");
-MODULE_DESCRIPTION("XISP");
+MODULE_DESCRIPTION("XNIC");
 MODULE_VERSION("0.1");
