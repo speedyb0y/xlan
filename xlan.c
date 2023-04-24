@@ -153,7 +153,7 @@ static netdev_tx_t xnic_out (sk_buff_s* const skb, net_device_s* const xdev) {
 
     } else {
 
-        v = 0;
+        v = 1;
         p = 0;
     }
 
@@ -168,21 +168,24 @@ static netdev_tx_t xnic_out (sk_buff_s* const skb, net_device_s* const xdev) {
     skb->len        = SKB_TAIL(skb) - PTR(eth);
     skb->mac_len    = ETH_HLEN;
 
-    //
-    net_device_s* const dev = devs[srcPort];
-
     // SOMENTE SE ELA ESTIVER ATIVA
-    if (dev && dev->flags & IFF_UP) {
+    net_device_s* x = phys[ p];
+    net_device_s* y = phys[!p];
 
-        skb->dev = dev;
-
-        // -- THE FUNCTION CAN BE CALLED FROM AN INTERRUPT
-        // -- WHEN CALLING THIS METHOD, INTERRUPTS MUST BE ENABLED
-        // -- REGARDLESS OF THE RETURN VALUE, THE SKB IS CONSUMED
-        dev_queue_xmit(skb);
-
-        return NETDEV_TX_OK;
+    if (!(x && x->flags & IFF_UP)) {
+        if (!(y && y->flags & IFF_UP))
+            goto drop;
+        x = y;
     }
+
+    skb->dev = x;
+
+    // -- THE FUNCTION CAN BE CALLED FROM AN INTERRUPT
+    // -- WHEN CALLING THIS METHOD, INTERRUPTS MUST BE ENABLED
+    // -- REGARDLESS OF THE RETURN VALUE, THE SKB IS CONSUMED
+    dev_queue_xmit(skb);
+
+    return NETDEV_TX_OK;
 
 drop:
     dev_kfree_skb(skb);
