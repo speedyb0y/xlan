@@ -165,7 +165,8 @@ static netdev_tx_t xnic_out (sk_buff_s* const skb, net_device_s* const xdev) {
     skb->len        = SKB_TAIL(skb) - PTR(eth);
     skb->mac_len    = ETH_HLEN;
 
-    uint p; // PORT
+    // CHOOSE PORT
+    uint p;
 
     if (skb->protocol == BE16(ETH_P_IP) {
         
