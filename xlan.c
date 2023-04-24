@@ -21,6 +21,7 @@ typedef __u16 u16;
 typedef __u32 u32;
 typedef __u64 u64;
 
+typedef unsigned int uint;
 typedef unsigned long long int uintll;
 
 typedef struct sk_buff sk_buff_s;
