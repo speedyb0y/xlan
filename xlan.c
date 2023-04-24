@@ -83,6 +83,9 @@ typedef struct notifier_block notifier_block_s;
 static net_device_s* virt; // VIRTUAL INTERFACE
 static net_device_s* phys[2]; // PHYSICAL INTERFACES    
 
+static uint current = 0;
+static uint counter = 0;
+
 static rx_handler_result_t xnic_in (sk_buff_s** const pskb) {
 
     sk_buff_s* const skb = *pskb;
@@ -119,9 +122,6 @@ drop: // TODO: dev_kfree_skb ?
 
     return RX_HANDLER_CONSUMED;
 }
-
-static uint current = 0;
-static uint counter = 0;
 
 static netdev_tx_t xnic_out (sk_buff_s* const skb, net_device_s* const xdev) {
 
