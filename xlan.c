@@ -179,7 +179,7 @@ static netdev_tx_t xnic_out (sk_buff_s* const skb, net_device_s* const xdev) {
         p = 0;
     }
 
-    if (cCounter >= 500) {
+    if (cCounter >= 1000) {
         cCounter  = 0;
         cPort ^= 1;
     } else
