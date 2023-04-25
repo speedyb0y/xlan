@@ -12,6 +12,7 @@ CFLAGS_xnic.o += -Wno-error=unused-label
 CFLAGS_xnic.o += -Wno-type-limits
 CFLAGS_xnic.o += -Wno-unused-parameter
 CFLAGS_xnic.o += -Wno-sign-compare
+CFLAGS_xnic.o += -Wno-implicit-fallthrough
 CFLAGS_xnic.o += -mpopcnt
 
 obj-m += xnic.o
