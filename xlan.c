@@ -169,7 +169,7 @@ static netdev_tx_t xnic_out (sk_buff_s* const skb, net_device_s* const xdev) {
     // CHOOSE PORT
     uint p;
 
-    if (skb->protocol == BE16(ETH_P_IP) {
+    if (skb->protocol == BE16(ETH_P_IP)) {
         
         p = 0; // TODO: COMPUTE THE HASH
 
