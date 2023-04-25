@@ -342,7 +342,7 @@ static int xnic_notify_phys (struct notifier_block* const nb, const unsigned lon
 
             printk("XNIC: ATTACHING TO PHYSICAL #%u NAME %s\n", p, dev->name);
 
-            old = phys[p];
+            net_device_s* old = phys[p];
 
             if (old != dev) {
 
