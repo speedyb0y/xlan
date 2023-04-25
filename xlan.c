@@ -40,9 +40,9 @@ typedef struct notifier_block notifier_block_s;
 
 #define PTR(p) ((void*)(p))
 
-#define loop while(1)
+#define loop while (1)
 
-#define elif(c) else if(c)
+#define elif(c) else if (c)
 
 #define foreach(i, t) for (uint i = 0; i != (t); i++)
 
@@ -149,6 +149,7 @@ static netdev_tx_t xnic_out (sk_buff_s* const skb, net_device_s* const xdev) {
     switch (*(u8*)ip >> 4) {
 
         case 4: // TODO: VER DENTRO DAS MENSAGENS ICMP E GERAR O MESMO HASH DESSES AQUI
+            // NOTE: ASSUME QUE NÃO TEM IP OPTIONS
             
             // IP PROTOCOL
             switch ((hash = *(u8*)(ip + IP4_O_PROTO))) {
@@ -206,8 +207,7 @@ static netdev_tx_t xnic_out (sk_buff_s* const skb, net_device_s* const xdev) {
     void* const eth = PTR(ip) - ETH_HLEN;
 
     // CONFIRMA ESPACO
-    if (PTR(eth) < SKB_HEAD(skb)
-     || PTR(eth) > SKB_TAIL(skb))
+    if (PTR(eth) < SKB_HEAD(skb))
         goto drop;
 
     // BUILD HEADER
