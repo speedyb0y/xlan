@@ -241,11 +241,11 @@ static netdev_tx_t xnic_out (sk_buff_s* const skb, net_device_s* const xdev) {
 
 #define DEV_FLAGS_UP (IFF_UP | IFF_RUNNIG | IFF_LOWER_UP)
 
-#define DEV_IS_UNUSABLE(dev) (!(dev && ((dev)->flags & DEV_FLAGS_UP) == DEV_FLAGS_UP))
+#define DEV_IS_USABLE(dev) ((dev) && ((dev)->flags & DEV_FLAGS_UP) == DEV_FLAGS_UP)
 
     // SOMENTE SE ELA ESTIVER ATIVA E OK
-    if (DEV_IS_UNUSABLE(x)) {
-        if (DEV_IS_UNUSABLE(y))
+    if (!DEV_IS_USABLE(x)) {
+        if (!DEV_IS_USABLE(y))
             goto drop;
         x = y;
     }
