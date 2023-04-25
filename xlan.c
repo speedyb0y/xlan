@@ -272,7 +272,7 @@ static int xnic_notify_phys (struct notifier_block* const nb, const unsigned lon
      && event != NETDEV_CHANGEADDR)
         goto done;
 
-    net_device_s* dev = netdev_notifier_info_to_dev(info);
+    net_device_s* const dev = netdev_notifier_info_to_dev(info);
 
     // IGNORA EVENTOS DELA MESMA
     if (dev == virt
