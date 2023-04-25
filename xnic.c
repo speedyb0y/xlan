@@ -118,7 +118,9 @@ drop: // TODO: dev_kfree_skb ?
     return RX_HANDLER_CONSUMED;
 }
 
-static netdev_tx_t xnic_out (sk_buff_s* const skb, net_device_s* const xdev) {
+static netdev_tx_t xnic_out (sk_buff_s* const skb, net_device_s* const dev) {
+
+    xnic_s* const xnic = netdev_priv(dev);
 
     // ONLY LINEAR
     if (skb_linearize(skb))
@@ -181,7 +183,7 @@ static netdev_tx_t xnic_out (sk_buff_s* const skb, net_device_s* const xdev) {
     // CHOOSE PORT
     foreach (c, xnic->n) {
 
-        net_device_s* const this = xnic->phys[(hash = (hash + 1) % xnic->n)];
+        net_device_s* const this = xnic->phys[hash = (hash + 1) % xnic->n];
 
         // SOMENTE SE ELA ESTIVER ATIVA E OK
         if ((this->flags & (IFF_UP | IFF_RUNNIG | IFF_LOWER_UP))
@@ -281,9 +283,6 @@ static int xnic_enslave (net_device_s* dev, net_device_s* phys, struct netlink_e
     xnic->phys[xnic->n++] = phys;
 
     dev_hold(phys);
-
-    //
-    phys->seila = dev;
 
     (void)extack;
     
