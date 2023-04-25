@@ -347,7 +347,7 @@ static void xnic_setup (net_device_s* const dev) {
         // | NETIF_F_RXALL
         ;
 
-
+    //
     memset(netdev_priv(dev), 0, sizeof(xnic_s));
 }
 
@@ -372,17 +372,20 @@ static void __exit xnic_exit (void) {
 
     printk("XNIC: EXIT\n");
 
+    const xnic_s* const xnic = netdev_priv(virt);
+
     // UNHOOK PHYSICAL INTERFACES
     rtnl_lock();
 
-    if (phys[0]) netdev_rx_handler_unregister(phys[0]);
-    if (phys[1]) netdev_rx_handler_unregister(phys[1]);
+    foreach (i, xnic->n)
+        netdev_rx_handler_unregister(xnic->phys[i]);
 
     rtnl_unlock();
 
+    // FORGET THEM
     // TODO: FIXME: MUST HOLD LOCK??
-    if (phys[0]) dev_put(phys[0]);
-    if (phys[1]) dev_put(phys[1]);
+    foreach (i, xnic->n)
+        dev_put(xnic->phys[i]);
 
     // DESTROY VIRTUAL INTERFACE
     unregister_netdev(virt);
