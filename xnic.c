@@ -237,6 +237,12 @@ static int xnic_enslave (net_device_s* dev, net_device_s* phys, struct netlink_e
     printk("XNIC: %s: ADD PHYSICAL %s AS PORT %u\n",
         dev->name, phys->name, xnic->n);
 
+    //
+    if (xnic->n == XNIC_PHYS_N) {
+        printk("XNIC: TOO MANY\n");
+        goto failed;
+    }
+
     // NEGA ELA MESMA
     if (phys == dev) {
         printk("XNIC: SAME\n");
@@ -252,12 +258,6 @@ static int xnic_enslave (net_device_s* dev, net_device_s* phys, struct netlink_e
     // SOMENTE ETHERNET
     if (phys->addr_len != ETH_ALEN) {
         printk("XNIC: NOT ETHERNET\n");
-        goto failed;
-    }
-
-    //
-    if (xnic->n == XNIC_PHYS_N) {
-        printk("XNIC: TOO MANY\n");
         goto failed;
     }
 
