@@ -63,8 +63,6 @@ typedef struct notifier_block notifier_block_s;
 
 #define DEV_FLAGS_UP (IFF_UP | IFF_RUNNIG | IFF_LOWER_UP)
 
-#define DEV_IS_USABLE(dev) ((dev) && ((dev)->flags & DEV_FLAGS_UP) == DEV_FLAGS_UP)
-
 #define MTU 7600
 
 static net_device_s* virt; // VIRTUAL INTERFACE
@@ -211,26 +209,27 @@ static netdev_tx_t xnic_out (sk_buff_s* const skb, net_device_s* const xdev) {
     hash += hash >> 32;
     hash += hash >> 16;
     hash += hash >> 8;
-    hash &= 1U;
 
-    net_device_s* x = phys[ hash];
-    net_device_s* y = phys[!hash];
+    foreach (c, xnic->n) {
 
-    // SOMENTE SE ELA ESTIVER ATIVA E OK
-    if (!DEV_IS_USABLE(x)) {
-        if (!DEV_IS_USABLE(y))
-            goto drop;
-        x = y;
+        hash++;
+        hash %= xnic->n;
+
+        net_device_s* const this = xnic->phys[hash];
+
+        // SOMENTE SE ELA ESTIVER ATIVA E OK
+        if (dev && (dev->flags & DEV_FLAGS_UP) == DEV_FLAGS_UP) {
+
+            skb->dev = this;
+
+            // -- THE FUNCTION CAN BE CALLED FROM AN INTERRUPT
+            // -- WHEN CALLING THIS METHOD, INTERRUPTS MUST BE ENABLED
+            // -- REGARDLESS OF THE RETURN VALUE, THE SKB IS CONSUMED
+            dev_queue_xmit(skb);
+
+            return NETDEV_TX_OK;
+        }
     }
-
-    skb->dev = x;
-
-    // -- THE FUNCTION CAN BE CALLED FROM AN INTERRUPT
-    // -- WHEN CALLING THIS METHOD, INTERRUPTS MUST BE ENABLED
-    // -- REGARDLESS OF THE RETURN VALUE, THE SKB IS CONSUMED
-    dev_queue_xmit(skb);
-
-    return NETDEV_TX_OK;
 
 drop:
     dev_kfree_skb(skb);
