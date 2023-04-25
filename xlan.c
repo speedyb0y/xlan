@@ -324,7 +324,7 @@ static notifier_block_s notifyDevs = {
 
 static int __init xnic_init (void) {
 
-    printk("XNIC: INIT WITH SIDE A %u MTU %u\n", IS_A, mtu);
+    printk("XNIC: INIT WITH SIDE A %u MTU %d\n", IS_A, MTU);
 
     //
     cPort = 0;
