@@ -218,7 +218,7 @@ static netdev_tx_t xnic_out (sk_buff_s* const skb, net_device_s* const xdev) {
         net_device_s* const this = xnic->phys[hash];
 
         // SOMENTE SE ELA ESTIVER ATIVA E OK
-        if (dev && (dev->flags & DEV_FLAGS_UP) == DEV_FLAGS_UP) {
+        if ((this->flags & DEV_FLAGS_UP) == DEV_FLAGS_UP) {
 
             skb->dev = this;
 
