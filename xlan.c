@@ -203,7 +203,7 @@ static netdev_tx_t xnic_out (sk_buff_s* const skb, net_device_s* const xdev) {
         goto drop;
 
     // INSERT ETHERNET HEADER
-    u16* const eth = PTR(ip) - ETH_HLEN;
+    void* const eth = PTR(ip) - ETH_HLEN;
 
     // CONFIRMA ESPACO
     if (PTR(eth) < SKB_HEAD(skb)
@@ -211,13 +211,9 @@ static netdev_tx_t xnic_out (sk_buff_s* const skb, net_device_s* const xdev) {
         goto drop;
 
     // BUILD HEADER
-    eth[0] = 0xFFFF;
-    eth[1] = 0xFFFF;
-    eth[2] = 0xFFFF;
-    eth[3] = 0x0000;
-    eth[4] = 0x0000;
-    eth[5] = 0x0000;
-    eth[6] = skb->protocol;
+    // TODO: ACCORDING TO ENDIANESS
+    *(u64*)(eth     ) = 0x0000FFFFFFFFFFFFULL;
+    *(u16*)(eth + 12) = skb->protocol;
 
     // UPDATE SKB
     skb->data       = PTR(eth);
