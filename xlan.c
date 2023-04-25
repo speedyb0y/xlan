@@ -253,7 +253,7 @@ static int xnic_down (net_device_s* const dev) {
 
 static int xnic_enslave (net_device_s* virt, net_device_s* dev, struct netlink_ext_ack* extack) {
 
-    xnic_s* const xnic = ;
+    xnic_s* const xnic = netdev_priv(virt);
 
     printk("XNIC: %s: ADD PHYSICAL %s AS PORT %u\n",
         virt->name, dev->name, xnic->n);
@@ -346,6 +346,9 @@ static void xnic_setup (net_device_s* const dev) {
         // | NETIF_F_TSO6
         // | NETIF_F_RXALL
         ;
+
+
+    memset(netdev_priv(dev), 0, sizeof(xnic_s));
 }
 
 static int __init xnic_init (void) {
@@ -357,7 +360,7 @@ static int __init xnic_init (void) {
     phys[1] = NULL;
 
     // CREATE THE VIRTUAL INTERFACE
-    virt = alloc_netdev(0, "xnic", NET_NAME_USER, xnic_setup);
+    virt = alloc_netdev(sizeof(xnic_s), "xnic", NET_NAME_USER, xnic_setup);
 
     // MAKE IT VISIBLE IN THE SYSTEM
     register_netdev(virt);
