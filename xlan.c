@@ -191,9 +191,10 @@ static netdev_tx_t xnic_out (sk_buff_s* const skb, net_device_s* const xdev) {
     net_device_s* x = phys[ p];
     net_device_s* y = phys[!p];
 
+#define FLAGS_UP (IFF_UP | IFF_RUNNIG | IFF_LOWER_UP)
     // SOMENTE SE ELA ESTIVER ATIVA E OK
-    if (!(x && (x->flags & (IFF_UP | IFF_RUNNIG | IFF_LOWER_UP)) == (IFF_UP | IFF_RUNNIG | IFF_LOWER_UP))) {
-        if (!(y && (y->flags & (IFF_UP | IFF_RUNNIG | IFF_LOWER_UP)) == (IFF_UP | IFF_RUNNIG | IFF_LOWER_UP)))
+    if (!(x && (x->flags & FLAGS_UP) == FLAGS_UP)) {
+        if (!(y && (y->flags & FLAGS_UP) == FLAGS_UP))
             goto drop;
         x = y;
     }
