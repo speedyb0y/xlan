@@ -230,27 +230,27 @@ static int xnic_down (net_device_s* const dev) {
     return 0;
 }
 
-static int xnic_enslave (net_device_s* virt, net_device_s* dev, struct netlink_ext_ack* extack) {
+static int xnic_enslave (net_device_s* dev, net_device_s* phys, struct netlink_ext_ack* extack) {
 
-    xnic_s* const xnic = netdev_priv(virt);
+    xnic_s* const xnic = netdev_priv(dev);
 
     printk("XNIC: %s: ADD PHYSICAL %s AS PORT %u\n",
-        virt->name, dev->name, xnic->n);
+        dev->name, phys->name, xnic->n);
 
     // NEGA ELA MESMA
-    if (dev == virt) {
+    if (phys == dev) {
         printk("XNIC: SAME\n");
         goto failed;
     }
 
     // NEGA LOOPBACK
-    if (dev->flags & IFF_LOOPBACK) {
+    if (phys->flags & IFF_LOOPBACK) {
         printk("XNIC: LOOPBACK\n");
         goto failed;
     }
 
     // SOMENTE ETHERNET
-    if (dev->addr_len != ETH_ALEN) {
+    if (phys->addr_len != ETH_ALEN) {
         printk("XNIC: NOT ETHERNET\n");
         goto failed;
     }
@@ -262,18 +262,18 @@ static int xnic_enslave (net_device_s* virt, net_device_s* dev, struct netlink_e
     }
 
     //
-    if (netdev_rx_handler_register(dev, xnic_in, virt) != 0) {
+    if (netdev_rx_handler_register(phys, xnic_in, dev) != 0) {
         printk("XNIC: ATTACH FAILED\n");
         goto failed;
     }
 
     //
-    xnic->phys[xnic->n++] = dev;
+    xnic->phys[xnic->n++] = phys;
 
-    dev_hold(dev);
+    dev_hold(phys);
 
     //
-    dev->seila = virt;
+    phys->seila = dev;
 
     (void)extack;
     
