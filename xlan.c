@@ -89,6 +89,10 @@ static uint cCounter;
 
 static rx_handler_result_t xnic_in (sk_buff_s** const pskb) {
 
+    // SO SE A INTERFACE XNIC ESTIVER UP
+    if (!(virt && virt->flags & IFF_UP))
+        return RX_HANDLER_PASS;
+
     sk_buff_s* const skb = *pskb;
 
     if (skb_linearize(skb))
@@ -112,10 +116,9 @@ static rx_handler_result_t xnic_in (sk_buff_s** const pskb) {
 #endif    
     skb->len            = SKB_TAIL(skb) - PTR(ip);
     skb->mac_len        = 0;
-   
-    // SO SE A INTERFACE XNIC ESTIVER UP
-    if ((skb->dev = virt)->flags & IFF_UP)
-        return RX_HANDLER_ANOTHER;
+    skb->dev            = virt;
+
+    return RX_HANDLER_ANOTHER;
 
 drop: // TODO: dev_kfree_skb ?
 
