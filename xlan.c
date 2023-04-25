@@ -162,9 +162,8 @@ static netdev_tx_t xnic_out (sk_buff_s* const skb, net_device_s* const xdev) {
 
             break;
 
-        default:
-            // UNSUPORTED
-            goto drop;
+        default: // UNSUPORTED
+            hash = 0;
     }
 
     hash = __builtin_popcountll(hash);
