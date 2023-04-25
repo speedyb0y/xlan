@@ -258,14 +258,14 @@ drop:
 
 static int xnic_up (net_device_s* const dev) {
 
-    printk("XNIC: UP\n");
+    printk("XNIC: %s UP\n", dev->name);
 
     return 0;
 }
 
 static int xnic_down (net_device_s* const dev) {
 
-    printk("XNIC: DOWN\n");
+    printk("XNIC: %s DOWN\n", dev->name);
 
     return 0;
 }
@@ -320,7 +320,7 @@ static int xnic_notify_phys (struct notifier_block* const nb, const unsigned lon
      && event != NETDEV_CHANGENAME)
         goto done;
 
-    net_device_s* const dev = netdev_notifier_info_to_dev(info);
+    net_device_s* dev = netdev_notifier_info_to_dev(info);
 
     // IGNORA EVENTOS DELA MESMA
     if (dev == virt
@@ -334,22 +334,36 @@ static int xnic_notify_phys (struct notifier_block* const nb, const unsigned lon
      || dev->addr_len != ETH_ALEN)
         goto done;
 
-    uint p;
-    //
-    if (phys[0] == NULL && strcmp(XNIC_0, dev->name) == 0)
-        p = 0;
-    elif (phys[1] == NULL && strcmp(XNIC_1, dev->name) == 0)
-        p = 1;
-    else
-        goto done;
+    if (memcmp(dev->name, "xnic-", 5) == 0) {
 
-    printk("XNIC: ATTACHING TO PHYSICAL #%u NAME %s\n", p, dev->name);
+        long int p;
 
-    if (netdev_rx_handler_register(dev, xnic_in, NULL) == 0) {
-        dev_hold((phys[p] = dev));
-        dev_set_promiscuity(dev, 1);        
-    } else
-        printk("XNIC: ATTACH FAILED\n");
+        if (kstrtol(dev->name + 5, 10, &p) == 0 && p < 2) {
+
+            printk("XNIC: ATTACHING TO PHYSICAL #%u NAME %s\n", p, dev->name);
+
+            old = phys[p];
+
+            if (old != dev) {
+
+                if (old) {
+                    netdev_rx_handler_unregister(old);
+                    dev_put(old);
+                }
+
+                if (netdev_rx_handler_register(dev, xnic_in, NULL) == 0)
+                    dev_hold(dev);
+                else {
+                    printk("XNIC: ATTACH FAILED\n");
+                    dev = NULL;
+                }
+
+                phys[p] = dev;
+            }
+                
+        } else
+            printk("XNIC: BAD/INVALID PORT\n");
+    }
 
 done:
     return NOTIFY_OK;
@@ -402,8 +416,8 @@ static void __exit xnic_exit (void) {
     rtnl_unlock();
 
     // TODO: FIXME: MUST HOLD LOCK??
-    if (phys[0]) { dev_set_promiscuity(phys[0], 0); dev_put(phys[0]); }
-    if (phys[1]) { dev_set_promiscuity(phys[1], 0); dev_put(phys[1]); }
+    if (phys[0]) dev_put(phys[0]);
+    if (phys[1]) dev_put(phys[1]);
 
     // DESTROY VIRTUAL INTERFACE
     unregister_netdev(virt);
