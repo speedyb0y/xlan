@@ -136,9 +136,7 @@ static netdev_tx_t xnic_out (sk_buff_s* const skb, net_device_s* const xdev) {
                 case IPPROTO_UDPLITE:
                 case IPPROTO_SCTP:
                 case IPPROTO_DCCP:
-                    hash += *(u64*)(ip + IP4_O_SRC); // SRC ADDR, DST ADDR
                     hash += *(u32*)(ip + IP4_SIZE); // SRC PORT, DST PORT
-                    break;
                 default:
                     hash += *(u64*)(ip + IP4_O_SRC); // SRC ADDR, DST ADDR
             }
@@ -154,12 +152,7 @@ static netdev_tx_t xnic_out (sk_buff_s* const skb, net_device_s* const xdev) {
                 case IPPROTO_UDPLITE:
                 case IPPROTO_SCTP: // TODO: CONSIDER IPV6 FLOW?
                 case IPPROTO_DCCP:
-                    hash += *(u64*)(ip + IP6_O_SRC1); // SRC ADDR
-                    hash += *(u64*)(ip + IP6_O_SRC2); // SRC ADDR
-                    hash += *(u64*)(ip + IP6_O_DST1); // DST ADDR
-                    hash += *(u64*)(ip + IP6_O_DST2); // DST ADDR
                     hash += *(u32*)(ip + IP6_SIZE); // SRC PORT, DST PORT
-                    break;
                 default:
                     hash += *(u64*)(ip + IP6_O_SRC1); // SRC ADDR
                     hash += *(u64*)(ip + IP6_O_SRC2); // SRC ADDR
