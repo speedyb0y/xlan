@@ -65,36 +65,17 @@ typedef struct notifier_block notifier_block_s;
 
 #define DEV_IS_USABLE(dev) ((dev) && ((dev)->flags & DEV_FLAGS_UP) == DEV_FLAGS_UP)
 
-#define IS_A 1 // speedyb0y
 #define MTU 7600
 
-#define MAC_A_0 "\xbc\x5f\xf4\xf9\xe6\x66"
-#define MAC_A_1 "\xbc\x5f\xf4\xf9\xe6\x66"
-#define MAC_B_0 "\x88\xc9\xb3\xb0\xf1\xeb"
-#define MAC_B_1 "\x88\xc9\xb3\xb0\xf1\xea"
-
-#if IS_A
-#define XNIC_0 "gw-0"
-#define XNIC_1 "gw-1"
-#else
-#define XNIC_0 "speedyb0y-0"
-#define XNIC_1 "speedyb0y-1"
-#endif
-
-#if IS_A
-#define MAC_SRC_0 MAC_A_0
-#define MAC_SRC_1 MAC_A_1
-#define MAC_DST_0 MAC_B_0
-#define MAC_DST_1 MAC_B_1
-#else
-#define MAC_SRC_0 MAC_B_0
-#define MAC_SRC_1 MAC_B_1
-#define MAC_DST_0 MAC_A_0
-#define MAC_DST_1 MAC_A_1
-#endif
-
 static net_device_s* virt; // VIRTUAL INTERFACE
-static net_device_s* phys[2]; // PHYSICAL INTERFACES    
+static  ; 
+
+#define XNIC_PHYS_N 2
+
+typedef struct xnic_s {
+    uint n;
+    net_device_s* phys[XNIC_PHYS_N]; // PHYSICAL INTERFACES    
+} xnic_s;
 
 static rx_handler_result_t xnic_in (sk_buff_s** const pskb) {
 
@@ -269,50 +250,63 @@ static int xnic_down (net_device_s* const dev) {
     return 0;
 }
 
-static int xnic_enslave (net_device_s* xnic, net_device_s* dev, struct netlink_ext_ack* extack) {
+static int xnic_enslave (net_device_s* virt, net_device_s* dev, struct netlink_ext_ack* extack) {
 
-    (void)extack;
+    // NEGA ELA MESMA
+    if (dev == virt) {
+        printk("XNIC: SAME\n");
+        goto failed;
+    }
 
-    // IGNORA EVENTOS DELA MESMA
-    if (dev == virt)
-        goto done;
+    // NEGA LOOPBACK
+    if (dev->flags & IFF_LOOPBACK) {
+        printk("XNIC: LOOPBACK\n");
+        goto failed;
+    }
 
-    // FILTRAR LOOPBACK
-    // FILTRAR ETHERNET
-    if (dev->flags & IFF_LOOPBACK
-     || dev->addr_len != ETH_ALEN)
-        goto done;
+    // SOMENTE ETHERNET
+    if (dev->addr_len != ETH_ALEN) {
+        printk("XNIC: NOT ETHERNET\n");
+        goto failed;
+    }
 
     printk("XNIC: ATTACHING TO PHYSICAL #%u NAME %s\n", p, dev->name);
 
-    net_device_s* const old = phys[p];
+    xnic_s* const xnic = ;
 
-    if (old != dev) {
-
-        if (old) {
-            netdev_rx_handler_unregister(old);
-            dev_put(old);
-        }
-
-        if (netdev_rx_handler_register(dev, xnic_in, NULL) != 0) {
-            printk("XNIC: ATTACH FAILED\n");
-            dev = NULL;
-        }
-
-        if ((phys[p] = dev))
-            dev_hold(dev);
+    //
+    if (xnic->n == XNIC_PHYS_N) {
+        printk("XNIC: TOO MANY\n");
+        goto failed;
     }
-                
+
+    //
+    if (netdev_rx_handler_register(dev, xnic_in, NULL) == 0) {
+        printk("XNIC: ATTACHED\n");
+        dev_hold((xnic->phys[xnic->n++] = dev));
+        dev->seila = virt;
+    } else {
+        printk("XNIC: ATTACH FAILED\n");
+        goto failed;
+    }
+            
+    (void)extack;
+    
 done:
     return 0;
+
+failed:
+    return -1;
 }
 
 static const net_device_ops_s xispDevOps = {
-    .ndo_init             =  NULL,
-    .ndo_open             =  xnic_up,
-    .ndo_stop             =  xnic_down,
-    .ndo_start_xmit       =  xnic_out,
-    .ndo_set_mac_address  =  NULL,
+    .ndo_init             = NULL,
+    .ndo_open             = xnic_up,
+    .ndo_stop             = xnic_down,
+    .ndo_start_xmit       = xnic_out,
+    .ndo_set_mac_address  = NULL,
+    .ndo_add_slave		  = xnic_enslave,
+	.ndo_del_slave		  = NULL,
     // TODO: SET MTU - NAO EH PARA SETAR AQUI E SIM NO ROUTE
 };
 
