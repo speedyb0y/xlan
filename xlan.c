@@ -62,6 +62,10 @@ typedef struct notifier_block notifier_block_s;
 #define UDP_SIZE  8
 #define TCP_SIZE 20
 
+#define DEV_FLAGS_UP (IFF_UP | IFF_RUNNIG | IFF_LOWER_UP)
+
+#define DEV_IS_USABLE(dev) ((dev) && ((dev)->flags & DEV_FLAGS_UP) == DEV_FLAGS_UP)
+
 #define IS_A 1 // speedyb0y
 #define MTU 7600
 
@@ -211,13 +215,8 @@ static netdev_tx_t xnic_out (sk_buff_s* const skb, net_device_s* const xdev) {
     eth[1] = 0xFFFF;
     eth[2] = 0xFFFF;
     eth[3] = 0x0000;
-#if IS_A
-    eth[4] = 0xAAAA;
-    eth[5] = 0xAAAA;
-#else
-    eth[4] = 0xBBBB;
-    eth[5] = 0xBBBB;
-#endif
+    eth[4] = 0x0000;
+    eth[5] = 0x0000;
     eth[6] = skb->protocol;
 
     // UPDATE SKB
@@ -238,10 +237,6 @@ static netdev_tx_t xnic_out (sk_buff_s* const skb, net_device_s* const xdev) {
 
     net_device_s* x = phys[ hash];
     net_device_s* y = phys[!hash];
-
-#define DEV_FLAGS_UP (IFF_UP | IFF_RUNNIG | IFF_LOWER_UP)
-
-#define DEV_IS_USABLE(dev) ((dev) && ((dev)->flags & DEV_FLAGS_UP) == DEV_FLAGS_UP)
 
     // SOMENTE SE ELA ESTIVER ATIVA E OK
     if (!DEV_IS_USABLE(x)) {
