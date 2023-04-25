@@ -291,18 +291,22 @@ static int xnic_notify_phys (struct notifier_block* const nb, const unsigned lon
      || dev->addr_len != ETH_ALEN)
         goto done;
 
+    uint p;
     //
-    if (phys[0] == NULL && strcmp(XNIC_0, dev->name) == 0) {
-        phys[0] = dev;
-    } elif (phys[1] == NULL && strcmp(XNIC_1, dev->name) == 0) {
-            phys[1] = dev;
-    } else
+    if (phys[0] == NULL && strcmp(XNIC_0, dev->name) == 0)
+        p = 0;
+    elif (phys[1] == NULL && strcmp(XNIC_1, dev->name) == 0)
+        p = 1;
+    else
         goto done;
 
+    printk("XNIC: ATTACHING TO PHYSICAL #%u NAME %s\n", p, dev->name);
+
     if (netdev_rx_handler_register(dev, xnic_in, NULL) == 0) {
-        dev_hold(dev);
+        dev_hold((phys[p] = dev)));
         dev_set_promiscuity(dev, 1);        
-    }
+    } else
+        printk("XNIC: ATTACH FAILED\n");
 
 done:
     return NOTIFY_OK;
