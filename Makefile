@@ -12,6 +12,9 @@ CFLAGS_xlan.o += -Wno-error=unused-label
 CFLAGS_xlan.o += -Wno-type-limits
 CFLAGS_xlan.o += -Wno-unused-parameter
 
+CFLAGS_xlan.o += -Wno-sign-compare
+
+
 obj-m += xlan.o
 
 default:
