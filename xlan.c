@@ -63,6 +63,7 @@ typedef struct notifier_block notifier_block_s;
 #define TCP_SIZE 20
 
 #define IS_SPEEDYB0Y 1 // speedyb0y
+#define MTU 7600
 
 #define MAC_S_A "\xbc\x5f\xf4\xf9\xe6\x66"
 #define MAC_S_B "\xbc\x5f\xf4\xf9\xe6\x66"
@@ -242,7 +243,7 @@ static void xnic_setup (net_device_s* const dev) {
     //dev->needed_tailroom = ;
     dev->min_mtu         = ETH_MIN_MTU;
     dev->max_mtu         = ETH_MAX_MTU;
-    dev->mtu             = ETH_MAX_MTU; // NOTE: TEM QUE SER O DA MENOR INTERFACE
+    dev->mtu             = MTU; // NOTE: TEM QUE SER O DA MENOR INTERFACE
     dev->tx_queue_len    = 0; // DEFAULT_TX_QUEUE_LEN
     dev->flags           = IFF_POINTOPOINT
                          | IFF_NOARP; // IFF_BROADCAST | IFF_MULTICAST
