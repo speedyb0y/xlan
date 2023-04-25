@@ -98,23 +98,15 @@ static rx_handler_result_t xnic_in (sk_buff_s** const pskb) {
     if (skb_linearize(skb))
         goto drop;
 
-    // PULA O ETHERNET HEADER
-    void* const ip = SKB_MAC(skb);
-
-    if (PTR(ip) < SKB_HEAD(skb)
-     || PTR(ip) > SKB_TAIL(skb))
+    if (skb->protocol != BE16(ETH_P_IP)
+     && skb->protocol != BE16(ETH_P_IPV6))
         goto drop;
 
+    // PULA O ETHERNET HEADER
     // NOTE: skb->network_header JA ESTA CORRETO
-    skb->data           = PTR(ip);
-#ifdef NET_SKBUFF_DATA_USES_OFFSET
-    skb->network_header = PTR(ip) - SKB_HEAD(skb);
-    skb->mac_header     = PTR(ip) - SKB_HEAD(skb);
-#else
-    skb->network_header = PTR(ip);
-    skb->mac_header     = PTR(ip);
-#endif    
-    skb->len            = SKB_TAIL(skb) - PTR(ip);
+    skb->data           = SKB_NETWORK(skb);
+    skb->len            = SKB_TAIL(skb) - SKB_NETWORK(skb);
+    skb->mac_header     = skb->network_header;
     skb->mac_len        = 0;
     skb->dev            = virt;
 
@@ -143,17 +135,17 @@ static netdev_tx_t xnic_out (sk_buff_s* const skb, net_device_s* const xdev) {
 
     // BUILD HEADER
 #if IS_SPEEDYB0Y
-    eth[0] = 0x0000;
+    eth[0] = 0x2525;
     eth[1] = 0xAAAA;
     eth[2] = 0xAAAA;
-    eth[3] = 0x0000;
+    eth[3] = 0x2525;
     eth[4] = 0xBBBB;
     eth[5] = 0xBBBB;
 #else
-    eth[0] = 0x0000;
+    eth[0] = 0x2525;
     eth[1] = 0xBBBB;
     eth[2] = 0xBBBB;
-    eth[3] = 0x0000;
+    eth[3] = 0x2525;
     eth[4] = 0xAAAA;
     eth[5] = 0xAAAA;
 #endif
