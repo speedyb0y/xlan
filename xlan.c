@@ -191,7 +191,7 @@ static netdev_tx_t xnic_out (sk_buff_s* const skb, net_device_s* const xdev) {
     net_device_s* x = phys[ p];
     net_device_s* y = phys[!p];
 
-    // SOMENTE SE ELA ESTIVER ATIVA
+    // SOMENTE SE ELA ESTIVER ATIVA E OK
     if (!(x && (x->flags & (IFF_UP | IFF_RUNNIG)) == (IFF_UP | IFF_RUNNIG))) {
         if (!(y && (y->flags & (IFF_UP | IFF_RUNNIG)) == (IFF_UP | IFF_RUNNIG)))
             goto drop;
