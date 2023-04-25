@@ -368,8 +368,9 @@ static void __exit xnic_exit (void) {
 
     rtnl_unlock();
 
-    if (phys[0]) { dev_set_promiscuity(dev, 1); dev_put(phys[0]); }
-    if (phys[1]) { dev_set_promiscuity(dev, 1); dev_put(phys[1]); }
+    // TODO: FIXME: MUST HOLD LOCK??
+    if (phys[0]) { dev_set_promiscuity(phys[0], 0); dev_put(phys[0]); }
+    if (phys[1]) { dev_set_promiscuity(phys[1], 0); dev_put(phys[1]); }
 
     // DESTROY VIRTUAL INTERFACE
     unregister_netdev(virt);
