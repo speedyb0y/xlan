@@ -347,23 +347,18 @@ static void xnic_setup (net_device_s* const dev) {
         // | NETIF_F_RXALL
         ;
 
-    //
+    // WILL YET ADD THE PHYSICAL INTERFACES
     memset(netdev_priv(dev), 0, sizeof(xnic_s));
+
+    printk("XNIC: %s: CREATED WITH MTU %d\n",
+        dev->name, dev->mtu);
 }
 
 static int __init xnic_init (void) {
 
-    printk("XNIC: INIT WITH SIDE A %u MTU %d\n", IS_A, MTU);
-
-    // WILL YET DISCOVER THE PHYSICAL INTERFACES
-    phys[0] = NULL;
-    phys[1] = NULL;
-
     // CREATE THE VIRTUAL INTERFACE
-    virt = alloc_netdev(sizeof(xnic_s), "xnic", NET_NAME_USER, xnic_setup);
-
     // MAKE IT VISIBLE IN THE SYSTEM
-    register_netdev(virt);
+    register_netdev(alloc_netdev(sizeof(xnic_s), "xnic", NET_NAME_USER, xnic_setup));
 
     return 0;
 }
