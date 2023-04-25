@@ -4,7 +4,6 @@
 
 #include <linux/init.h>
 #include <linux/kernel.h>
-#include <linux/notifier.h>
 #include <linux/netdevice.h>
 #include <linux/etherdevice.h>
 #include <linux/inetdevice.h>
@@ -270,6 +269,44 @@ static int xnic_down (net_device_s* const dev) {
     return 0;
 }
 
+static int xnic_enslave (net_device_s* xnic, net_device_s* dev, struct netlink_ext_ack* extack) {
+
+    (void)extack;
+
+    // IGNORA EVENTOS DELA MESMA
+    if (dev == virt)
+        goto done;
+
+    // FILTRAR LOOPBACK
+    // FILTRAR ETHERNET
+    if (dev->flags & IFF_LOOPBACK
+     || dev->addr_len != ETH_ALEN)
+        goto done;
+
+    printk("XNIC: ATTACHING TO PHYSICAL #%u NAME %s\n", p, dev->name);
+
+    net_device_s* const old = phys[p];
+
+    if (old != dev) {
+
+        if (old) {
+            netdev_rx_handler_unregister(old);
+            dev_put(old);
+        }
+
+        if (netdev_rx_handler_register(dev, xnic_in, NULL) != 0) {
+            printk("XNIC: ATTACH FAILED\n");
+            dev = NULL;
+        }
+
+        if ((phys[p] = dev))
+            dev_hold(dev);
+    }
+                
+done:
+    return 0;
+}
+
 static const net_device_ops_s xispDevOps = {
     .ndo_init             =  NULL,
     .ndo_open             =  xnic_up,
@@ -311,67 +348,6 @@ static void xnic_setup (net_device_s* const dev) {
         ;
 }
 
-static int xnic_notify_phys (struct notifier_block* const nb, const unsigned long event, void* const info) {
-
-    // ASSERT: rtnl_is_locked()
-
-    // CONSIDERA SOMENTE ESTES EVENTOS
-    if (event != NETDEV_REGISTER
-     && event != NETDEV_CHANGENAME)
-        goto done;
-
-    net_device_s* dev = netdev_notifier_info_to_dev(info);
-
-    // IGNORA EVENTOS DELA MESMA
-    if (dev == virt
-     || dev == phys[0]
-     || dev == phys[1])
-        goto done;
-
-    // FILTRAR LOOPBACK
-    // FILTRAR ETHERNET
-    if (dev->flags & IFF_LOOPBACK
-     || dev->addr_len != ETH_ALEN)
-        goto done;
-
-    if (memcmp(dev->name, "xnic-", 5) == 0) {
-
-        long int p;
-
-        if (kstrtol(dev->name + 5, 10, &p) == 0 && p < 2) {
-
-            printk("XNIC: ATTACHING TO PHYSICAL #%u NAME %s\n", p, dev->name);
-
-            net_device_s* const old = phys[p];
-
-            if (old != dev) {
-
-                if (old) {
-                    netdev_rx_handler_unregister(old);
-                    dev_put(old);
-                }
-
-                if (netdev_rx_handler_register(dev, xnic_in, NULL) != 0) {
-                    printk("XNIC: ATTACH FAILED\n");
-                    dev = NULL;
-                }
-
-                if ((phys[p] = dev))
-                    dev_hold(dev);
-            }
-                
-        } else
-            printk("XNIC: BAD/INVALID PORT\n");
-    }
-
-done:
-    return NOTIFY_OK;
-}
-
-static notifier_block_s notifyDevs = {
-    .notifier_call = xnic_notify_phys
-};
-
 static int __init xnic_init (void) {
 
     printk("XNIC: INIT WITH SIDE A %u MTU %d\n", IS_A, MTU);
@@ -386,25 +362,12 @@ static int __init xnic_init (void) {
     // MAKE IT VISIBLE IN THE SYSTEM
     register_netdev(virt);
 
-    // COLOCA A PARADA DE EVENTOS
-    if (register_netdevice_notifier(&notifyDevs) >= 0)
-        return 0;
-
-    printk("XNIC: FAILED TO REGISTER NETWORK DEVICES NOTIFIER\n");
-
-    unregister_netdev(virt);
-
-    free_netdev(virt);
-
-    return -1;
+    return 0;
 }
 
 static void __exit xnic_exit (void) {
 
     printk("XNIC: EXIT\n");
-
-    // PARA DE MONITORAR OS EVENTOS
-    unregister_netdevice_notifier(&notifyDevs);
 
     // UNHOOK PHYSICAL INTERFACES
     rtnl_lock();
