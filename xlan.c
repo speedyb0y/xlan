@@ -61,8 +61,6 @@ typedef struct notifier_block notifier_block_s;
 #define UDP_SIZE  8
 #define TCP_SIZE 20
 
-#define DEV_FLAGS_UP (IFF_UP | IFF_RUNNIG | IFF_LOWER_UP)
-
 #define MTU 7600
 
 static net_device_s* virt; // VIRTUAL INTERFACE
@@ -218,7 +216,8 @@ static netdev_tx_t xnic_out (sk_buff_s* const skb, net_device_s* const xdev) {
         net_device_s* const this = xnic->phys[hash];
 
         // SOMENTE SE ELA ESTIVER ATIVA E OK
-        if ((this->flags & DEV_FLAGS_UP) == DEV_FLAGS_UP) {
+        if ((this->flags & (IFF_UP | IFF_RUNNIG | IFF_LOWER_UP))
+                        == (IFF_UP | IFF_RUNNIG | IFF_LOWER_UP)) {
 
             skb->dev = this;
 
