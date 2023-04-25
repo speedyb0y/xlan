@@ -252,6 +252,11 @@ static int xnic_down (net_device_s* const dev) {
 
 static int xnic_enslave (net_device_s* virt, net_device_s* dev, struct netlink_ext_ack* extack) {
 
+    xnic_s* const xnic = ;
+
+    printk("XNIC: %s: ADD PHYSICAL %s AS PORT %u\n",
+        virt->name, dev->name, xnic->n);
+
     // NEGA ELA MESMA
     if (dev == virt) {
         printk("XNIC: SAME\n");
@@ -269,10 +274,6 @@ static int xnic_enslave (net_device_s* virt, net_device_s* dev, struct netlink_e
         printk("XNIC: NOT ETHERNET\n");
         goto failed;
     }
-
-    printk("XNIC: ATTACHING TO PHYSICAL #%u NAME %s\n", p, dev->name);
-
-    xnic_s* const xnic = ;
 
     //
     if (xnic->n == XNIC_PHYS_N) {
