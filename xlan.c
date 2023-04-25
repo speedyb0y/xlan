@@ -138,10 +138,12 @@ static netdev_tx_t xnic_out (sk_buff_s* const skb, net_device_s* const xdev) {
                 case IPPROTO_DCCP:
                     hash += *(u64*)(ip + IP4_O_SRC); // SRC ADDR, DST ADDR
                     hash += *(u32*)(ip + IP4_SIZE); // SRC PORT, DST PORT
+                    hash = __builtin_popcountll(hash);
                     hsize = IP4_SIZE + UDP_SIZE;
                     break;
                 default:
                     hash += *(u64*)(ip + IP4_O_SRC); // SRC ADDR, DST ADDR
+                    hash = __builtin_popcountll(hash);
                     hsize = IP4_SIZE;
             }
 
@@ -161,6 +163,7 @@ static netdev_tx_t xnic_out (sk_buff_s* const skb, net_device_s* const xdev) {
                     hash += *(u64*)(ip + IP6_O_DST1); // DST ADDR
                     hash += *(u64*)(ip + IP6_O_DST2); // DST ADDR
                     hash += *(u32*)(ip + IP6_SIZE); // SRC PORT, DST PORT
+                    hash = __builtin_popcountll(hash);
                     hsize = IP6_SIZE + UDP_SIZE;
                     break;
                 default:
@@ -168,6 +171,7 @@ static netdev_tx_t xnic_out (sk_buff_s* const skb, net_device_s* const xdev) {
                     hash += *(u64*)(ip + IP6_O_SRC2); // SRC ADDR
                     hash += *(u64*)(ip + IP6_O_DST1); // DST ADDR
                     hash += *(u64*)(ip + IP6_O_DST2); // DST ADDR
+                    hash = __builtin_popcountll(hash);
                     hsize = IP6_SIZE;
             }
 
@@ -181,33 +185,7 @@ static netdev_tx_t xnic_out (sk_buff_s* const skb, net_device_s* const xdev) {
     if (skb->len < hsize)
         goto drop;
 
-    // INSERT ETHERNET HEADER
-    void* const eth = PTR(ip) - ETH_HLEN;
-
-    // CONFIRMA ESPACO
-    if (PTR(eth) < SKB_HEAD(skb))
-        goto drop;
-
-    // BUILD HEADER
-    // TODO: ACCORDING TO ENDIANESS
-    *(u64*)(eth     ) = 0x0000FFFFFFFFFFFFULL;
-    *(u16*)(eth + 12) = skb->protocol;
-
-    // UPDATE SKB
-    skb->data       = PTR(eth);
-#ifdef NET_SKBUFF_DATA_USES_OFFSET
-    skb->mac_header = PTR(eth) - SKB_HEAD(skb);
-#else
-    skb->mac_header = PTR(eth);
-#endif
-    skb->len        = SKB_TAIL(skb) - PTR(eth);
-    skb->mac_len    = ETH_HLEN;
-
     // CHOOSE PORT
-    hash += hash >> 32;
-    hash += hash >> 16;
-    hash += hash >> 8;
-
     foreach (c, xnic->n) {
 
         hash++;
@@ -220,6 +198,28 @@ static netdev_tx_t xnic_out (sk_buff_s* const skb, net_device_s* const xdev) {
                         == (IFF_UP | IFF_RUNNIG | IFF_LOWER_UP)) {
 
             skb->dev = this;
+
+            // INSERT ETHERNET HEADER
+            void* const eth = PTR(ip) - ETH_HLEN;
+
+            // CONFIRMA ESPACO
+            if (PTR(eth) < SKB_HEAD(skb))
+                goto drop;
+
+            // BUILD HEADER
+            // TODO: ACCORDING TO ENDIANESS
+            *(u64*)(eth     ) = 0x0000FFFFFFFFFFFFULL;
+            *(u16*)(eth + 12) = skb->protocol;
+
+            // UPDATE SKB
+            skb->data       = PTR(eth);
+#ifdef NET_SKBUFF_DATA_USES_OFFSET
+            skb->mac_header = PTR(eth) - SKB_HEAD(skb);
+#else
+            skb->mac_header = PTR(eth);
+#endif
+            skb->len        = SKB_TAIL(skb) - PTR(eth);
+            skb->mac_len    = ETH_HLEN;
 
             // -- THE FUNCTION CAN BE CALLED FROM AN INTERRUPT
             // -- WHEN CALLING THIS METHOD, INTERRUPTS MUST BE ENABLED
