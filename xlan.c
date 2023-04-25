@@ -62,24 +62,24 @@ typedef struct notifier_block notifier_block_s;
 #define UDP_SIZE  8
 #define TCP_SIZE 20
 
-#define IS_SPEEDYB0Y 1 // speedyb0y
+#define IS_A 1 // speedyb0y
 #define MTU 7600
 
-#define MAC_S_A "\xbc\x5f\xf4\xf9\xe6\x66"
-#define MAC_S_B "\xbc\x5f\xf4\xf9\xe6\x66"
-#define MAC_G_A "\x88\xc9\xb3\xb0\xf1\xeb"
-#define MAC_G_B "\x88\xc9\xb3\xb0\xf1\xea"
+#define MAC_A_0 "\xbc\x5f\xf4\xf9\xe6\x66"
+#define MAC_A_1 "\xbc\x5f\xf4\xf9\xe6\x66"
+#define MAC_B_0 "\x88\xc9\xb3\xb0\xf1\xeb"
+#define MAC_B_1 "\x88\xc9\xb3\xb0\xf1\xea"
 
-#if IS_SPEEDYB0Y
-#define MAC_A_SRC MAC_S_A
-#define MAC_A_DST MAC_G_A
-#define MAC_B_SRC MAC_S_B
-#define MAC_B_DST MAC_G_B
+#if IS_A
+#define MAC_SRC_0 MAC_A_0
+#define MAC_SRC_1 MAC_A_1
+#define MAC_DST_0 MAC_B_0
+#define MAC_DST_1 MAC_B_1
 #else
-#define MAC_A_SRC MAC_G_A
-#define MAC_A_DST MAC_S_A
-#define MAC_B_SRC MAC_G_B
-#define MAC_B_DST MAC_S_B
+#define MAC_SRC_0 MAC_B_0
+#define MAC_SRC_1 MAC_B_1
+#define MAC_DST_0 MAC_A_0
+#define MAC_DST_1 MAC_A_1
 #endif
 
 static net_device_s* virt; // VIRTUAL INTERFACE
@@ -135,7 +135,7 @@ static netdev_tx_t xnic_out (sk_buff_s* const skb, net_device_s* const xdev) {
         goto drop;
 
     // BUILD HEADER
-#if IS_SPEEDYB0Y
+#if IS_A
     eth[0] = 0x2525;
     eth[1] = 0xAAAA;
     eth[2] = 0xAAAA;
@@ -302,10 +302,10 @@ static int xnic_notify_phys (struct notifier_block* const nb, const unsigned lon
     if (*(u32*)mac == 0)
         goto done;
 
-    if (phys[0] == NULL && memcmp(MAC_A_SRC, mac, ETH_ALEN) == 0) {
+    if (phys[0] == NULL && memcmp(MAC_SRC_0, mac, ETH_ALEN) == 0) {
         if (netdev_rx_handler_register(dev, xnic_in, NULL) == 0)
             dev_hold((phys[0] = dev));
-    } elif (phys[1] == NULL && memcmp(MAC_B_SRC, mac, ETH_ALEN) == 0) {
+    } elif (phys[1] == NULL && memcmp(MAC_SRC_1, mac, ETH_ALEN) == 0) {
         if (netdev_rx_handler_register(dev, xnic_in, NULL) == 0)
             dev_hold((phys[1] = dev));
     }
@@ -320,7 +320,7 @@ static notifier_block_s notifyDevs = {
 
 static int __init xnic_init (void) {
 
-    printk("XNIC: INIT WITH SPEEDYB0Y %u MTU %u\n", IS_SPEEDYB0Y, mtu);
+    printk("XNIC: INIT WITH SIDE A %u MTU %u\n", IS_A, mtu);
 
     //
     cPort = 0;
