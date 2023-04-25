@@ -303,7 +303,7 @@ static int xnic_notify_phys (struct notifier_block* const nb, const unsigned lon
     printk("XNIC: ATTACHING TO PHYSICAL #%u NAME %s\n", p, dev->name);
 
     if (netdev_rx_handler_register(dev, xnic_in, NULL) == 0) {
-        dev_hold((phys[p] = dev)));
+        dev_hold((phys[p] = dev));
         dev_set_promiscuity(dev, 1);        
     } else
         printk("XNIC: ATTACH FAILED\n");
