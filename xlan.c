@@ -93,13 +93,10 @@ typedef struct notifier_block notifier_block_s;
 static net_device_s* virt; // VIRTUAL INTERFACE
 static net_device_s* phys[2]; // PHYSICAL INTERFACES    
 
-static uint cPort;
-static uint cCounter;
-
 static rx_handler_result_t xnic_in (sk_buff_s** const pskb) {
 
     // SO SE A INTERFACE XNIC ESTIVER UP
-    if (!(virt && virt->flags & IFF_UP))
+    if (virt->flags & IFF_UP)
         return RX_HANDLER_PASS;
 
     sk_buff_s* const skb = *pskb;
@@ -131,12 +128,78 @@ drop: // TODO: dev_kfree_skb ?
 
 static netdev_tx_t xnic_out (sk_buff_s* const skb, net_device_s* const xdev) {
 
+    // ONLY LINEAR
     if (skb_linearize(skb))
-        // NON LINEAR
+        goto drop;
+
+    void* const ip = SKB_NETWORK(skb);
+
+    if (PTR(ip) < SKB_HEAD(skb)
+     || PTR(ip) > SKB_TAIL(skb))
+        goto drop;
+
+    uint hsize; // MINIMUM SIZE    
+    uintll hash; // COMPUTE HASH    
+
+    // IP VERSION
+    switch (*(u8*)ip >> 4) {
+
+        case 4: // TODO: VER DENTRO DAS MENSAGENS ICMP E GERAR O MESMO HASH DESSES AQUI
+            
+            // IP PROTOCOL
+            switch ((hash = *(u8*)(ip + IP4_O_PROTO))) {
+                case IPPROTO_TCP:
+                case IPPROTO_UDP:
+                case IPPROTO_UDPLITE:
+                case IPPROTO_SCTP:
+                case IPPROTO_DCCP:
+                    hash += *(u64*)(ip + IP4_O_SRC); // SRC ADDR, DST ADDR
+                    hash += *(u32*)(ip + IP4_SIZE); // SRC PORT, DST PORT
+                    hsize = IP4_SIZE + UDP_SIZE;
+                    break;
+                default:
+                    hash += *(u64*)(ip + IP4_O_SRC); // SRC ADDR, DST ADDR
+                    hsize = IP4_SIZE;
+            }
+
+            break;
+
+        case 6:
+
+            // IP PROTOCOL
+            switch ((hash = *(u8*)(ip + IP6_O_PROTO))) {
+                case IPPROTO_TCP:
+                case IPPROTO_UDP:
+                case IPPROTO_UDPLITE:
+                case IPPROTO_SCTP: // TODO: CONSIDER IPV6 FLOW?
+                case IPPROTO_DCCP:
+                    hash += *(u64*)(ip + IP6_O_SRC1); // SRC ADDR
+                    hash += *(u64*)(ip + IP6_O_SRC2); // SRC ADDR
+                    hash += *(u64*)(ip + IP6_O_DST1); // DST ADDR
+                    hash += *(u64*)(ip + IP6_O_DST2); // DST ADDR
+                    hash += *(u32*)(ip + IP6_SIZE); // SRC PORT, DST PORT
+                    hsize = IP6_SIZE + UDP_SIZE;
+                    break;
+                default:
+                    hash += *(u64*)(ip + IP6_O_SRC1); // SRC ADDR
+                    hash += *(u64*)(ip + IP6_O_SRC2); // SRC ADDR
+                    hash += *(u64*)(ip + IP6_O_DST1); // DST ADDR
+                    hash += *(u64*)(ip + IP6_O_DST2); // DST ADDR
+                    hsize = IP6_SIZE;
+            }
+
+            break;
+
+        default:
+            // UNSUPORTED
+            goto drop;
+    }
+
+    if (skb->len < hsize)
         goto drop;
 
     // INSERT ETHERNET HEADER
-    u16* const eth = SKB_NETWORK(skb) - ETH_HLEN;
+    u16* const eth = PTR(ip) - ETH_HLEN;
 
     // CONFIRMA ESPACO
     if (PTR(eth) < SKB_HEAD(skb)
@@ -168,33 +231,21 @@ static netdev_tx_t xnic_out (sk_buff_s* const skb, net_device_s* const xdev) {
     skb->mac_len    = ETH_HLEN;
 
     // CHOOSE PORT
-    uint p;
+    hash += hash >> 32;
+    hash += hash >> 16;
+    hash += hash >> 8;
+    hash &= 1U;
 
-    if (skb->protocol == BE16(ETH_P_IP)) {
-        
-        p = 0; // TODO: COMPUTE THE HASH
+    net_device_s* x = phys[ hash];
+    net_device_s* y = phys[!hash];
 
-    } else {
+#define DEV_FLAGS_UP (IFF_UP | IFF_RUNNIG | IFF_LOWER_UP)
 
-        p = 0;
-    }
+#define DEV_IS_UNUSABLE(dev) (!(dev && ((dev)->flags & DEV_FLAGS_UP) == DEV_FLAGS_UP))
 
-    if (cCounter >= 1000) {
-        cCounter  = 0;
-        cPort ^= 1;
-    } else
-        cCounter++;
-
-    p = cPort;
-
-    //
-    net_device_s* x = phys[ p];
-    net_device_s* y = phys[!p];
-
-#define FLAGS_UP (IFF_UP | IFF_RUNNIG | IFF_LOWER_UP)
     // SOMENTE SE ELA ESTIVER ATIVA E OK
-    if (!(x && (x->flags & FLAGS_UP) == FLAGS_UP)) {
-        if (!(y && (y->flags & FLAGS_UP) == FLAGS_UP))
+    if (DEV_IS_UNUSABLE(x)) {
+        if (DEV_IS_UNUSABLE(y))
             goto drop;
         x = y;
     }
@@ -320,10 +371,6 @@ static notifier_block_s notifyDevs = {
 static int __init xnic_init (void) {
 
     printk("XNIC: INIT WITH SIDE A %u MTU %d\n", IS_A, MTU);
-
-    //
-    cPort = 0;
-    cCounter = 0;
 
     // WILL YET DISCOVER THE PHYSICAL INTERFACES
     phys[0] = NULL;
