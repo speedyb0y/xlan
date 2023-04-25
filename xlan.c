@@ -71,6 +71,14 @@ typedef struct notifier_block notifier_block_s;
 #define MAC_B_1 "\x88\xc9\xb3\xb0\xf1\xea"
 
 #if IS_A
+#define XNIC_0 "gw-0"
+#define XNIC_1 "gw-1"
+#else
+#define XNIC_0 "speedyb0y-0"
+#define XNIC_1 "speedyb0y-1"
+#endif
+
+#if IS_A
 #define MAC_SRC_0 MAC_A_0
 #define MAC_SRC_1 MAC_A_1
 #define MAC_DST_0 MAC_B_0
@@ -109,6 +117,7 @@ static rx_handler_result_t xnic_in (sk_buff_s** const pskb) {
     skb->len            = SKB_TAIL(skb) - SKB_NETWORK(skb);
     skb->mac_header     = skb->network_header;
     skb->mac_len        = 0;
+    skb->pkt_type       = PACKET_HOST;
     skb->dev            = virt;
 
     return RX_HANDLER_ANOTHER;
@@ -135,20 +144,16 @@ static netdev_tx_t xnic_out (sk_buff_s* const skb, net_device_s* const xdev) {
         goto drop;
 
     // BUILD HEADER
+    eth[0] = 0xFFFF;
+    eth[1] = 0xFFFF;
+    eth[2] = 0xFFFF;
+    eth[3] = 0x0000;
 #if IS_A
-    eth[0] = 0x2525;
-    eth[1] = 0xAAAA;
-    eth[2] = 0xAAAA;
-    eth[3] = 0x2525;
-    eth[4] = 0xBBBB;
-    eth[5] = 0xBBBB;
-#else
-    eth[0] = 0x2525;
-    eth[1] = 0xBBBB;
-    eth[2] = 0xBBBB;
-    eth[3] = 0x2525;
     eth[4] = 0xAAAA;
     eth[5] = 0xAAAA;
+#else
+    eth[4] = 0xBBBB;
+    eth[5] = 0xBBBB;
 #endif
     eth[6] = skb->protocol;
 
@@ -269,7 +274,7 @@ static int xnic_notify_phys (struct notifier_block* const nb, const unsigned lon
 
     // CONSIDERA SOMENTE ESTES EVENTOS
     if (event != NETDEV_REGISTER
-     && event != NETDEV_CHANGEADDR)
+     && event != NETDEV_CHANGENAME)
         goto done;
 
     net_device_s* const dev = netdev_notifier_info_to_dev(info);
@@ -281,30 +286,15 @@ static int xnic_notify_phys (struct notifier_block* const nb, const unsigned lon
         goto done;
 
     // FILTRAR LOOPBACK
-    if (dev->flags & IFF_LOOPBACK)
-        goto done;
-
     // FILTRAR ETHERNET
-    if (dev->addr_len != ETH_ALEN)
+    if (dev->flags & IFF_LOOPBACK
+     || dev->addr_len != ETH_ALEN)
         goto done;
 
     //
-    const u8* const mac =
-        (event == NETDEV_REGISTER) ?
-            PTR(dev->perm_addr) :
-            PTR(dev->dev_addr);
-
-    //
-    if (mac == NULL)
-        goto done;
-    
-    //
-    if (*(u32*)mac == 0)
-        goto done;
-
-    if (phys[0] == NULL && memcmp(MAC_SRC_0, mac, ETH_ALEN) == 0) {
+    if (phys[0] == NULL && strcmp(XNIC_0, dev->name) == 0) {
         phys[0] = dev;
-    } elif (phys[1] == NULL && memcmp(MAC_SRC_1, mac, ETH_ALEN) == 0) {
+    } elif (phys[1] == NULL && strcmp(XNIC_1, dev->name) == 0) {
             phys[1] = dev;
     } else
         goto done;
