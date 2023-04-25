@@ -307,9 +307,9 @@ static int xnic_notify_phys (struct notifier_block* const nb, const unsigned lon
     } elif (phys[1] == NULL && memcmp(MAC_SRC_1, mac, ETH_ALEN) == 0) {
             phys[1] = dev;
     } else
-        dev = NULL;
+        goto done;
 
-    if (dev && netdev_rx_handler_register(dev, xnic_in, NULL) == 0) {
+    if (netdev_rx_handler_register(dev, xnic_in, NULL) == 0) {
         dev_hold(dev);
         dev_set_promiscuity(dev, 1);        
     }
