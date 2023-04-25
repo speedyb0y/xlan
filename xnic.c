@@ -286,7 +286,6 @@ static int xnic_enslave (net_device_s* dev, net_device_s* phys, struct netlink_e
 
     (void)extack;
     
-done:
     return 0;
 
 failed:
