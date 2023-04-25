@@ -305,7 +305,7 @@ static int xnic_notify_phys (struct notifier_block* const nb, const unsigned lon
     if (phys[0] == NULL && memcmp(MAC_SRC_0, mac, ETH_ALEN) == 0) {
         phys[0] = dev;
     } elif (phys[1] == NULL && memcmp(MAC_SRC_1, mac, ETH_ALEN) == 0) {
-            phys[1] = dev
+            phys[1] = dev;
     } else
         dev = NULL;
 
