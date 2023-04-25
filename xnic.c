@@ -291,7 +291,7 @@ static const net_device_ops_s xispDevOps = {
     .ndo_start_xmit       = xnic_out,
     .ndo_set_mac_address  = NULL,
     .ndo_add_slave		  = xnic_enslave,
-	.ndo_del_slave		  = NULL,
+    .ndo_del_slave		  = NULL,
     // TODO: SET MTU - NAO EH PARA SETAR AQUI E SIM NO ROUTE
 };
 
