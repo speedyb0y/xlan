@@ -272,7 +272,7 @@ static int xnic_notify_phys (struct notifier_block* const nb, const unsigned lon
      && event != NETDEV_CHANGEADDR)
         goto done;
 
-    net_device_s* const dev = netdev_notifier_info_to_dev(info);
+    net_device_s* dev = netdev_notifier_info_to_dev(info);
 
     // IGNORA EVENTOS DELA MESMA
     if (dev == virt
@@ -303,11 +303,15 @@ static int xnic_notify_phys (struct notifier_block* const nb, const unsigned lon
         goto done;
 
     if (phys[0] == NULL && memcmp(MAC_SRC_0, mac, ETH_ALEN) == 0) {
-        if (netdev_rx_handler_register(dev, xnic_in, NULL) == 0)
-            dev_hold((phys[0] = dev));
+        phys[0] = dev;
     } elif (phys[1] == NULL && memcmp(MAC_SRC_1, mac, ETH_ALEN) == 0) {
-        if (netdev_rx_handler_register(dev, xnic_in, NULL) == 0)
-            dev_hold((phys[1] = dev));
+            phys[1] = dev
+    } else
+        dev = NULL;
+
+    if (dev && netdev_rx_handler_register(dev, xnic_in, NULL) == 0) {
+        dev_hold(dev);
+        dev_set_promiscuity(dev, 1);        
     }
 
 done:
@@ -364,8 +368,8 @@ static void __exit xnic_exit (void) {
 
     rtnl_unlock();
 
-    if (phys[0]) dev_put(phys[0]);
-    if (phys[1]) dev_put(phys[1]);
+    if (phys[0]) { dev_set_promiscuity(dev, 1); dev_put(phys[0]); }
+    if (phys[1]) { dev_set_promiscuity(dev, 1); dev_put(phys[1]); }
 
     // DESTROY VIRTUAL INTERFACE
     unregister_netdev(virt);
