@@ -68,7 +68,6 @@ typedef struct notifier_block notifier_block_s;
 #define MTU 7600
 
 static net_device_s* virt; // VIRTUAL INTERFACE
-static  ; 
 
 #define XNIC_PHYS_N 2
 
@@ -99,7 +98,10 @@ static rx_handler_result_t xnic_in (sk_buff_s** const pskb) {
     skb->mac_header     = skb->network_header;
     skb->mac_len        = 0;
     skb->pkt_type       = PACKET_HOST;
-    skb->dev            = virt;
+    skb->dev            = rcu_dereference(skb->dev);
+    // rcu_dereference
+    // rcu_dereference_bh(dev->rx_handler_data)
+	// rtnl_dereference(dev->rx_handler_data)
 
     return RX_HANDLER_ANOTHER;
 
@@ -282,15 +284,19 @@ static int xnic_enslave (net_device_s* virt, net_device_s* dev, struct netlink_e
     }
 
     //
-    if (netdev_rx_handler_register(dev, xnic_in, NULL) == 0) {
-        printk("XNIC: ATTACHED\n");
-        dev_hold((xnic->phys[xnic->n++] = dev));
-        dev->seila = virt;
-    } else {
+    if (netdev_rx_handler_register(dev, xnic_in, virt) != 0) {
         printk("XNIC: ATTACH FAILED\n");
         goto failed;
     }
-            
+
+    //
+    xnic->phys[xnic->n++] = dev;
+
+    dev_hold(dev);
+
+    //
+    dev->seila = virt;
+
     (void)extack;
     
 done:
