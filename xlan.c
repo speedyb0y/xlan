@@ -65,7 +65,7 @@ typedef struct notifier_block notifier_block_s;
 
 static net_device_s* virt; // VIRTUAL INTERFACE
 
-#define XNIC_PHYS_N 2
+#define XNIC_PHYS_N 7
 
 typedef struct xnic_s {
     uint n;
