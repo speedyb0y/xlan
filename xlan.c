@@ -320,7 +320,7 @@ static notifier_block_s notifyDevs = {
 
 static int __init xnic_init (void) {
 
-    printk("XNIC: INIT\n");
+    printk("XNIC: INIT WITH SPEEDYB0Y %u MTU %u\n", IS_SPEEDYB0Y, mtu);
 
     //
     cPort = 0;
