@@ -1,1 +1,0 @@
-savedcmd_/build/xlan/xnic.ko := ld -r -m elf_x86_64 -z noexecstack --no-warn-rwx-segments --build-id=sha1  -T scripts/module.lds -o /build/xlan/xnic.ko /build/xlan/xnic.o /build/xlan/xnic.mod.o;  true
