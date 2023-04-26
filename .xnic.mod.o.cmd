@@ -1,4 +1,4 @@
-savedcmd_/build/xlan/xnic.mod.o := clang -Wp,-MMD,/build/xlan/.xnic.mod.o.d -nostdinc -I/build/linux/arch/x86/include -I./arch/x86/include/generated -I/build/linux/include -I./include -I/build/linux/arch/x86/include/uapi -I./arch/x86/include/generated/uapi -I/build/linux/include/uapi -I./include/generated/uapi -include /build/linux/include/linux/compiler-version.h -include /build/linux/include/linux/kconfig.h -include /build/linux/include/linux/compiler_types.h -D__KERNEL__ -fmacro-prefix-map=/build/linux/= -Wall -Wundef -Werror=strict-prototypes -Wno-trigraphs -fno-strict-aliasing -fno-common -fshort-wchar -fno-PIE -Werror=implicit-function-declaration -Werror=implicit-int -Werror=return-type -Wno-format-security -funsigned-char -std=gnu11 --target=x86_64-linux-gnu -fintegrated-as -Werror=unknown-warning-option -Werror=ignored-optimization-argument -Werror=option-ignored -Werror=unused-command-line-argument -mno-sse -mno-mmx -mno-sse2 -mno-3dnow -mno-avx -fcf-protection=none -m64 -falign-loops=1 -mno-80387 -mno-fp-ret-in-387 -mstack-alignment=8 -mskip-rax-setup -march=k8 -mno-red-zone -mcmodel=kernel -Wno-sign-compare -fno-asynchronous-unwind-tables -fno-delete-null-pointer-checks -Wno-frame-address -Wno-address-of-packed-member -O2 -Wframe-larger-than=2048 -fno-stack-protector -Wno-gnu -Wno-unused-but-set-variable -Wno-unused-const-variable -fomit-frame-pointer -fno-stack-clash-protection -falign-functions=16 -Wdeclaration-after-statement -Wvla -Wno-pointer-sign -Wcast-function-type -Wimplicit-fallthrough -fno-strict-overflow -fno-stack-check -Werror=date-time -Werror=incompatible-pointer-types -Wno-initializer-overrides -Wno-format -Wformat-extra-args -Wformat-invalid-specifier -Wformat-zero-length -Wnonnull -Wformat-insufficient-args -Wno-sign-compare -Wno-pointer-to-enum-cast -Wno-tautological-constant-out-of-range-compare -Wno-unaligned-access -DMODULE -DKBUILD_BASENAME='"xnic.mod"' -DKBUILD_MODNAME='"xnic"' -D__KBUILD_MODNAME=kmod_xnic -c -o /build/xlan/xnic.mod.o /build/xlan/xnic.mod.c
+savedcmd_/build/xlan/xnic.mod.o := gcc -Wp,-MMD,/build/xlan/.xnic.mod.o.d -nostdinc -I/build/linux/arch/x86/include -I./arch/x86/include/generated -I/build/linux/include -I./include -I/build/linux/arch/x86/include/uapi -I./arch/x86/include/generated/uapi -I/build/linux/include/uapi -I./include/generated/uapi -include /build/linux/include/linux/compiler-version.h -include /build/linux/include/linux/kconfig.h -include /build/linux/include/linux/compiler_types.h -D__KERNEL__ -fmacro-prefix-map=/build/linux/= -Wall -Wundef -Werror=strict-prototypes -Wno-trigraphs -fno-strict-aliasing -fno-common -fshort-wchar -fno-PIE -Werror=implicit-function-declaration -Werror=implicit-int -Werror=return-type -Wno-format-security -funsigned-char -std=gnu11 -mno-sse -mno-mmx -mno-sse2 -mno-3dnow -mno-avx -fcf-protection=none -m64 -falign-jumps=1 -falign-loops=1 -mno-80387 -mno-fp-ret-in-387 -mpreferred-stack-boundary=3 -mskip-rax-setup -march=core2 -mno-red-zone -mcmodel=kernel -Wno-sign-compare -fno-asynchronous-unwind-tables -fno-delete-null-pointer-checks -Wno-frame-address -Wno-format-truncation -Wno-format-overflow -Wno-address-of-packed-member -O2 -fno-allow-store-data-races -Wframe-larger-than=2048 -fno-stack-protector -Wno-main -Wno-unused-but-set-variable -Wno-unused-const-variable -Wno-dangling-pointer -fomit-frame-pointer -fno-stack-clash-protection -falign-functions=16 -Wdeclaration-after-statement -Wvla -Wno-pointer-sign -Wcast-function-type -Wno-stringop-truncation -Wno-stringop-overflow -Wno-restrict -Wno-maybe-uninitialized -Wno-array-bounds -Wno-alloc-size-larger-than -Wimplicit-fallthrough=5 -fno-strict-overflow -fno-stack-check -fconserve-stack -Werror=date-time -Werror=incompatible-pointer-types -Werror=designated-init -Wno-packed-not-aligned -DMODULE -DKBUILD_BASENAME='"xnic.mod"' -DKBUILD_MODNAME='"xnic"' -D__KBUILD_MODNAME=kmod_xnic -c -o /build/xlan/xnic.mod.o /build/xlan/xnic.mod.c
 
 source_/build/xlan/xnic.mod.o := /build/xlan/xnic.mod.c
 
@@ -19,9 +19,10 @@ deps_/build/xlan/xnic.mod.o := \
     $(wildcard include/config/HAVE_ARCH_COMPILER_H) \
     $(wildcard include/config/CC_HAS_ASM_INLINE) \
   /build/linux/include/linux/compiler_attributes.h \
-  /build/linux/include/linux/compiler-clang.h \
+  /build/linux/include/linux/compiler-gcc.h \
     $(wildcard include/config/ARCH_USE_BUILTIN_BSWAP) \
-    $(wildcard include/config/CLANG_VERSION) \
+    $(wildcard include/config/SHADOW_CALL_STACK) \
+    $(wildcard include/config/KCOV) \
   /build/linux/include/linux/module.h \
     $(wildcard include/config/MODULES) \
     $(wildcard include/config/SYSFS) \
@@ -601,7 +602,6 @@ deps_/build/xlan/xnic.mod.o := \
     $(wildcard include/config/ARCH_FORCE_MAX_ORDER) \
     $(wildcard include/config/MEMORY_ISOLATION) \
     $(wildcard include/config/ZSMALLOC) \
-    $(wildcard include/config/SHADOW_CALL_STACK) \
     $(wildcard include/config/LRU_GEN_STATS) \
     $(wildcard include/config/MEMORY_HOTPLUG) \
     $(wildcard include/config/COMPACTION) \
@@ -719,7 +719,6 @@ deps_/build/xlan/xnic.mod.o := \
     $(wildcard include/config/FAULT_INJECTION) \
     $(wildcard include/config/LATENCYTOP) \
     $(wildcard include/config/FUNCTION_GRAPH_TRACER) \
-    $(wildcard include/config/KCOV) \
     $(wildcard include/config/BCACHE) \
     $(wildcard include/config/VMAP_STACK) \
     $(wildcard include/config/SECURITY) \
