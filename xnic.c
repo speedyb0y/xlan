@@ -66,7 +66,7 @@ typedef struct notifier_block notifier_block_s;
 #define IP6_O_SRC2  16
 #define IP6_O_DST1  24
 #define IP6_O_DST2  32
-            
+
 #define IP4_O_PROTO 9
 #define IP4_O_SRC 12
 #define IP4_O_DST 16
@@ -79,14 +79,24 @@ static net_device_s* virt; // VIRTUAL INTERFACE
 
 typedef struct xnic_s {
     uint n;
-    net_device_s* phys[XNIC_PHYS_N]; // PHYSICAL INTERFACES    
+    net_device_s* phys[XNIC_PHYS_N]; // PHYSICAL INTERFACES
 } xnic_s;
 
 static rx_handler_result_t xnic_in (sk_buff_s** const pskb) {
+#if 1
+    sk_buff_s* const skb = *pskb;
 
+    skb->pkt_type       = PACKET_HOST;
+    if (virt)
+        skb->dev  = virt;
+
+    return RX_HANDLER_ANOTHER;
+#else
     // SO SE A INTERFACE XNIC ESTIVER UP
-    if (virt->flags & IFF_UP)
+    if (!(virt && virt->flags & IFF_UP)) {
+printk("ELA TA OFF PORRA\n");
         return RX_HANDLER_PASS;
+}
 
     sk_buff_s* const skb = *pskb;
 
@@ -97,18 +107,26 @@ static rx_handler_result_t xnic_in (sk_buff_s** const pskb) {
      && skb->protocol != BE16(ETH_P_IPV6))
         goto drop;
 
+    void* const ip = SKB_NETWORK(skb);
+
+    if (PTR(ip) < SKB_HEAD(skb)
+     || PTR(ip) > SKB_TAIL(skb)) {
+printk("VISH! %d\n", skb->len);
+        goto drop;
+}
+
     // PULA O ETHERNET HEADER
     // NOTE: skb->network_header JA ESTA CORRETO
-    skb->data           = SKB_NETWORK(skb);
-    skb->len            = SKB_TAIL(skb) - SKB_NETWORK(skb);
+    skb->data           = PTR(ip);
+    skb->len            = SKB_TAIL(skb) - PTR(ip);
     skb->mac_header     = skb->network_header;
     skb->mac_len        = 0;
     skb->pkt_type       = PACKET_HOST;
-    skb->dev            = rcu_dereference(skb->dev);
+    skb->dev            = virt; //rcu_dereference(skb->dev);
     // rcu_dereference
     // rcu_dereference_bh(dev->rx_handler_data)
 	// rtnl_dereference(dev->rx_handler_data)
-
+printk("PASSOU! %d\n", skb->len);
     return RX_HANDLER_ANOTHER;
 
 drop: // TODO: dev_kfree_skb ?
@@ -116,6 +134,7 @@ drop: // TODO: dev_kfree_skb ?
     kfree_skb(skb);
 
     return RX_HANDLER_CONSUMED;
+#endif
 }
 
 static netdev_tx_t xnic_out (sk_buff_s* const skb, net_device_s* const dev) {
@@ -134,6 +153,9 @@ static netdev_tx_t xnic_out (sk_buff_s* const skb, net_device_s* const dev) {
 
     // COMPUTE HASH
     uintll hash;
+
+    if (skb->len < 28)
+        goto drop;
 
     // IP VERSION
     switch (*(u8*)ip >> 4) {
@@ -180,16 +202,21 @@ static netdev_tx_t xnic_out (sk_buff_s* const skb, net_device_s* const dev) {
 
     hash = __builtin_popcountll(hash);
 
+    // ASSERT(xnic->n < XNICK_PHYS_N);
+
     // CHOOSE PORT
     foreach (c, xnic->n) {
 
         net_device_s* const this = xnic->phys[hash = (hash + 1) % xnic->n];
 
-        // SOMENTE SE ELA ESTIVER ATIVA E OK
-        if ((this->flags & (IFF_UP | IFF_RUNNING | IFF_LOWER_UP))
-                        == (IFF_UP | IFF_RUNNING | IFF_LOWER_UP)) {
+        // ASSERT(this);
+        if (this == NULL) {
+            continue;
+        }
 
-            skb->dev = this;
+        // SOMENTE SE ELA ESTIVER ATIVA E OK
+        if ((this->flags & (IFF_UP )) // IFF_RUNNING // IFF_LOWER_UP
+                        == (IFF_UP )) {
 
             // INSERT ETHERNET HEADER
             void* const eth = PTR(ip) - ETH_HLEN;
@@ -212,6 +239,7 @@ static netdev_tx_t xnic_out (sk_buff_s* const skb, net_device_s* const dev) {
 #endif
             skb->len        = SKB_TAIL(skb) - PTR(eth);
             skb->mac_len    = ETH_HLEN;
+            skb->dev        = this;
 
             // -- THE FUNCTION CAN BE CALLED FROM AN INTERRUPT
             // -- WHEN CALLING THIS METHOD, INTERRUPTS MUST BE ENABLED
@@ -285,12 +313,25 @@ static int xnic_enslave (net_device_s* dev, net_device_s* phys, struct netlink_e
     dev_hold(phys);
 
     (void)extack;
-    
-    return 0;
+
+//    return 0; TODO: !!!!!!!!!!!!!
 
 failed:
     return -1;
 }
+
+static int xnic_unslave (net_device_s* dev, net_device_s* phys) {
+
+//    xnic_s* const xnic = netdev_priv(dev);
+
+    printk("XNIC: %s: DEL PHYSICAL %s\n",
+        dev->name, phys->name);
+
+    return 1;
+}
+
+// struct net_device*  (*ndo_get_xmit_slave)(struct net_device *dev,                              struct sk_buff *skb,                              bool all_slaves);
+//  struct net_device*  (*ndo_sk_get_lower_dev)(struct net_device *dev,                            struct sock *sk);
 
 static const net_device_ops_s xispDevOps = {
     .ndo_init             = NULL,
@@ -299,7 +340,7 @@ static const net_device_ops_s xispDevOps = {
     .ndo_start_xmit       = xnic_out,
     .ndo_set_mac_address  = NULL,
     .ndo_add_slave        = xnic_enslave,
-    .ndo_del_slave        = NULL,
+    .ndo_del_slave        = xnic_unslave,
     // TODO: SET MTU - NAO EH PARA SETAR AQUI E SIM NO ROUTE
 };
 
@@ -345,7 +386,9 @@ static int __init xnic_init (void) {
 
     // CREATE THE VIRTUAL INTERFACE
     // MAKE IT VISIBLE IN THE SYSTEM
-    register_netdev(alloc_netdev(sizeof(xnic_s), "xnic", NET_NAME_USER, xnic_setup));
+    register_netdev((
+        virt = alloc_netdev(sizeof(xnic_s), "xnic", NET_NAME_USER, xnic_setup)
+    ));
 
     return 0;
 }
