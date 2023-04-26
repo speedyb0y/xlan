@@ -100,12 +100,6 @@ static rx_handler_result_t xnic_in (sk_buff_s** const pskb) {
 	// rtnl_dereference(dev->rx_handler_data)
 
     return RX_HANDLER_ANOTHER;
-
-drop: // TODO: dev_kfree_skb ?
-
-    kfree_skb(skb);
-
-    return RX_HANDLER_CONSUMED;
 }
 
 static netdev_tx_t xnic_out (sk_buff_s* const skb, net_device_s* const dev) {
