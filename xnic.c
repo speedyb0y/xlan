@@ -94,7 +94,7 @@ static rx_handler_result_t xnic_in (sk_buff_s** const pskb) {
     skb->mac_len        = 0;
 #endif
     skb->pkt_type       = PACKET_HOST;
-    skb->dev            = rcu_dereference(skb->dev);
+    skb->dev            = virt;//rcu_dereference(skb->dev->rx_handler_data);
     // rcu_dereference
     // rcu_dereference_bh(dev->rx_handler_data)
 	// rtnl_dereference(dev->rx_handler_data)
