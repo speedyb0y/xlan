@@ -83,50 +83,22 @@ typedef struct xnic_s {
 } xnic_s;
 
 static rx_handler_result_t xnic_in (sk_buff_s** const pskb) {
-#if 1
-    sk_buff_s* const skb = *pskb;
-
-    skb->pkt_type       = PACKET_HOST;
-    if (virt)
-        skb->dev  = virt;
-
-    return RX_HANDLER_ANOTHER;
-#else
-    // SO SE A INTERFACE XNIC ESTIVER UP
-    if (!(virt && virt->flags & IFF_UP)) {
-printk("ELA TA OFF PORRA\n");
-        return RX_HANDLER_PASS;
-}
 
     sk_buff_s* const skb = *pskb;
 
-    if (skb_linearize(skb))
-        goto drop;
-
-    if (skb->protocol != BE16(ETH_P_IP)
-     && skb->protocol != BE16(ETH_P_IPV6))
-        goto drop;
-
-    void* const ip = SKB_NETWORK(skb);
-
-    if (PTR(ip) < SKB_HEAD(skb)
-     || PTR(ip) > SKB_TAIL(skb)) {
-printk("VISH! %d\n", skb->len);
-        goto drop;
-}
-
-    // PULA O ETHERNET HEADER
+#if 0 // PULA O ETHERNET HEADER
     // NOTE: skb->network_header JA ESTA CORRETO
-    skb->data           = PTR(ip);
-    skb->len            = SKB_TAIL(skb) - PTR(ip);
+    skb->data           = SKB_NETWORK(ip);
+    skb->len            = SKB_TAIL(skb) - SKB_NETWORK(ip);
     skb->mac_header     = skb->network_header;
     skb->mac_len        = 0;
+#endif
     skb->pkt_type       = PACKET_HOST;
-    skb->dev            = virt; //rcu_dereference(skb->dev);
+    skb->dev            = rcu_dereference(skb->dev);
     // rcu_dereference
     // rcu_dereference_bh(dev->rx_handler_data)
 	// rtnl_dereference(dev->rx_handler_data)
-printk("PASSOU! %d\n", skb->len);
+
     return RX_HANDLER_ANOTHER;
 
 drop: // TODO: dev_kfree_skb ?
@@ -134,7 +106,6 @@ drop: // TODO: dev_kfree_skb ?
     kfree_skb(skb);
 
     return RX_HANDLER_CONSUMED;
-#endif
 }
 
 static netdev_tx_t xnic_out (sk_buff_s* const skb, net_device_s* const dev) {
