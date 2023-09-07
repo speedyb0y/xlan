@@ -118,8 +118,8 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* dev) {
 
     // IDENTIFY DESTINATION
     // TODO: ENDIANESS?
-    const uint lHost = *(u16*)(ip + (v4 ? IP4_O_SRC : IP6_O_SRC) - sizeof(u16));
-    const uint rHost = *(u16*)(ip + (v4 ? IP4_O_DST : IP6_O_DST) - sizeof(u16));
+    const uint lHost = *(u16*)(ip + (v4 ? IP4_O_SRC+2 : IP6_O_SRC+14));
+    const uint rHost = *(u16*)(ip + (v4 ? IP4_O_DST+2 : IP6_O_DST+14));
 
     // COMPUTE HASH
     // TODO: VER DENTRO DAS MENSAGENS ICMP E GERAR O MESMO HASH DESSES AQUI
