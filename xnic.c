@@ -67,8 +67,10 @@ typedef struct notifier_block notifier_block_s;
 #define IP4_O_PAYLOAD 20
 
 #define IP6_O_PROTO   5
+#define IP6_O_SRC     8
 #define IP6_O_SRC1    8
 #define IP6_O_SRC2    16
+#define IP6_O_DST     24
 #define IP6_O_DST1    24
 #define IP6_O_DST2    32
 #define IP6_O_PAYLOAD 40
