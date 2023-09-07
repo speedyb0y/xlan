@@ -112,13 +112,25 @@ static netdev_tx_t xnic_out (sk_buff_s* const skb, net_device_s* dev) {
      || PTR(ip) > SKB_TAIL(skb))
         goto drop;
 
-    //
-    uint rHost = *(u8*)(ip + (*(u8*)ip == 0x45 ? IP4_O_DST+3 : IP6_O_DST+15));
+    // TODO: ENDIANESS?
+    uint rHost = *(u16*)(ip + (*(u8*)ip == 0x45 ? IP4_O_DST+2 : IP6_O_DST+14));
 
     uint rPort = hash / PORTS_N;
     uint lPort = hash % PORTS_N;
 
-    A CADA 0.5 SEGUNDO LIMPA MAXIMUM/4 EM CADA PORTA
+    // A CADA HZ/4 INATIVO, MUDA DE PORTA
+    if (inativo) {
+        portID++;
+        portID %= PORTS_N;
+        portCOunt = 0;
+    }
+
+    //
+    if (portCOunt >= 20000) {
+        portCOunt = 0;
+        portID = (portID + 1) % PORTS_N;        
+    } else
+        portCOunt++;
         
     if (++(dessaporta[lPort]) >= MAXIMUM) {
          foreach (c, PORTS_N) {
@@ -144,9 +156,9 @@ static netdev_tx_t xnic_out (sk_buff_s* const skb, net_device_s* dev) {
     // BUILD HEADER
     // TODO: ACCORDING TO ENDIANESS
     *(u16*)(eth     ) = 0;
-    *(u32*)(eth +  2) = 0x00010001U * ((rHost << 8) | rPort);
+    *(u32*)(eth +  2) = (rHost << 8) | rPort;
     *(u16*)(eth +  6) = 0;
-    *(u32*)(eth +  8) = 0x00010001U * ((lHost << 8) | lPort);
+    *(u32*)(eth +  8) = (lHost << 8) | lPort;
     *(u16*)(eth + 12) = skb->protocol;
 
     // UPDATE SKB
