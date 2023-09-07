@@ -146,13 +146,14 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* dev) {
     u64 now   = jiffies;
 
     // SE DEU UMA PAUSA, TROCA DE PORTA
-    ports = (ports + ((now - last) >= HZ/4)) % (PORTS_N * PORTS_N);
+    ports = (ports + ((now - last) > HZ/5)) % (PORTS_N * PORTS_N);
 
     path->ports = ports;
     path->last  = now;
 
-    const uint lPort = ports / PORTS_N;
-    const uint rPort = ports % PORTS_N;
+    // NOTE: MUDA A PORTA LOCAL COM MAIS FREQUENCIA, PARA QUE O SWITCH A DESCUBRA
+    const uint rPort = ports / PORTS_N;
+    const uint lPort = ports % PORTS_N;
 
     // SOMENTE SE ELA ESTIVER ATIVA E OK
     if ((dev = physs[lPort]) == NULL)
