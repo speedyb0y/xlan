@@ -75,8 +75,6 @@ typedef struct notifier_block notifier_block_s;
 
 #define MTU 7600
 
-#define XNIC_PHYS_N 7
-
 #define PORTS_N 6 // MMC DAS QUANTIDADES DE PORTAS DOS HOSTS DA REDE
 
 static net_device_s* virt; // VIRTUAL INTERFACE
@@ -114,28 +112,20 @@ static netdev_tx_t xnic_out (sk_buff_s* const skb, net_device_s* dev) {
      || PTR(ip) > SKB_TAIL(skb))
         goto drop;
 
-    // COMPUTE HASH
-    uintll hash;
+    //
+    uint rHost = *(u8*)(ip + (*(u8*)ip == 0x45 ? IP4_O_DST+3 : IP6_O_DST+15));
 
-    // TODO: VER DENTRO DAS MENSAGENS ICMP E GERAR O MESMO HASH DESSES AQUI
-    // TCP | UDP | UDPLITE | SCTP | DCCP
-    if (*(u8*)ip == 0x45) { // NOTE: ASSUME QUE NÃO TEM IP OPTIONS
-        hash  = *(u8 *)(ip + IP4_O_PROTO);   // IP PROTOCOL
-        hash += *(u64*)(ip + IP4_O_SRC);     // SRC ADDR, DST ADDR
-        hash += *(u32*)(ip + IP4_O_PAYLOAD); // SRC PORT, DST PORT
-    } else {
-        hash  = *(u8 *)(ip + IP6_O_PROTO);   // IP PROTOCOL
-        hash += *(u64*)(ip + IP6_O_SRC1);    // SRC ADDR
-        hash += *(u64*)(ip + IP6_O_SRC2);    // SRC ADDR
-        hash += *(u64*)(ip + IP6_O_DST1);    // DST ADDR
-        hash += *(u64*)(ip + IP6_O_DST2);    // DST ADDR
-        hash += *(u32*)(ip + IP6_O_PAYLOAD); // SRC PORT, DST PORT
+    uint rPort = hash / PORTS_N;
+    uint lPort = hash % PORTS_N;
+
+    A CADA 0.5 SEGUNDO LIMPA MAXIMUM/4 EM CADA PORTA
+        
+    if (++(dessaporta[lPort]) >= MAXIMUM) {
+         foreach (c, PORTS_N) {
+           dessaporta[++lPort] -= MAXIMUM/4;
+            ;
+         }
     }
-
-    hash = __builtin_popcountll(hash);
-
-    const uint rPort = hash / PORTS_N;
-    const uint lPort = hash % PORTS_N;
 
     // SOMENTE SE ELA ESTIVER ATIVA E OK
     if ((dev = phys[lPort]) == NULL)
