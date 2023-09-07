@@ -1,21 +1,21 @@
 
-KBUILD:=/lib/modules/$(shell uname -r)/build/
+KBUILD := /lib/modules/$(shell uname -r)/build/
 
-CFLAGS_xnic.o += -Wfatal-errors
-CFLAGS_xnic.o += -Werror
-CFLAGS_xnic.o += -Wall
-CFLAGS_xnic.o += -Wextra
-CFLAGS_xnic.o += -Wno-declaration-after-statement
-CFLAGS_xnic.o += -Wno-error=unused-parameter
-CFLAGS_xnic.o += -Wno-error=unused-function
-CFLAGS_xnic.o += -Wno-error=unused-label
-CFLAGS_xnic.o += -Wno-type-limits
-CFLAGS_xnic.o += -Wno-unused-parameter
-CFLAGS_xnic.o += -Wno-sign-compare
-CFLAGS_xnic.o += -Wno-implicit-fallthrough
-CFLAGS_xnic.o += -mpopcnt
+CFLAGS_xlan.o += -Wfatal-errors
+CFLAGS_xlan.o += -Werror
+CFLAGS_xlan.o += -Wall
+CFLAGS_xlan.o += -Wextra
+CFLAGS_xlan.o += -Wno-declaration-after-statement
+CFLAGS_xlan.o += -Wno-error=unused-parameter
+CFLAGS_xlan.o += -Wno-error=unused-function
+CFLAGS_xlan.o += -Wno-error=unused-label
+CFLAGS_xlan.o += -Wno-type-limits
+CFLAGS_xlan.o += -Wno-unused-parameter
+CFLAGS_xlan.o += -Wno-sign-compare
+CFLAGS_xlan.o += -Wno-implicit-fallthrough
+CFLAGS_xlan.o += -mpopcnt
 
-obj-m += xnic.o
+obj-m += xlan.o
 
 default:
 	$(MAKE) -C $(KBUILD) M=$(PWD) modules
