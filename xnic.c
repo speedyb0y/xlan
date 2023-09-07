@@ -77,27 +77,38 @@ typedef struct notifier_block notifier_block_s;
 
 #define MTU 7600
 
+#define HOSTS_N 256
 #define PORTS_N 6 // MMC DAS QUANTIDADES DE PORTAS DOS HOSTS DA REDE
+
+typedef struct path_s {
+    u64 last;
+    u64 ports;
+} path_s;
 
 static uint physN; // PHYSICAL INTERFACES
 static net_device_s* physs[PORTS_N];
 static net_device_s* virt; // VIRTUAL INTERFACE
+static path_s paths[HOSTS_N][64];
 
 static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
 
     sk_buff_s* const skb = *pskb;
 
+    if (1) {
 #if 0 // PULA O ETHERNET HEADER
-    // NOTE: skb->network_header JA ESTA CORRETO
-    skb->data       = SKB_NETWORK(ip);
-    skb->len        = SKB_TAIL(skb) - SKB_NETWORK(ip);
-    skb->mac_header = skb->network_header;
-    skb->mac_len    = 0;
+        // NOTE: skb->network_header JA ESTA CORRETO
+        skb->data       = SKB_NETWORK(ip);
+        skb->len        = SKB_TAIL(skb) - SKB_NETWORK(ip);
+        skb->mac_header = skb->network_header;
+        skb->mac_len    = 0;
 #endif
-    skb->pkt_type   = PACKET_HOST;
-    skb->dev        = virt;
+        skb->pkt_type   = PACKET_HOST;
+        skb->dev        = virt;
 
-    return RX_HANDLER_ANOTHER;
+        return RX_HANDLER_ANOTHER;
+    }
+
+    return RX_HANDLER_PASS;
 }
 
 static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* dev) {
@@ -123,10 +134,10 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* dev) {
     const uint lHost = *(u16*)(ip + (v4 ? IP4_O_SRC+2 : IP6_O_SRC+14));
     const uint rHost = *(u16*)(ip + (v4 ? IP4_O_DST+2 : IP6_O_DST+14));
 
-    // COMPUTE HASH
-    // TODO: VER DENTRO DAS MENSAGENS ICMP E GERAR O MESMO HASH DESSES AQUI
-    // TCP | UDP | UDPLITE | SCTP | DCCP
-    const uintll hash = v4
+    // SELECT A PATH
+    // OK: TCP | UDP | UDPLITE | SCTP | DCCP
+    // FAIL: ICMP
+    path_s* const path = &paths[rHost % HOSTS_N][__builtin_popcountll( (u64) ( v4
         ? *(u8 *)(ip + IP4_O_PROTO)    // IP PROTOCOL
         + *(u64*)(ip + IP4_O_SRC)      // SRC ADDR, DST ADDR
         + *(u32*)(ip + IP4_O_PAYLOAD)  // SRC PORT, DST PORT
@@ -136,10 +147,20 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* dev) {
         + *(u64*)(ip + IP6_O_DST1)     // DST ADDR
         + *(u64*)(ip + IP6_O_DST2)     // DST ADDR
         + *(u32*)(ip + IP6_O_PAYLOAD)  // SRC PORT, DST PORT
-    ;
+    ))];
 
-    const uint lPort =                      hash  % PORTS_N;
-    const uint rPort = __builtin_popcountll(hash) % PORTS_N;
+    u64 ports = path->ports;
+    u64 last  = path->last;
+    u64 now   = jiffies;
+
+    // SE DEU UMA PAUSA, TROCA DE PORTA
+    ports = (ports + ((now - last) >= HZ/4)) % (PORTS_N * PORTS_N);
+
+    path->ports = ports;
+    path->last  = now;
+
+    const uint lPort = ports / PORTS_N;
+    const uint rPort = ports % PORTS_N;
 
     // SOMENTE SE ELA ESTIVER ATIVA E OK
     if ((dev = physs[lPort]) == NULL)
@@ -149,19 +170,20 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* dev) {
         goto drop;
 
     // INSERT ETHERNET HEADER
-    void* const eth = PTR(ip) - ETH_HLEN;
+    u16* const eth = PTR(ip) - ETH_HLEN;
 
     // CONFIRMA ESPACO
     if (PTR(eth) < SKB_HEAD(skb))
         goto drop;
 
     // BUILD HEADER
-    // TODO: ACCORDING TO ENDIANESS
-    *(u16*)(eth     ) = 0;
-    *(u32*)(eth +  2) = (rHost << 8) | rPort;
-    *(u16*)(eth +  6) = 0;
-    *(u32*)(eth +  8) = (lHost << 8) | lPort;
-    *(u16*)(eth + 12) = skb->protocol;
+    eth[0] = htons(rPort);
+    eth[1] = htons(rHost);
+    eth[2] = htons(rHost);
+    eth[3] = htons(lPort);
+    eth[4] = htons(lHost);
+    eth[5] = htons(lHost);
+    eth[6] = skb->protocol;
 
     // UPDATE SKB
     skb->data       = PTR(eth);
