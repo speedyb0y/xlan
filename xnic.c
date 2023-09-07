@@ -123,9 +123,8 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* dev) {
     const int v4 = *(u8*)ip == 0x45;
 
     // IDENTIFY DESTINATION
-    // TODO: ENDIANESS?
-    const uint lHost = *(u16*)(ip + (v4 ? IP4_O_SRC+2 : IP6_O_SRC+14));
-    const uint rHost = *(u16*)(ip + (v4 ? IP4_O_DST+2 : IP6_O_DST+14));
+    const uint lHost = ntohs(*(u16*)(ip + (v4 ? IP4_O_SRC+2 : IP6_O_SRC+14)));
+    const uint rHost = ntohs(*(u16*)(ip + (v4 ? IP4_O_DST+2 : IP6_O_DST+14)));
 
     // SELECT A PATH
     // OK: TCP | UDP | UDPLITE | SCTP | DCCP
