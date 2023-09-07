@@ -80,7 +80,7 @@ typedef struct notifier_block notifier_block_s;
 #define PORTS_N 6 // MMC DAS QUANTIDADES DE PORTAS DOS HOSTS DA REDE
 
 static uint physN; // PHYSICAL INTERFACES
-static net_device_s* phys[PORTS_N];
+static net_device_s* physs[PORTS_N];
 static net_device_s* virt; // VIRTUAL INTERFACE
 
 static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
@@ -142,7 +142,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* dev) {
     const uint rPort = __builtin_popcountll(hash) % PORTS_N;
 
     // SOMENTE SE ELA ESTIVER ATIVA E OK
-    if ((dev = phys[lPort]) == NULL)
+    if ((dev = physs[lPort]) == NULL)
         goto drop;
 
     if ((dev->flags & (IFF_UP )) != (IFF_UP )) // IFF_RUNNING // IFF_LOWER_UP
@@ -240,7 +240,7 @@ static int xlan_enslave (net_device_s* dev, net_device_s* phys, struct netlink_e
     }
 
     //
-    dev_hold((phys[physN++] = phys));
+    dev_hold((physs[physN++] = phys));
 
     // TODO: !!!!!!!!!!!!!
     return -ENOEXEC;
@@ -319,15 +319,15 @@ static void __exit xlan_exit (void) {
     rtnl_lock();
 
     foreach (i, physN)
-        if (rtnl_dereference(phys[i].rx_handler) == xlan_in)
-            netdev_rx_handler_unregister(phys[i]);
+        if (rtnl_dereference(physs[i].rx_handler) == xlan_in)
+            netdev_rx_handler_unregister(physs[i]);
 
     rtnl_unlock();
 
     // FORGET THEM
     // TODO: FIXME: MUST HOLD LOCK??
     foreach (i, physN)
-        dev_put(phys[i]);
+        dev_put(physs[i]);
 
     // DESTROY VIRTUAL INTERFACE
     unregister_netdev(virt);
