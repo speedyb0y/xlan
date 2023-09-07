@@ -99,9 +99,7 @@ static rx_handler_result_t xnic_in (sk_buff_s** const pskb) {
     return RX_HANDLER_ANOTHER;
 }
 
-static netdev_tx_t xnic_out (sk_buff_s* const skb, net_device_s* const dev) {
-
-    xnic_s* const xnic = netdev_priv(dev);
+static netdev_tx_t xnic_out (sk_buff_s* const skb, net_device_s* dev) {
 
     // ONLY LINEAR
     if (skb_linearize(skb))
@@ -139,13 +137,11 @@ static netdev_tx_t xnic_out (sk_buff_s* const skb, net_device_s* const dev) {
     const uint rPort = hash / PORTS_N;
     const uint lPort = hash % PORTS_N;
 
-    net_device_s* const this = xnic->phys[lPort];
-
     // SOMENTE SE ELA ESTIVER ATIVA E OK
-    if (this == NULL)
+    if ((dev = phys[lPort]) == NULL)
         goto drop;
 
-    if (this->flags & (IFF_UP ) != (IFF_UP )) // IFF_RUNNING // IFF_LOWER_UP
+    if (dev->flags & (IFF_UP ) != (IFF_UP )) // IFF_RUNNING // IFF_LOWER_UP
         goto drop;
 
     // INSERT ETHERNET HEADER
@@ -158,9 +154,9 @@ static netdev_tx_t xnic_out (sk_buff_s* const skb, net_device_s* const dev) {
     // BUILD HEADER
     // TODO: ACCORDING TO ENDIANESS
     *(u16*)(eth     ) = 0;
-    *(u32*)(eth +  2) = 0x1111AAAAU + 0x11110000U*rHost + 0x00001111U*rPort;
+    *(u32*)(eth +  2) = 0x00010001U * ((rHost << 8) | rPort);
     *(u16*)(eth +  6) = 0;
-    *(u32*)(eth +  8) = 0x1111AAAAU + 0x11110000U*lHost + 0x00001111U*lPort;
+    *(u32*)(eth +  8) = 0x00010001U * ((lHost << 8) | lPort);
     *(u16*)(eth + 12) = skb->protocol;
 
     // UPDATE SKB
@@ -172,7 +168,7 @@ static netdev_tx_t xnic_out (sk_buff_s* const skb, net_device_s* const dev) {
 #endif
     skb->len        = SKB_TAIL(skb) - PTR(eth);
     skb->mac_len    = ETH_HLEN;
-    skb->dev        = this;
+    skb->dev        = dev;
 
     // -- THE FUNCTION CAN BE CALLED FROM AN INTERRUPT
     // -- WHEN CALLING THIS METHOD, INTERRUPTS MUST BE ENABLED
@@ -203,13 +199,11 @@ static int xnic_down (net_device_s* const dev) {
 
 static int xnic_enslave (net_device_s* dev, net_device_s* phys, struct netlink_ext_ack* extack) {
 
-    xnic_s* const xnic = netdev_priv(dev);
-
     printk("XNIC: %s: ADD PHYSICAL %s AS PORT %u\n",
         dev->name, phys->name, PORTS_N);
 
     //
-    if (PORTS_N == XNIC_PHYS_N) {
+    if (physN == PORTS_N) {
         printk("XNIC: TOO MANY\n");
         goto failed;
     }
@@ -239,9 +233,7 @@ static int xnic_enslave (net_device_s* dev, net_device_s* phys, struct netlink_e
     }
 
     //
-    xnic->phys[PORTS_N++] = phys;
-
-    dev_hold(phys);
+    dev_hold((phys[physN++] = phys));
 
     (void)extack;
 
@@ -252,9 +244,7 @@ failed:
 }
 
 static int xnic_unslave (net_device_s* dev, net_device_s* phys) {
-
-//    xnic_s* const xnic = netdev_priv(dev);
-
+    
     printk("XNIC: %s: DEL PHYSICAL %s\n",
         dev->name, phys->name);
 
@@ -306,9 +296,6 @@ static void xnic_setup (net_device_s* const dev) {
         // | NETIF_F_RXALL
         ;
 
-    // WILL YET ADD THE PHYSICAL INTERFACES
-    memset(netdev_priv(dev), 0, sizeof(xnic_s));
-
     printk("XNIC: %s: CREATED WITH MTU %d\n",
         dev->name, dev->mtu);
 }
@@ -318,7 +305,7 @@ static int __init xnic_init (void) {
     // CREATE THE VIRTUAL INTERFACE
     // MAKE IT VISIBLE IN THE SYSTEM
     register_netdev((
-        virt = alloc_netdev(sizeof(xnic_s), "xnic", NET_NAME_USER, xnic_setup)
+        virt = alloc_netdev(0, "xnic", NET_NAME_USER, xnic_setup)
     ));
 
     return 0;
@@ -328,20 +315,18 @@ static void __exit xnic_exit (void) {
 
     printk("XNIC: EXIT\n");
 
-    const xnic_s* const xnic = netdev_priv(virt);
-
     // UNHOOK PHYSICAL INTERFACES
     rtnl_lock();
 
     foreach (i, PORTS_N)
-        netdev_rx_handler_unregister(xnic->phys[i]);
+        netdev_rx_handler_unregister(phys[i]);
 
     rtnl_unlock();
 
     // FORGET THEM
     // TODO: FIXME: MUST HOLD LOCK??
     foreach (i, PORTS_N)
-        dev_put(xnic->phys[i]);
+        dev_put(phys[i]);
 
     // DESTROY VIRTUAL INTERFACE
     unregister_netdev(virt);
