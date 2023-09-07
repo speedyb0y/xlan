@@ -61,15 +61,17 @@ typedef struct notifier_block notifier_block_s;
 #define UDP_SIZE  8
 #define TCP_SIZE 20
 
-#define IP6_O_PROTO  5
-#define IP6_O_SRC1   8
-#define IP6_O_SRC2  16
-#define IP6_O_DST1  24
-#define IP6_O_DST2  32
+#define IP4_O_PROTO   9
+#define IP4_O_SRC     12
+#define IP4_O_DST     16
+#define IP4_O_PAYLOAD 20
 
-#define IP4_O_PROTO 9
-#define IP4_O_SRC 12
-#define IP4_O_DST 16
+#define IP6_O_PROTO   5
+#define IP6_O_SRC1    8
+#define IP6_O_SRC2    16
+#define IP6_O_DST1    24
+#define IP6_O_DST2    32
+#define IP6_O_PAYLOAD 40
 
 #define MTU 7600
 
@@ -88,16 +90,13 @@ static rx_handler_result_t xnic_in (sk_buff_s** const pskb) {
 
 #if 0 // PULA O ETHERNET HEADER
     // NOTE: skb->network_header JA ESTA CORRETO
-    skb->data           = SKB_NETWORK(ip);
-    skb->len            = SKB_TAIL(skb) - SKB_NETWORK(ip);
-    skb->mac_header     = skb->network_header;
-    skb->mac_len        = 0;
+    skb->data       = SKB_NETWORK(ip);
+    skb->len        = SKB_TAIL(skb) - SKB_NETWORK(ip);
+    skb->mac_header = skb->network_header;
+    skb->mac_len    = 0;
 #endif
-    skb->pkt_type       = PACKET_HOST;
-    skb->dev            = virt;//rcu_dereference(skb->dev->rx_handler_data);
-    // rcu_dereference
-    // rcu_dereference_bh(dev->rx_handler_data)
-	// rtnl_dereference(dev->rx_handler_data)
+    skb->pkt_type   = PACKET_HOST;
+    skb->dev        = virt;
 
     return RX_HANDLER_ANOTHER;
 }
@@ -110,6 +109,9 @@ static netdev_tx_t xnic_out (sk_buff_s* const skb, net_device_s* const dev) {
     if (skb_linearize(skb))
         goto drop;
 
+    if (skb->len < 28)
+        goto drop;
+
     void* const ip = SKB_NETWORK(skb);
 
     if (PTR(ip) < SKB_HEAD(skb)
@@ -119,50 +121,39 @@ static netdev_tx_t xnic_out (sk_buff_s* const skb, net_device_s* const dev) {
     // COMPUTE HASH
     uintll hash;
 
-    if (skb->len < 28)
-        goto drop;
+    // TODO: VER DENTRO DAS MENSAGENS ICMP E GERAR O MESMO HASH DESSES AQUI
+    if (*(u8*)ip == 0x45) { // NOTE: ASSUME QUE NÃO TEM IP OPTIONS
 
-    // IP VERSION
-    switch (*(u8*)ip >> 4) {
+        switch ((hash = *(u8*)(ip + IP4_O_PROTO))) { // IP PROTOCOL
+            case IPPROTO_TCP:
+            case IPPROTO_UDP:
+#if 0
+            case IPPROTO_UDPLITE:
+            case IPPROTO_SCTP:
+            case IPPROTO_DCCP:
+#endif
+                hash += *(u32*)(ip + IP4_O_PAYLOAD); // SRC PORT, DST PORT
+            default:
+                hash += *(u64*)(ip + IP4_O_SRC); // SRC ADDR, DST ADDR
+        }
 
-        case 4: // TODO: VER DENTRO DAS MENSAGENS ICMP E GERAR O MESMO HASH DESSES AQUI
-            // NOTE: ASSUME QUE NÃO TEM IP OPTIONS
-            
-            // IP PROTOCOL
-            switch ((hash = *(u8*)(ip + IP4_O_PROTO))) {
-                case IPPROTO_TCP:
-                case IPPROTO_UDP:
-                case IPPROTO_UDPLITE:
-                case IPPROTO_SCTP:
-                case IPPROTO_DCCP:
-                    hash += *(u32*)(ip + IP4_SIZE); // SRC PORT, DST PORT
-                default:
-                    hash += *(u64*)(ip + IP4_O_SRC); // SRC ADDR, DST ADDR
-            }
+    } else {
 
-            break;
-
-        case 6:
-
-            // IP PROTOCOL
-            switch ((hash = *(u8*)(ip + IP6_O_PROTO))) {
-                case IPPROTO_TCP:
-                case IPPROTO_UDP:
-                case IPPROTO_UDPLITE:
-                case IPPROTO_SCTP: // TODO: CONSIDER IPV6 FLOW?
-                case IPPROTO_DCCP:
-                    hash += *(u32*)(ip + IP6_SIZE); // SRC PORT, DST PORT
-                default:
-                    hash += *(u64*)(ip + IP6_O_SRC1); // SRC ADDR
-                    hash += *(u64*)(ip + IP6_O_SRC2); // SRC ADDR
-                    hash += *(u64*)(ip + IP6_O_DST1); // DST ADDR
-                    hash += *(u64*)(ip + IP6_O_DST2); // DST ADDR
-            }
-
-            break;
-
-        default: // UNSUPORTED
-            hash = 0;
+        switch ((hash = *(u8*)(ip + IP6_O_PROTO))) { // IP PROTOCOL
+            case IPPROTO_TCP:
+            case IPPROTO_UDP:
+#if 0
+            case IPPROTO_UDPLITE:
+            case IPPROTO_SCTP: // TODO: CONSIDER IPV6 FLOW?
+            case IPPROTO_DCCP:
+#endif
+                hash += *(u32*)(ip + IP6_O_PAYLOAD); // SRC PORT, DST PORT
+            default:
+                hash += *(u64*)(ip + IP6_O_SRC1); // SRC ADDR
+                hash += *(u64*)(ip + IP6_O_SRC2); // SRC ADDR
+                hash += *(u64*)(ip + IP6_O_DST1); // DST ADDR
+                hash += *(u64*)(ip + IP6_O_DST2); // DST ADDR
+        }
     }
 
     hash = __builtin_popcountll(hash);
