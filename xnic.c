@@ -145,7 +145,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* dev) {
     if ((dev = phys[lPort]) == NULL)
         goto drop;
 
-    if (dev->flags & (IFF_UP ) != (IFF_UP )) // IFF_RUNNING // IFF_LOWER_UP
+    if ((dev->flags & (IFF_UP )) != (IFF_UP )) // IFF_RUNNING // IFF_LOWER_UP
         goto drop;
 
     // INSERT ETHERNET HEADER
