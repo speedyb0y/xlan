@@ -319,7 +319,7 @@ static void __exit xlan_exit (void) {
     rtnl_lock();
 
     foreach (i, physN)
-        if (rtnl_dereference(physs[i].rx_handler) == xlan_in)
+        if (rtnl_dereference(physs[i]->rx_handler) == xlan_in)
             netdev_rx_handler_unregister(physs[i]);
 
     rtnl_unlock();
