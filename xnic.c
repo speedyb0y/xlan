@@ -75,14 +75,12 @@ typedef struct notifier_block notifier_block_s;
 
 #define MTU 7600
 
-static net_device_s* virt; // VIRTUAL INTERFACE
-
 #define XNIC_PHYS_N 7
 
-typedef struct xnic_s {
-    uint n;
-    net_device_s* phys[XNIC_PHYS_N]; // PHYSICAL INTERFACES
-} xnic_s;
+#define PORTS_N 6 // MMC DAS QUANTIDADES DE PORTAS DOS HOSTS DA REDE
+
+static net_device_s* virt; // VIRTUAL INTERFACE
+static net_device_s* phys[PORTS_N]; // PHYSICAL INTERFACES
 
 static rx_handler_result_t xnic_in (sk_buff_s** const pskb) {
 
@@ -122,89 +120,66 @@ static netdev_tx_t xnic_out (sk_buff_s* const skb, net_device_s* const dev) {
     uintll hash;
 
     // TODO: VER DENTRO DAS MENSAGENS ICMP E GERAR O MESMO HASH DESSES AQUI
+    // TCP | UDP | UDPLITE | SCTP | DCCP
     if (*(u8*)ip == 0x45) { // NOTE: ASSUME QUE NÃO TEM IP OPTIONS
-
-        switch ((hash = *(u8*)(ip + IP4_O_PROTO))) { // IP PROTOCOL
-            case IPPROTO_TCP:
-            case IPPROTO_UDP:
-#if 0
-            case IPPROTO_UDPLITE:
-            case IPPROTO_SCTP:
-            case IPPROTO_DCCP:
-#endif
-                hash += *(u32*)(ip + IP4_O_PAYLOAD); // SRC PORT, DST PORT
-            default:
-                hash += *(u64*)(ip + IP4_O_SRC); // SRC ADDR, DST ADDR
-        }
-
+        hash  = *(u8 *)(ip + IP4_O_PROTO);   // IP PROTOCOL
+        hash += *(u64*)(ip + IP4_O_SRC);     // SRC ADDR, DST ADDR
+        hash += *(u32*)(ip + IP4_O_PAYLOAD); // SRC PORT, DST PORT
     } else {
-
-        switch ((hash = *(u8*)(ip + IP6_O_PROTO))) { // IP PROTOCOL
-            case IPPROTO_TCP:
-            case IPPROTO_UDP:
-#if 0
-            case IPPROTO_UDPLITE:
-            case IPPROTO_SCTP: // TODO: CONSIDER IPV6 FLOW?
-            case IPPROTO_DCCP:
-#endif
-                hash += *(u32*)(ip + IP6_O_PAYLOAD); // SRC PORT, DST PORT
-            default:
-                hash += *(u64*)(ip + IP6_O_SRC1); // SRC ADDR
-                hash += *(u64*)(ip + IP6_O_SRC2); // SRC ADDR
-                hash += *(u64*)(ip + IP6_O_DST1); // DST ADDR
-                hash += *(u64*)(ip + IP6_O_DST2); // DST ADDR
-        }
+        hash  = *(u8 *)(ip + IP6_O_PROTO);   // IP PROTOCOL
+        hash += *(u64*)(ip + IP6_O_SRC1);    // SRC ADDR
+        hash += *(u64*)(ip + IP6_O_SRC2);    // SRC ADDR
+        hash += *(u64*)(ip + IP6_O_DST1);    // DST ADDR
+        hash += *(u64*)(ip + IP6_O_DST2);    // DST ADDR
+        hash += *(u32*)(ip + IP6_O_PAYLOAD); // SRC PORT, DST PORT
     }
 
     hash = __builtin_popcountll(hash);
 
-    // ASSERT(xnic->n < XNICK_PHYS_N);
+    const uint rPort = hash / PORTS_N;
+    const uint lPort = hash % PORTS_N;
 
-    // CHOOSE PORT
-    foreach (c, xnic->n) {
+    net_device_s* const this = xnic->phys[lPort];
 
-        net_device_s* const this = xnic->phys[hash = (hash + 1) % xnic->n];
+    // SOMENTE SE ELA ESTIVER ATIVA E OK
+    if (this == NULL)
+        goto drop;
 
-        // ASSERT(this);
-        if (this == NULL) {
-            continue;
-        }
+    if (this->flags & (IFF_UP ) != (IFF_UP )) // IFF_RUNNING // IFF_LOWER_UP
+        goto drop;
 
-        // SOMENTE SE ELA ESTIVER ATIVA E OK
-        if ((this->flags & (IFF_UP )) // IFF_RUNNING // IFF_LOWER_UP
-                        == (IFF_UP )) {
+    // INSERT ETHERNET HEADER
+    void* const eth = PTR(ip) - ETH_HLEN;
 
-            // INSERT ETHERNET HEADER
-            void* const eth = PTR(ip) - ETH_HLEN;
+    // CONFIRMA ESPACO
+    if (PTR(eth) < SKB_HEAD(skb))
+        goto drop;
 
-            // CONFIRMA ESPACO
-            if (PTR(eth) < SKB_HEAD(skb))
-                goto drop;
+    // BUILD HEADER
+    // TODO: ACCORDING TO ENDIANESS
+    *(u16*)(eth     ) = 0;
+    *(u32*)(eth +  2) = 0x1111AAAAU + 0x11110000U*rHost + 0x00001111U*rPort;
+    *(u16*)(eth +  6) = 0;
+    *(u32*)(eth +  8) = 0x1111AAAAU + 0x11110000U*lHost + 0x00001111U*lPort;
+    *(u16*)(eth + 12) = skb->protocol;
 
-            // BUILD HEADER
-            // TODO: ACCORDING TO ENDIANESS
-            *(u64*)(eth     ) = 0x0000FFFFFFFFFFFFULL;
-            *(u16*)(eth + 12) = skb->protocol;
-
-            // UPDATE SKB
-            skb->data       = PTR(eth);
+    // UPDATE SKB
+    skb->data       = PTR(eth);
 #ifdef NET_SKBUFF_DATA_USES_OFFSET
-            skb->mac_header = PTR(eth) - SKB_HEAD(skb);
+    skb->mac_header = PTR(eth) - SKB_HEAD(skb);
 #else
-            skb->mac_header = PTR(eth);
+    skb->mac_header = PTR(eth);
 #endif
-            skb->len        = SKB_TAIL(skb) - PTR(eth);
-            skb->mac_len    = ETH_HLEN;
-            skb->dev        = this;
+    skb->len        = SKB_TAIL(skb) - PTR(eth);
+    skb->mac_len    = ETH_HLEN;
+    skb->dev        = this;
 
-            // -- THE FUNCTION CAN BE CALLED FROM AN INTERRUPT
-            // -- WHEN CALLING THIS METHOD, INTERRUPTS MUST BE ENABLED
-            // -- REGARDLESS OF THE RETURN VALUE, THE SKB IS CONSUMED
-            dev_queue_xmit(skb);
+    // -- THE FUNCTION CAN BE CALLED FROM AN INTERRUPT
+    // -- WHEN CALLING THIS METHOD, INTERRUPTS MUST BE ENABLED
+    // -- REGARDLESS OF THE RETURN VALUE, THE SKB IS CONSUMED
+    dev_queue_xmit(skb);
 
-            return NETDEV_TX_OK;
-        }
-    }
+    return NETDEV_TX_OK;
 
 drop:
     dev_kfree_skb(skb);
@@ -231,10 +206,10 @@ static int xnic_enslave (net_device_s* dev, net_device_s* phys, struct netlink_e
     xnic_s* const xnic = netdev_priv(dev);
 
     printk("XNIC: %s: ADD PHYSICAL %s AS PORT %u\n",
-        dev->name, phys->name, xnic->n);
+        dev->name, phys->name, PORTS_N);
 
     //
-    if (xnic->n == XNIC_PHYS_N) {
+    if (PORTS_N == XNIC_PHYS_N) {
         printk("XNIC: TOO MANY\n");
         goto failed;
     }
@@ -264,7 +239,7 @@ static int xnic_enslave (net_device_s* dev, net_device_s* phys, struct netlink_e
     }
 
     //
-    xnic->phys[xnic->n++] = phys;
+    xnic->phys[PORTS_N++] = phys;
 
     dev_hold(phys);
 
@@ -358,14 +333,14 @@ static void __exit xnic_exit (void) {
     // UNHOOK PHYSICAL INTERFACES
     rtnl_lock();
 
-    foreach (i, xnic->n)
+    foreach (i, PORTS_N)
         netdev_rx_handler_unregister(xnic->phys[i]);
 
     rtnl_unlock();
 
     // FORGET THEM
     // TODO: FIXME: MUST HOLD LOCK??
-    foreach (i, xnic->n)
+    foreach (i, PORTS_N)
         dev_put(xnic->phys[i]);
 
     // DESTROY VIRTUAL INTERFACE
