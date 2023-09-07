@@ -117,15 +117,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* dev) {
     if (skb_linearize(skb))
         goto drop;
 
-    // MINIMAL
-    if (skb->len < (IP4_SIZE + UDP_SIZE))
-        goto drop;
-
     void* const ip = SKB_NETWORK(skb);
-
-    if (PTR(ip) < SKB_HEAD(skb)
-     || PTR(ip) > SKB_TAIL(skb))
-        goto drop;
 
     // NOTE: ASSUME QUE NÃO TEM IP OPTIONS
     const int v4 = *(u8*)ip == 0x45;
