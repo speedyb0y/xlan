@@ -316,11 +316,11 @@ static void xlan_setup (net_device_s* const dev) {
 
 static int __init xlan_init (void) {
 
-	// INITIALIZE
+    // INITIALIZE
     physN = 0;
 
     memset(paths, 0, sizeof(paths));
-	memset(physs, 0, sizeof(physs));
+    memset(physs, 0, sizeof(physs));
 
     // CREATE THE VIRTUAL INTERFACE
     // MAKE IT VISIBLE IN THE SYSTEM
