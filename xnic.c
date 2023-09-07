@@ -77,10 +77,11 @@ typedef struct notifier_block notifier_block_s;
 
 #define PORTS_N 6 // MMC DAS QUANTIDADES DE PORTAS DOS HOSTS DA REDE
 
+static uint physN; // PHYSICAL INTERFACES
+static net_device_s* phys[PORTS_N];
 static net_device_s* virt; // VIRTUAL INTERFACE
-static net_device_s* phys[PORTS_N]; // PHYSICAL INTERFACES
 
-static rx_handler_result_t xnic_in (sk_buff_s** const pskb) {
+static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
 
     sk_buff_s* const skb = *pskb;
 
@@ -97,7 +98,7 @@ static rx_handler_result_t xnic_in (sk_buff_s** const pskb) {
     return RX_HANDLER_ANOTHER;
 }
 
-static netdev_tx_t xnic_out (sk_buff_s* const skb, net_device_s* dev) {
+static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* dev) {
 
     // ONLY LINEAR
     if (skb_linearize(skb))
@@ -112,32 +113,31 @@ static netdev_tx_t xnic_out (sk_buff_s* const skb, net_device_s* dev) {
      || PTR(ip) > SKB_TAIL(skb))
         goto drop;
 
+    // NOTE: ASSUME QUE NÃO TEM IP OPTIONS
+    const int v4 = *(u8*)ip == 0x45;
+
+    // IDENTIFY DESTINATION
     // TODO: ENDIANESS?
-    uint rHost = *(u16*)(ip + (*(u8*)ip == 0x45 ? IP4_O_DST+2 : IP6_O_DST+14));
+    const uint lHost = *(u16*)(ip + (v4 ? IP4_O_SRC : IP6_O_SRC) - sizeof(u16));
+    const uint rHost = *(u16*)(ip + (v4 ? IP4_O_DST : IP6_O_DST) - sizeof(u16));
 
-    uint rPort = hash / PORTS_N;
-    uint lPort = hash % PORTS_N;
+    // COMPUTE HASH
+    // TODO: VER DENTRO DAS MENSAGENS ICMP E GERAR O MESMO HASH DESSES AQUI
+    // TCP | UDP | UDPLITE | SCTP | DCCP
+    const uintll hash = v4
+        ? *(u8 *)(ip + IP4_O_PROTO)    // IP PROTOCOL
+        + *(u64*)(ip + IP4_O_SRC)      // SRC ADDR, DST ADDR
+        + *(u32*)(ip + IP4_O_PAYLOAD)  // SRC PORT, DST PORT
+        : *(u8 *)(ip + IP6_O_PROTO)    // IP PROTOCOL
+        + *(u64*)(ip + IP6_O_SRC1)     // SRC ADDR
+        + *(u64*)(ip + IP6_O_SRC2)     // SRC ADDR
+        + *(u64*)(ip + IP6_O_DST1)     // DST ADDR
+        + *(u64*)(ip + IP6_O_DST2)     // DST ADDR
+        + *(u32*)(ip + IP6_O_PAYLOAD)  // SRC PORT, DST PORT
+    ;
 
-    // A CADA HZ/4 INATIVO, MUDA DE PORTA
-    if (inativo) {
-        portID++;
-        portID %= PORTS_N;
-        portCOunt = 0;
-    }
-
-    //
-    if (portCOunt >= 20000) {
-        portCOunt = 0;
-        portID = (portID + 1) % PORTS_N;        
-    } else
-        portCOunt++;
-        
-    if (++(dessaporta[lPort]) >= MAXIMUM) {
-         foreach (c, PORTS_N) {
-           dessaporta[++lPort] -= MAXIMUM/4;
-            ;
-         }
-    }
+    const uint lPort =                      hash  % PORTS_N;
+    const uint rPort = __builtin_popcountll(hash) % PORTS_N;
 
     // SOMENTE SE ELA ESTIVER ATIVA E OK
     if ((dev = phys[lPort]) == NULL)
@@ -185,91 +185,87 @@ drop:
     return NETDEV_TX_OK;
 }
 
-static int xnic_up (net_device_s* const dev) {
+static int xlan_up (net_device_s* const dev) {
 
-    printk("XNIC: %s UP\n", dev->name);
-
-    return 0;
-}
-
-static int xnic_down (net_device_s* const dev) {
-
-    printk("XNIC: %s DOWN\n", dev->name);
+    printk("XLAN: %s UP\n", dev->name);
 
     return 0;
 }
 
-static int xnic_enslave (net_device_s* dev, net_device_s* phys, struct netlink_ext_ack* extack) {
+static int xlan_down (net_device_s* const dev) {
 
-    printk("XNIC: %s: ADD PHYSICAL %s AS PORT %u\n",
-        dev->name, phys->name, PORTS_N);
+    printk("XLAN: %s DOWN\n", dev->name);
+
+    return 0;
+}
+
+static int xlan_enslave (net_device_s* dev, net_device_s* phys, struct netlink_ext_ack* extack) {
+
+    (void)extack;
+
+    printk("XLAN: %s: ADD PHYSICAL %s AS PORT %u\n", dev->name, phys->name, physN);
 
     //
     if (physN == PORTS_N) {
-        printk("XNIC: TOO MANY\n");
-        goto failed;
+        printk("XLAN: TOO MANY\n");
+        return -ENOSPC;
     }
 
     // NEGA ELA MESMA
     if (phys == dev) {
-        printk("XNIC: SAME\n");
-        goto failed;
+        printk("XLAN: SAME\n");
+        return -ELOOP;
     }
 
     // NEGA LOOPBACK
     if (phys->flags & IFF_LOOPBACK) {
-        printk("XNIC: LOOPBACK\n");
-        goto failed;
+        printk("XLAN: LOOPBACK\n");
+        return -EINVAL;
     }
 
     // SOMENTE ETHERNET
     if (phys->addr_len != ETH_ALEN) {
-        printk("XNIC: NOT ETHERNET\n");
-        goto failed;
+        printk("XLAN: NOT ETHERNET\n");
+        return -EINVAL;
     }
 
     //
-    if (netdev_rx_handler_register(phys, xnic_in, dev) != 0) {
-        printk("XNIC: ATTACH FAILED\n");
-        goto failed;
+    if (rtnl_dereference(phys->rx_handler) != xlan_in) {
+        if (netdev_rx_handler_register(phys, xlan_in, dev) != 0) {
+            printk("XLAN: ATTACH FAILED\n");
+            return -EBUSY;
+        }
     }
 
     //
     dev_hold((phys[physN++] = phys));
 
-    (void)extack;
-
-//    return 0; TODO: !!!!!!!!!!!!!
-
-failed:
-    return -1;
+    // TODO: !!!!!!!!!!!!!
+    return -ENOEXEC;
 }
 
-static int xnic_unslave (net_device_s* dev, net_device_s* phys) {
-    
-    printk("XNIC: %s: DEL PHYSICAL %s\n",
-        dev->name, phys->name);
+static int xlan_unslave (net_device_s* dev, net_device_s* phys) {
 
-    return 1;
+    return -EINVAL;
 }
 
 // struct net_device*  (*ndo_get_xmit_slave)(struct net_device *dev,                              struct sk_buff *skb,                              bool all_slaves);
 //  struct net_device*  (*ndo_sk_get_lower_dev)(struct net_device *dev,                            struct sock *sk);
 
-static const net_device_ops_s xispDevOps = {
+static const net_device_ops_s xlanDevOps = {
     .ndo_init             = NULL,
-    .ndo_open             = xnic_up,
-    .ndo_stop             = xnic_down,
-    .ndo_start_xmit       = xnic_out,
+    .ndo_open             = xlan_up,
+    .ndo_stop             = xlan_down,
+    .ndo_start_xmit       = xlan_out,
     .ndo_set_mac_address  = NULL,
-    .ndo_add_slave        = xnic_enslave,
-    .ndo_del_slave        = xnic_unslave,
+    .ndo_add_slave        = xlan_enslave,
+    .ndo_del_slave        = xlan_unslave,
     // TODO: SET MTU - NAO EH PARA SETAR AQUI E SIM NO ROUTE
 };
 
-static void xnic_setup (net_device_s* const dev) {
+static void xlan_setup (net_device_s* const dev) {
 
-    dev->netdev_ops      = &xispDevOps;
+    dev->netdev_ops      = &xlanDevOps;
     dev->header_ops      = NULL;
     dev->type            = ARPHRD_NONE;
     dev->addr_len        = 0;
@@ -298,36 +294,37 @@ static void xnic_setup (net_device_s* const dev) {
         // | NETIF_F_RXALL
         ;
 
-    printk("XNIC: %s: CREATED WITH MTU %d\n",
-        dev->name, dev->mtu);
+    printk("XLAN: %s: CREATED WITH MTU %d\n", dev->name, dev->mtu);
 }
 
-static int __init xnic_init (void) {
+static int __init xlan_init (void) {
 
     // CREATE THE VIRTUAL INTERFACE
     // MAKE IT VISIBLE IN THE SYSTEM
-    register_netdev((
-        virt = alloc_netdev(0, "xnic", NET_NAME_USER, xnic_setup)
-    ));
+    if ((virt = alloc_netdev(0, "xlan", NET_NAME_USER, xlan_setup)))
+        register_netdev(virt);
+
+    physN = 0;
 
     return 0;
 }
 
-static void __exit xnic_exit (void) {
+static void __exit xlan_exit (void) {
 
-    printk("XNIC: EXIT\n");
+    printk("XLAN: EXIT\n");
 
     // UNHOOK PHYSICAL INTERFACES
     rtnl_lock();
 
-    foreach (i, PORTS_N)
-        netdev_rx_handler_unregister(phys[i]);
+    foreach (i, physN)
+        if (rtnl_dereference(phys[i].rx_handler) == xlan_in)
+            netdev_rx_handler_unregister(phys[i]);
 
     rtnl_unlock();
 
     // FORGET THEM
     // TODO: FIXME: MUST HOLD LOCK??
-    foreach (i, PORTS_N)
+    foreach (i, physN)
         dev_put(phys[i]);
 
     // DESTROY VIRTUAL INTERFACE
@@ -336,10 +333,10 @@ static void __exit xnic_exit (void) {
     free_netdev(virt);
 }
 
-module_init(xnic_init);
-module_exit(xnic_exit);
+module_init(xlan_init);
+module_exit(xlan_exit);
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("speedyb0y");
-MODULE_DESCRIPTION("XNIC");
+MODULE_DESCRIPTION("XLAN");
 MODULE_VERSION("0.1");
