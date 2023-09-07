@@ -77,6 +77,16 @@ typedef struct notifier_block notifier_block_s;
 
 #define MTU 7600
 
+#define ETH_IDX_DST_VENDOR 0
+#define ETH_IDX_DST_HOST   1
+#define ETH_IDX_DST_PORT   2
+#define ETH_IDX_SRC_VENDOR 3
+#define ETH_IDX_SRC_HOST   4
+#define ETH_IDX_SRC_PORT   5
+#define ETH_IDX_TYPE       6
+
+#define VENDOR 0x4050
+
 #define HOSTS_N 256
 #define PORTS_N 6 // MMC DAS QUANTIDADES DE PORTAS DOS HOSTS DA REDE
 
@@ -94,7 +104,10 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
 
     sk_buff_s* const skb = *pskb;
 
-    if (1) {
+    const u16* const eth = SKB_MAC(skb);
+
+    if (eth[ETH_IDX_SRC_VENDOR] == ntohs(VENDOR)
+     && eth[ETH_IDX_DST_VENDOR] == ntohs(VENDOR)) {
 #if 0 // PULA O ETHERNET HEADER
         // NOTE: skb->network_header JA ESTA CORRETO
         skb->data       = SKB_NETWORK(ip);
@@ -170,13 +183,13 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* dev) {
         goto drop;
 
     // BUILD HEADER
-    eth[0] = htons(rPort);
-    eth[1] = htons(rHost);
-    eth[2] = htons(rHost);
-    eth[3] = htons(lPort);
-    eth[4] = htons(lHost);
-    eth[5] = htons(lHost);
-    eth[6] = skb->protocol;
+    eth[ETH_IDX_DST_VENDOR] = htons(VENDOR);
+    eth[ETH_IDX_DST_HOST  ] = htons(rHost);
+    eth[ETH_IDX_DST_PORT  ] = htons(rPort);
+    eth[ETH_IDX_SRC_VENDOR] = htons(VENDOR);
+    eth[ETH_IDX_SRC_HOST  ] = htons(lHost);
+    eth[ETH_IDX_SRC_PORT  ] = htons(lPort);
+    eth[ETH_IDX_TYPE      ] = skb->protocol;
 
     // UPDATE SKB
     skb->data       = PTR(eth);
