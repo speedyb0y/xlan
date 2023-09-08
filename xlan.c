@@ -96,8 +96,9 @@ typedef struct notifier_block notifier_block_s;
 #define MTU     CONFIG_XLAN_MTU
 
 typedef struct xlan_path_s {
+    u32 ports;
+    u32 host;
     u64 last;
-    u64 ports;
 } xlan_path_s;
 
 typedef struct xlan_s {
@@ -117,7 +118,7 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
 
     net_device_s* const virt = skb->dev->rx_handler_data;
 
-    const xlan_s* const xlan = netdev_priv(virt);
+    xlan_s* const xlan = netdev_priv(virt);
 
     const u16* const eth = SKB_MAC(skb);
 
@@ -133,6 +134,7 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
             if (lHost >= HOSTS_N
              || rHost >= HOSTS_N
              || rHost == lHost
+             || lHost != xlan->host
              || rPort >= xlan->portsN
              || phys != xlan->phys[lPort])
                 goto drop;
@@ -235,6 +237,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
     }
 
     path->ports = ports;
+    path->host  = lHost;
     path->last  = now;
 
     // INSERT ETHERNET HEADER
