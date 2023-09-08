@@ -216,8 +216,13 @@ typedef struct pkt_s {
 		        u16	daddr16[8];
                 u64 daddr64[2];
             };
-            u16 sport;
-            u16 dport;
+            union {
+                u32 ports;
+                struct {
+                    u16 sport;
+                    u16 dport;
+                };
+            };
         } v6;
     };
 } pkt_s;
