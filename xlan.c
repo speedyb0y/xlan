@@ -209,12 +209,10 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
         rPort = ports / portsN;
         lPort = ports % portsN;
 
-        //
-        phys = xlan->physs[lPort];
-
         // SOMENTE SE ELA ESTIVER ATIVA E OK
-        if (phys && (phys->flags & (IFF_UP )) == (IFF_UP )) // IFF_RUNNING // IFF_LOWER_UP
-            break;
+        if ((phys = xlan->physs[lPort])) // IFF_RUNNING // IFF_LOWER_UP
+            if ((phys->flags & IFF_UP) == IFF_UP)
+                break;
 
         ports++;
     }
