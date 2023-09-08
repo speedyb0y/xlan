@@ -113,17 +113,24 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
 
     if (eth[ETH_IDX_DST_VENDOR] == BE16(VENDOR)
      || eth[ETH_IDX_SRC_VENDOR] == BE16(VENDOR)) {
+        if (virt) { // ->flags & UP
 #if 0 // PULA O ETHERNET HEADER
-        // NOTE: skb->network_header JA ESTA CORRETO
-        skb->data       = SKB_NETWORK(ip);
-        skb->len        = SKB_TAIL(skb) - SKB_NETWORK(ip);
-        skb->mac_header = skb->network_header;
-        skb->mac_len    = 0;
+            // NOTE: skb->network_header JA ESTA CORRETO
+            skb->data       = SKB_NETWORK(ip);
+            skb->len        = SKB_TAIL(skb) - SKB_NETWORK(ip);
+            skb->mac_header = skb->network_header;
+            skb->mac_len    = 0;
 #endif
-        skb->pkt_type   = PACKET_HOST;
-        skb->dev        = virt;
+            skb->pkt_type   = PACKET_HOST;
+            skb->dev        = virt;
 
-        return RX_HANDLER_ANOTHER;
+            return RX_HANDLER_ANOTHER;
+        }
+        // DONT LET THE REAL INTERFACES SEE THEM UNLESS THEY'RE IN PROMISCUOUS MODE
+        if (0) {
+            // free skb
+            return RX_HANDLER_CONSUMED;
+        }
     }
 
     return RX_HANDLER_PASS;
@@ -226,14 +233,14 @@ drop:
 
 static int xlan_up (net_device_s* const dev) {
 
-    printk("XLAN: %s UP\n", dev->name);
+    printk("XLAN: UP\n");
 
     return 0;
 }
 
 static int xlan_down (net_device_s* const dev) {
 
-    printk("XLAN: %s DOWN\n", dev->name);
+    printk("XLAN: DOWN\n");
 
     return 0;
 }
@@ -241,8 +248,6 @@ static int xlan_down (net_device_s* const dev) {
 static int xlan_enslave (net_device_s* dev, net_device_s* phys, struct netlink_ext_ack* extack) {
 
     (void)extack;
-
-    printk("XLAN: %s: ADD PHYSICAL %s AS PORT %u\n", dev->name, phys->name, physN);
 
     //
     if (physN == PORTS_N) {
@@ -267,6 +272,9 @@ static int xlan_enslave (net_device_s* dev, net_device_s* phys, struct netlink_e
         printk("XLAN: NOT ETHERNET\n");
         return -EINVAL;
     }
+
+    //
+    printk("XLAN: ADD PHYSICAL %s AS PORT %u\n", phys->name, physN);
 
     //
     if (rtnl_dereference(phys->rx_handler) != xlan_in) {
