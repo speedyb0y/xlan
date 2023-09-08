@@ -195,7 +195,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* dev) {
     const uint lPort = ports % PORTS_N;
 
     // SOMENTE SE ELA ESTIVER ATIVA E OK
-    if ((dev = physs[lPort]) == NULL)
+    if ((dev = xlan->physs[lPort]) == NULL)
         goto drop;
 
     if ((dev->flags & (IFF_UP )) != (IFF_UP )) // IFF_RUNNING // IFF_LOWER_UP
@@ -243,7 +243,10 @@ drop:
 
 static int xlan_up (net_device_s* const dev) {
 
+    xlan_s* const xlan = netdev_priv(dev);
+
     // TODO: XLAN MUST BE DOWN
+    const uint physN = xlan->physN;
 
     printk("XLAN: UP WITH %u INTERFACES / %u PORTS\n", physN, PORTS_N);
 
@@ -252,14 +255,16 @@ static int xlan_up (net_device_s* const dev) {
         uint i = 0;
 
         while (i != physN) {
-            printk("XLAN: PORT %u %s\n", i, physs[i]->name);
-            dev_set_promiscuity(physs[i], 1);
+            printk("XLAN: PORT %u %s\n", i, xlan->physs[i]->name);
+            dev_set_promiscuity(xlan->physs[i], 1);
             i++;
         }
 
         // FILL UP THE REMAINING
-        while (i != PORTS_N) { physs[i] = physs[i % physN];
-            printk("XLAN: PORT %u %s\n", i, physs[i]->name);
+        while (i != PORTS_N) {
+            xlan->physs[i] =
+            xlan->physs[i % physN];
+            printk("XLAN: PORT %u -> %s\n", i, xlan->physs[i]->name);
             i++;
         }
     }
@@ -268,6 +273,8 @@ static int xlan_up (net_device_s* const dev) {
 }
 
 static int xlan_down (net_device_s* const dev) {
+
+    xlan_s* const xlan = netdev_priv(dev);
 
     // TODO: XLAN MUST BE UP
 
