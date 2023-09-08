@@ -185,15 +185,18 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
     u64 last  = path->last;
     u64 now   = jiffies;
 
+    const uint portsN = xlan->portsN;
+
     // SE DEU UMA PAUSA, TROCA DE PORTA
-    ports = (ports + ((now - last) > HZ/5)) % (xlan->portsN * xlan->portsN);
+    ports = (ports + ((now - last) > HZ/5))
+        % (portsN * portsN);
 
     path->ports = ports;
     path->last  = now;
 
     // NOTE: MUDA A PORTA LOCAL COM MAIS FREQUENCIA, PARA QUE O SWITCH A DESCUBRA
-    const uint rPort = ports / xlan->portsN;
-    const uint lPort = ports % xlan->portsN;
+    const uint rPort = ports / portsN;
+    const uint lPort = ports % portsN;
 
     // INSERT ETHERNET HEADER
     u16* const eth = PTR(ip) - ETH_HLEN;
