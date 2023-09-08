@@ -106,8 +106,8 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
 
     const u16* const eth = SKB_MAC(skb);
 
-    if (eth[ETH_IDX_SRC_VENDOR] == ntohs(VENDOR)
-     && eth[ETH_IDX_DST_VENDOR] == ntohs(VENDOR)) {
+    if (eth[ETH_IDX_DST_VENDOR] == htons(VENDOR)
+     && eth[ETH_IDX_SRC_VENDOR] == htons(VENDOR)) {
 #if 0 // PULA O ETHERNET HEADER
         // NOTE: skb->network_header JA ESTA CORRETO
         skb->data       = SKB_NETWORK(ip);
