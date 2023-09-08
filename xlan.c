@@ -170,7 +170,7 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
     net_device_s* const virt = skb->dev->rx_handler_data;
     xlan_s* const xlan = netdev_priv(virt);
 
-    const u16* const eth = SKB_MAC(skb);
+    const u16* const pkt = SKB_MAC(skb) - offsetof(pkt_s, dst);
 
     const uint lVendor = BE16(pkt->dst.vendor);
     const uint lHost   = BE16(pkt->dst.host);
