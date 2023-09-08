@@ -276,11 +276,12 @@ static int xlan_down (net_device_s* const dev) {
 
     xlan_s* const xlan = netdev_priv(dev);
 
-    // TODO: XLAN MUST BE UP
-
     printk("XLAN: DOWN\n");
 
-    foreach (i, physN)
+    // TODO: XLAN MUST BE UP
+    const uint physN = xlan->physN;
+
+    foreach (i, xlan->physN)
         dev_set_promiscuity(physs[i], -1);
 
     return 0;
