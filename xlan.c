@@ -160,7 +160,7 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
 
 #define PKT_SIZE 64
 
-typedef struct pkt_s {
+typedef struct pkt_s __attribute__((packed)) {
     u16 _align[3];
     u16 eDstVendor;
     u16 eDstHost;
@@ -216,13 +216,13 @@ typedef struct pkt_s {
 		        u16	daddr16[8];
                 u64 daddr64[2];
             };
-            //union {
-                //u32 ports;
-                //struct {
+            union {
+                u32 ports;
+                struct {
                     u16 sport;
                     u16 dport;
-                //};
-            //};
+                };
+            };
         } v6;
     };
 } pkt_s;
@@ -266,8 +266,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
         + pkt->v6.saddr64[1] // SRC ADDR
         + pkt->v6.daddr64[0] // DST ADDR
         + pkt->v6.daddr64[1] // DST ADDR
-        + pkt->v6.sport      // SRC PORT, DST PORT
-        + pkt->v6.dport
+        + pkt->v6.ports      // SRC PORT, DST PORT
     ))];
 
     const uint portsN = xlan->portsN;
