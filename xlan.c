@@ -246,8 +246,8 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
     const uint lHost = xlan->host;
 
     const uint rHost = v4 ? // DESTINATION
-        ( pkt->v4.daddr16[0] == xlan->prefix4 ? BE16(pkt->v4.daddr16[1]) : xlan->gw ) :
-        ( pkt->v6.daddr16[0] == xlan->prefix6 ? BE16(pkt->v6.daddr16[7]) : xlan->gw ) ;
+        ( pkt->v4.dst.prefix == xlan->prefix4 ? BE16(pkt->v4.dst.host) : xlan->gw ) :
+        ( pkt->v6.dst.prefix == xlan->prefix6 ? BE16(pkt->v6.dst.host) : xlan->gw ) ;
 
     // SELECT A PATH
     // OK: TCP | UDP | UDPLITE | SCTP | DCCP
