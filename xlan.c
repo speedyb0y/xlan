@@ -181,7 +181,7 @@ typedef struct pkt_s {
             u16	check;
             //26 ,13u16
             union { u16	w16[2]; u32 w32; } saddr;
-            u16	daddr[2];
+            union { u16	w16[2]; u32 w32; } daddr;
             u16 sport;
             u16 dport;
             u16 _pad[10];
