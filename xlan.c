@@ -429,14 +429,13 @@ static void xlan_setup (net_device_s* const dev) {
     // INITIALIZE
     xlan_s* const xlan = netdev_priv(dev);
 
+    memset(xlan->paths, 0, sizeof(*xlan));
+
     xlan->vendor  = BE16(VENDOR);
     xlan->prefix4 = BE16(PREFIX4);
     xlan->prefix6 = BE16(PREFIX6);
     xlan->physN   = 0;
     xlan->portsN  = PORTS_N;
-
-    memset(xlan->paths, 0, sizeof(xlan->paths));
-    memset(xlan->physs, 0, sizeof(xlan->physs));
 
     printk("XLAN: %s: CREATED WITH VENDOR 0x%04X PREFIX V4 0x%04X V6 0x%04X MTU %d\n",
         dev->name,
