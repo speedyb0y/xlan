@@ -233,7 +233,23 @@ drop:
 
 static int xlan_up (net_device_s* const dev) {
 
-    printk("XLAN: UP\n");
+    printk("XLAN: UP WITH %u INTERFACES / %u PORTS\n", physN, PORTS_N);
+
+    if (physN) {
+
+        uint i = 0;
+
+        while (i != physN) {
+            printk("XLAN: PORT %u %s\n", i, physs[i]->name);
+            i++;
+        }
+
+        // FILL UP THE REMAINING
+        for (i != PORTS_N) { physs[i] = physs[i % physN];
+            printk("XLAN: PORT %u %s\n", i, physs[i]->name);
+            i++;
+        }
+    }
 
     return 0;
 }
@@ -251,11 +267,8 @@ static int xlan_enslave (net_device_s* dev, net_device_s* phys, struct netlink_e
 
     //
     if (rtnl_dereference(phys->rx_handler) == xlan_in) {
-
-        for (uint i = physN; i != PORTS_N; i++)
-            physs[i] = physs[i % physN];
-
-        return -EALREADY;
+        printk("XLAN: ALREADY ATTACHED\n");
+        return -EBUSY;
     }
 
     //
@@ -281,9 +294,6 @@ static int xlan_enslave (net_device_s* dev, net_device_s* phys, struct netlink_e
         printk("XLAN: NOT ETHERNET\n");
         return -EINVAL;
     }
-
-    //
-    printk("XLAN: ADD PHYSICAL %s AS PORT %u\n", phys->name, physN);
 
     //
     if (netdev_rx_handler_register(phys, xlan_in, dev) != 0) {
