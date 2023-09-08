@@ -437,13 +437,13 @@ static void xlan_setup (net_device_s* const dev) {
     xlan->physN   = 0;
     xlan->portsN  = PORTS_N;
 
-    printk("XLAN: %s: CREATED WITH VENDOR 0x%04X PREFIX V4 0x%04X V6 0x%04X MTU %d PORTS %u\n",
+    printk("XLAN: %s: CREATED WITH VENDOR 0x%04X PREFIX V4 0x%04X V6 0x%04X PORTS %u MTU %d\n",
         dev->name,
         (uint)xlan->vendor,
         (uint)xlan->prefix4,
         (uint)xlan->prefix6,
-        dev->mtu
         (uint)xlan->portsN,
+        dev->mtu
     );
 }
 
