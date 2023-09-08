@@ -124,6 +124,18 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
     if (eth[ETH_IDX_DST_VENDOR] == xlan->vendor
      || eth[ETH_IDX_SRC_VENDOR] == xlan->vendor) {    // TODO: DROP SE RECEBER ALGO QUE NAO EH NA PORTA CERTA
         if (virt) { // ->flags & UP
+
+            const uint lPort = BE16(eth[ETH_IDX_DST_PORT]);
+            const uint rHost = BE16(eth[ETH_IDX_SRC_HOST]);            
+            const uint rPort = BE16(eth[ETH_IDX_SRC_PORT]);
+
+            if (rHost > HOSTS_N
+             || rPort > xlan->portsN
+             || phys != xlan->phys[lPort])
+                goto drop;
+
+            xlan->seen[rHost][rPort] = jiffies;
+            
 #if 0 // PULA O ETHERNET HEADER
             // NOTE: skb->network_header JA ESTA CORRETO
             skb->data       = SKB_NETWORK(ip);
@@ -133,20 +145,18 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
 #endif
             skb->pkt_type   = PACKET_HOST;
             skb->dev        = virt;
-
-            xlan->seen
-                [BE16(eth[ETH_IDX_SRC_HOST]) % HOSTS_N]
-                [BE16(eth[ETH_IDX_SRC_PORT]) % PORTS_N] = jiffies;
-
+            
             return RX_HANDLER_ANOTHER;
         }
         // DONT LET THE REAL INTERFACES SEE THEM UNLESS THEY'RE IN PROMISCUOUS MODE
-        if (0) {
-            // free skb
-            return RX_HANDLER_CONSUMED;
-        }
+        if (0)
+            goto drop;
     }
 
+    return RX_HANDLER_PASS;
+drop:
+    // free skb
+    //return RX_HANDLER_CONSUMED;
     return RX_HANDLER_PASS;
 }
 
