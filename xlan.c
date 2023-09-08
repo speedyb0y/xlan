@@ -189,7 +189,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
 
     uint rPort;
     uint lPort;
-    
+
     net_device_s* phys;
 
     uint c = portsN * portsN + 1;
