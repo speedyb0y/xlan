@@ -104,7 +104,8 @@ typedef struct xlan_s {
     u16 vendor;
     u16 prefix4;
     u16 prefix6;
-    u16 physN; // PHYSICAL INTERFACES
+    u8 physN; // PHYSICAL INTERFACES
+    u8 portsN; // NA REDE
     net_device_s* physs[PORTS_N];
     xlan_path_s paths[HOSTS_N][64];
 } xlan_s;
@@ -185,14 +186,14 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* dev) {
     u64 now   = jiffies;
 
     // SE DEU UMA PAUSA, TROCA DE PORTA
-    ports = (ports + ((now - last) > HZ/5)) % (PORTS_N * PORTS_N);
+    ports = (ports + ((now - last) > HZ/5)) % (xlan->portsN * xlan->portsN);
 
     path->ports = ports;
     path->last  = now;
 
     // NOTE: MUDA A PORTA LOCAL COM MAIS FREQUENCIA, PARA QUE O SWITCH A DESCUBRA
-    const uint rPort = ports / PORTS_N;
-    const uint lPort = ports % PORTS_N;
+    const uint rPort = ports / xlan->portsN;
+    const uint lPort = ports % xlan->portsN;
 
     // SOMENTE SE ELA ESTIVER ATIVA E OK
     if ((dev = xlan->physs[lPort]) == NULL)
@@ -251,7 +252,7 @@ static int xlan_up (net_device_s* const dev) {
     if (physN) {
     
         printk("XLAN: %s: UP WITH %u INTERFACES / %u PORTS\n",
-            dev->name, physN, PORTS_N);
+            dev->name, physN, xlan->portsN);
 
         net_device_s** const physs = xlan->physs;
 
@@ -264,7 +265,7 @@ static int xlan_up (net_device_s* const dev) {
         }
 
         // FILL UP THE REMAINING
-        while (i != PORTS_N) {
+        while (i != xlan->portsN) {
             physs[i] =
             physs[i % physN];
             printk("XLAN: PORT %u -> %s\n", i, physs[i]->name);
@@ -274,7 +275,7 @@ static int xlan_up (net_device_s* const dev) {
     } else {
 
         printk("XLAN: %s: UP WITHOUT INTERFACES / %u PORTS\n",
-            dev->name, PORTS_N);
+            dev->name, xlan->portsN);
     }
 
     return 0;
@@ -362,7 +363,7 @@ static int xlan_unslave (net_device_s* dev, net_device_s* phys) {
         return -EINVAL;
 
     // TODO:
-    foreach (i, PORTS_N)
+    foreach (i, xlan->portsN)
         if (physs[i] == phys)
             physs[i] = NULL;
 
