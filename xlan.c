@@ -95,19 +95,18 @@ typedef struct notifier_block notifier_block_s;
 #define PORTS_N CONFIG_XLAN_PORTS_N // MMC DAS QUANTIDADES DE PORTAS DOS HOSTS DA REDE
 #define MTU     CONFIG_XLAN_MTU
 
-typedef struct path_s {
+typedef struct xlan_path_s {
     u64 last;
     u64 ports;
-} path_s;
+} xlan_path_s;
 
 typedef struct xlan_s {
     u16 vendor;
     u16 prefix4;
     u16 prefix6;
     u16 physN; // PHYSICAL INTERFACES
-    net_device_s* virt; // VIRTUAL INTERFACE
     net_device_s* physs[PORTS_N];
-    path_s paths[HOSTS_N][64];
+    xlan_path_s paths[HOSTS_N][64];
 } xlan_s;
 
 static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
@@ -116,10 +115,12 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
 
     const u16* const eth = SKB_MAC(skb);
 
-    xlan_s* const instance = skb->dev->rx_handler_data;
+    net_device_s* const virt = skb->dev->rx_handler_data;
 
-    if (eth[ETH_IDX_DST_VENDOR] == instance->vendor
-     || eth[ETH_IDX_SRC_VENDOR] == instance->vendor) {
+    const xlan_s* const xlan = netdev_priv(virt);
+
+    if (eth[ETH_IDX_DST_VENDOR] == xlan->vendor
+     || eth[ETH_IDX_SRC_VENDOR] == xlan->vendor) {
         if (virt) { // ->flags & UP
 #if 0 // PULA O ETHERNET HEADER
             // NOTE: skb->network_header JA ESTA CORRETO
@@ -129,7 +130,7 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
             skb->mac_len    = 0;
 #endif
             skb->pkt_type   = PACKET_HOST;
-            skb->dev        = instance->virt;
+            skb->dev        = virt;
 
             return RX_HANDLER_ANOTHER;
         }
@@ -158,16 +159,16 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* dev) {
 
     // IDENTIFY HOSTS
     const uint lHost = v4 ? // ORIGIN
-        (*(u16*)(ip + IP4_O_SRC) == instance->prefix4) * BE16(*(u16*)(ip + IP4_O_SRC+2 )) :
-        (*(u16*)(ip + IP6_O_SRC) == instance->prefix6) * BE16(*(u16*)(ip + IP6_O_SRC+14)) ;
+        (*(u16*)(ip + IP4_O_SRC) == xlan->prefix4) * BE16(*(u16*)(ip + IP4_O_SRC+2 )) :
+        (*(u16*)(ip + IP6_O_SRC) == xlan->prefix6) * BE16(*(u16*)(ip + IP6_O_SRC+14)) ;
     const uint rHost = v4 ? // DESTINATION
-        (*(u16*)(ip + IP4_O_DST) == instance->prefix4) * BE16(*(u16*)(ip + IP4_O_DST+2 )) :
-        (*(u16*)(ip + IP6_O_DST) == instance->prefix6) * BE16(*(u16*)(ip + IP6_O_DST+14)) ;
+        (*(u16*)(ip + IP4_O_DST) == xlan->prefix4) * BE16(*(u16*)(ip + IP4_O_DST+2 )) :
+        (*(u16*)(ip + IP6_O_DST) == xlan->prefix6) * BE16(*(u16*)(ip + IP6_O_DST+14)) ;
 
     // SELECT A PATH
     // OK: TCP | UDP | UDPLITE | SCTP | DCCP
     // FAIL: ICMP
-    path_s* const path = &instance->paths[rHost % HOSTS_N][__builtin_popcountll( (u64) ( v4
+    xlan_path_s* const path = &xlan->paths[rHost % HOSTS_N][__builtin_popcountll( (u64) ( v4
         ? *(u8 *)(ip + IP4_O_PROTO)    // IP PROTOCOL
         + *(u64*)(ip + IP4_O_SRC)      // SRC ADDR, DST ADDR
         + *(u32*)(ip + IP4_O_PAYLOAD)  // SRC PORT, DST PORT
