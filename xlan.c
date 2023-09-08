@@ -55,39 +55,11 @@ typedef struct notifier_block notifier_block_s;
 #define BE64(x) ((u64)__builtin_bswap64((u64)(x)))
 #endif
 
-#define ETH_SIZE 14
-#define IP4_SIZE 20
-#define IP6_SIZE 40
-#define UDP_SIZE  8
-#define TCP_SIZE 20
-
-#define IP4_O_PROTO   9
-#define IP4_O_SRC     12
-#define IP4_O_DST     16
-#define IP4_O_PAYLOAD 20
-
-#define IP6_O_PROTO   5
-#define IP6_O_SRC     8
-#define IP6_O_SRC1    8
-#define IP6_O_SRC2    16
-#define IP6_O_DST     24
-#define IP6_O_DST1    24
-#define IP6_O_DST2    32
-#define IP6_O_PAYLOAD 40
-
-#define ETH_IDX_DST_VENDOR 0
-#define ETH_IDX_DST_HOST   1
-#define ETH_IDX_DST_PORT   2
-#define ETH_IDX_SRC_VENDOR 3
-#define ETH_IDX_SRC_HOST   4
-#define ETH_IDX_SRC_PORT   5
-#define ETH_IDX_TYPE       6
-
 #ifndef CONFIG_XLAN
 #include "config.h"
 #endif
 
-//
+// FROM CONFIG
 #define VENDOR  CONFIG_XLAN_VENDOR
 #define PREFIX4 CONFIG_XLAN_PREFIX4
 #define PREFIX6 CONFIG_XLAN_PREFIX6
@@ -95,68 +67,11 @@ typedef struct notifier_block notifier_block_s;
 #define PORTS_N CONFIG_XLAN_PORTS_N // MMC DAS QUANTIDADES DE PORTAS DOS HOSTS DA REDE
 #define MTU     CONFIG_XLAN_MTU
 
-typedef struct xlan_path_s {
-    u64 ports;
-    u64 last;
-} xlan_path_s;
-
-typedef struct xlan_s {
-    u16 vendor;
-    u16 host;
-    u16 gw;
-    u16 prefix4;
-    u16 prefix6;
-    u16 physN; // PHYSICAL INTERFACES
-    u16 portsN; // NA REDE
-    net_device_s* physs[PORTS_N];
-    xlan_path_s paths[HOSTS_N][64];
-    u64 seen[HOSTS_N][PORTS_N]; // ULTIMA VEZ QUE RECEBEU ALGO COM SRC HOST:PORT; DAI TODA VEZ QUE TENTAR mandar pra ele, se ja faz tempo que nao o ve, muda
-} xlan_s;
-
-static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
-
-    sk_buff_s* const skb = *pskb;
-    net_device_s* const phys = skb->dev;
-    net_device_s* const virt = skb->dev->rx_handler_data;
-    xlan_s* const xlan = netdev_priv(virt);
-
-    const u16* const eth = SKB_MAC(skb);
-
-    // SO INTERCEPTA O QUE FOR
-    if (eth[ETH_IDX_DST_VENDOR] != xlan->vendor
-     || eth[ETH_IDX_SRC_VENDOR] != xlan->vendor)
-        return RX_HANDLER_PASS;
-
-    const uint lHost = BE16(eth[ETH_IDX_DST_HOST]);
-    const uint lPort = BE16(eth[ETH_IDX_DST_PORT]);
-    const uint rHost = BE16(eth[ETH_IDX_SRC_HOST]);
-    const uint rPort = BE16(eth[ETH_IDX_SRC_PORT]);
-
-    if (lHost >= HOSTS_N
-     || rHost >= HOSTS_N
-     || rHost == lHost
-     || lHost != xlan->host
-     || rPort >= xlan->portsN
-     || phys  != xlan->physs[lPort]
-     || virt->flags == 0) { // ->flags & UP
-        kfree_skb(skb);
-        return RX_HANDLER_CONSUMED;
-    }
-
-    xlan->seen[rHost][rPort] = jiffies;
-
-#if 0 // PULA O ETHERNET HEADER
-    // NOTE: skb->network_header JA ESTA CORRETO
-    skb->data       = SKB_NETWORK(ip);
-    skb->len        = SKB_TAIL(skb) - SKB_NETWORK(ip);
-    skb->mac_header = skb->network_header;
-    skb->mac_len    = 0;
-#endif
-    skb->pkt_type   = PACKET_HOST;
-    skb->dev        = virt;
-
-    return RX_HANDLER_ANOTHER;
-}
+#define ETH_SIZE 14
+#define IP4_SIZE 20
+#define IP6_SIZE 40
+#define UDP_SIZE  8
+#define TCP_SIZE 20
 
 #define PKT_SIZE 64
 
@@ -229,6 +144,72 @@ typedef struct pkt_s {
         } __COMPACT v6;
     };
 } __COMPACT pkt_s;
+
+typedef struct xlan_path_s {
+    u64 ports;
+    u64 last;
+} xlan_path_s;
+
+typedef struct xlan_s {
+    u16 vendor;
+    u16 host;
+    u16 gw;
+    u16 prefix4;
+    u16 prefix6;
+    u16 physN; // PHYSICAL INTERFACES
+    u16 portsN; // NA REDE
+    net_device_s* physs[PORTS_N];
+    xlan_path_s paths[HOSTS_N][64];
+    u64 seen[HOSTS_N][PORTS_N]; // ULTIMA VEZ QUE RECEBEU ALGO COM SRC HOST:PORT; DAI TODA VEZ QUE TENTAR mandar pra ele, se ja faz tempo que nao o ve, muda
+} xlan_s;
+
+static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
+
+    sk_buff_s* const skb = *pskb;
+    net_device_s* const phys = skb->dev;
+    net_device_s* const virt = skb->dev->rx_handler_data;
+    xlan_s* const xlan = netdev_priv(virt);
+
+    const u16* const eth = SKB_MAC(skb);
+
+    const uint lVendor = BE16(pkt->dst.vendor);
+    const uint lHost   = BE16(pkt->dst.host);
+    const uint lPort   = BE16(pkt->dst.port);
+    const uint rVendor = BE16(pkt->src.vendor);
+    const uint rHost   = BE16(pkt->src.host);
+    const uint rPort   = BE16(pkt->src.port);
+
+    // SO INTERCEPTA O QUE FOR
+    if (lVendor != xlan->vendor
+     || rVendor != xlan->vendor)
+        return RX_HANDLER_PASS;
+
+    if (lHost >= HOSTS_N
+     || rHost >= HOSTS_N
+     || rHost == lHost
+     || lHost != xlan->host
+     || lPort >= xlan->portsN
+     || rPort >= xlan->portsN
+     || phys  != xlan->physs[lPort]
+     || virt->flags == 0) { // ->flags & UP
+        kfree_skb(skb);
+        return RX_HANDLER_CONSUMED;
+    }
+
+    xlan->seen[rHost][rPort] = jiffies;
+
+#if 0 // PULA O ETHERNET HEADER
+    // NOTE: skb->network_header JA ESTA CORRETO
+    skb->data       = SKB_NETWORK(ip);
+    skb->len        = SKB_TAIL(skb) - SKB_NETWORK(ip);
+    skb->mac_header = skb->network_header;
+    skb->mac_len    = 0;
+#endif
+    skb->pkt_type   = PACKET_HOST;
+    skb->dev        = virt;
+
+    return RX_HANDLER_ANOTHER;
+}
 
 static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
 
@@ -321,8 +302,6 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
     path->last  = now;
 
     // INSERT ETHERNET HEADER
-
-    // BUILD HEADER
     pkt->dst.vendor = BE16(xlan->vendor);
     pkt->dst.host   = BE16(rHost);
     pkt->dst.port   = BE16(rPort);
