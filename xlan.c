@@ -188,7 +188,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
     const uint portsN = xlan->portsN;
 
     // SE DEU UMA PAUSA, TROCA DE PORTA
-    // PORTS_N = 6 ; assert len(set((_ // PORTS_N, _ % PORTS_N) for _ in range(PORTS_N*PORTS_N))) == PORTS_N*PORTS_N
+    // for PORTS_N in range(7): assert len(set((_ // PORTS_N, _ % PORTS_N) for _ in range(PORTS_N*PORTS_N))) == PORTS_N*PORTS_N
     ports = (ports + ((now - last) > HZ/5))
         % (portsN * portsN);
 
