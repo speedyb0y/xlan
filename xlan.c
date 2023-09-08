@@ -276,7 +276,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
     path->last  = now;
 
     // INSERT ETHERNET HEADER
-    u16* const eth = PTR(ip) - ETH_HLEN;
+    pkt_s* const eth = PTR(ip) - ETH_HLEN;
 
     // CONFIRMA ESPACO
     if (PTR(eth) < SKB_HEAD(skb))
