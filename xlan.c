@@ -233,6 +233,8 @@ drop:
 
 static int xlan_up (net_device_s* const dev) {
 
+    // TODO: XLAN MUST BE DOWN
+
     printk("XLAN: UP WITH %u INTERFACES / %u PORTS\n", physN, PORTS_N);
 
     if (physN) {
@@ -241,6 +243,7 @@ static int xlan_up (net_device_s* const dev) {
 
         while (i != physN) {
             printk("XLAN: PORT %u %s\n", i, physs[i]->name);
+            dev_set_promiscuity(physs[i], 1);
             i++;
         }
 
@@ -256,7 +259,12 @@ static int xlan_up (net_device_s* const dev) {
 
 static int xlan_down (net_device_s* const dev) {
 
+    // TODO: XLAN MUST BE UP
+
     printk("XLAN: DOWN\n");
+
+    foreach (i, PORTS_N)
+        dev_set_promiscuity(physs[i], -1);
 
     return 0;
 }
@@ -264,6 +272,8 @@ static int xlan_down (net_device_s* const dev) {
 static int xlan_enslave (net_device_s* dev, net_device_s* phys, struct netlink_ext_ack* extack) {
 
     (void)extack;
+
+    // TODO: XLAN MUST BE DOWN
 
     //
     if (rtnl_dereference(phys->rx_handler) == xlan_in) {
@@ -310,6 +320,8 @@ static int xlan_enslave (net_device_s* dev, net_device_s* phys, struct netlink_e
 }
 
 static int xlan_unslave (net_device_s* dev, net_device_s* phys) {
+
+    // TODO: XLAN MUST BE DOWN
 
     if (rtnl_dereference(phys->rx_handler) != xlan_in)
         // NOT USING IT
