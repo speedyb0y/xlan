@@ -75,8 +75,6 @@ typedef struct notifier_block notifier_block_s;
 #define IP6_O_DST2    32
 #define IP6_O_PAYLOAD 40
 
-#define MTU CONFIG_XLAN_MTU
-
 #define ETH_IDX_DST_VENDOR 0
 #define ETH_IDX_DST_HOST   1
 #define ETH_IDX_DST_PORT   2
@@ -85,10 +83,13 @@ typedef struct notifier_block notifier_block_s;
 #define ETH_IDX_SRC_PORT   5
 #define ETH_IDX_TYPE       6
 
-//
-#define VENDOR 0x5062
+#ifndef CONFIG_XLAN
+#include "config.h"
+#endif
 
 //
+#define MTU CONFIG_XLAN_MTU
+#define VENDOR CONFIG_XLAN_VENDOR
 #define PREFIX4 0x6464 // 100.100.H.H
 #define PREFIX6 0xFC00 // fc00::HH
 
@@ -100,7 +101,7 @@ typedef struct path_s {
     u64 ports;
 } path_s;
 
-typedef struct seila_s {
+typedef struct xlan_ctx_s {
     u16 vendor;
     u16 prefix4;
     u16 prefix6;
@@ -108,9 +109,9 @@ typedef struct seila_s {
     net_device_s* virt; // VIRTUAL INTERFACE
     net_device_s* physs[PORTS_N];
     path_s paths[HOSTS_N][64];
-} seila_s;
+} xlan_ctx_s;
 
-static seila_s instance[1];
+static xlan_ctx_s instance[1];
 
 static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
 
