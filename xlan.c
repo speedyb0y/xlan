@@ -180,7 +180,7 @@ typedef struct pkt_s {
             u8	protocol;
             u16	check;
             //26 ,13u16
-            union { u16	saddr16[2]; u32 daddr32; };
+            union { u16	saddr16[2]; u32 saddr32; };
             union { u16	daddr16[2]; u32 daddr32; };
             u16 sport;
             u16 dport;
