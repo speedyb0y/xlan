@@ -247,11 +247,12 @@ static int xlan_up (net_device_s* const dev) {
 
     // TODO: XLAN MUST BE DOWN
     const uint physN = xlan->physN;
-    net_device_s** const physs = xlan->physs;
 
     printk("XLAN: UP WITH %u INTERFACES / %u PORTS\n", physN, PORTS_N);
 
     if (physN) {
+
+        net_device_s** const physs = xlan->physs;
 
         uint i = 0;
 
@@ -282,7 +283,7 @@ static int xlan_down (net_device_s* const dev) {
     // TODO: XLAN MUST BE UP
     const uint physN = xlan->physN;
     
-    const net_device_s** const physs = xlan->physs;
+    net_device_s* const* const physs = xlan->physs;
 
     foreach (i, physN)
         dev_set_promiscuity(physs[i], -1);
