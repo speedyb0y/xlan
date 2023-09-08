@@ -145,7 +145,7 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
     return RX_HANDLER_PASS;
 }
 
-static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* dev) {
+static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
 
     xlan_s* const xlan = netdev_priv(dev);
 
@@ -195,11 +195,13 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* dev) {
     const uint rPort = ports / xlan->portsN;
     const uint lPort = ports % xlan->portsN;
 
+    net_device_s* const phys = xlan->physs[lPort];
+
     // SOMENTE SE ELA ESTIVER ATIVA E OK
-    if ((dev = xlan->physs[lPort]) == NULL)
+    if (phys == NULL)
         goto drop;
 
-    if ((dev->flags & (IFF_UP )) != (IFF_UP )) // IFF_RUNNING // IFF_LOWER_UP
+    if ((phys->flags & (IFF_UP )) != (IFF_UP )) // IFF_RUNNING // IFF_LOWER_UP
         goto drop;
 
     // INSERT ETHERNET HEADER
@@ -227,7 +229,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* dev) {
 #endif
     skb->len        = SKB_TAIL(skb) - PTR(eth);
     skb->mac_len    = ETH_HLEN;
-    skb->dev        = dev;
+    skb->dev        = phys;
 
     // -- THE FUNCTION CAN BE CALLED FROM AN INTERRUPT
     // -- WHEN CALLING THIS METHOD, INTERRUPTS MUST BE ENABLED
