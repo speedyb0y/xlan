@@ -261,13 +261,18 @@ drop:
 static int xlan_up (net_device_s* const dev) {
 
     xlan_s* const xlan = netdev_priv(dev);
-
+    net_device_s** const physs = xlan->physs;
     // TODO: XLAN MUST BE DOWN
     const uint physN  = xlan->physN;
     const uint portsN = xlan->portsN;
 
     if (physN) {
-    
+
+        // FILL UP THE REMAINING
+        for (uint i = physN; i != portsN; i++)
+            physs[i] =
+            physs[i % physN];
+        
         printk("XLAN: %s: UP WITH MTU %d VENDOR %04X V4 %04X V6 %04X PORTS %u INTERFACES %u\n",
             dev->name,
             dev->mtu,
@@ -277,23 +282,12 @@ static int xlan_up (net_device_s* const dev) {
                  xlan->portsN,
                  xlan->physN
         );
+        
+        foreach (i, portsN)
+            printk("XLAN: %u -> %s\n", i, physs[i]->name);
 
-        net_device_s** const physs = xlan->physs;
-
-        uint i = 0;
-
-        while (i != physN) {
-            printk("XLAN: %s\n", physs[i]->name);
+        foreach (i, physN)
             dev_set_promiscuity(physs[i], 1);
-            i++;
-        }
-
-        // FILL UP THE REMAINING
-        while (i != portsN) {
-            physs[i] =
-            physs[i % physN];
-                  i++;
-        }
 
     } else
         printk("XLAN: %s: UP WITHOUT INTERFACES\n", dev->name);
@@ -328,7 +322,7 @@ static int xlan_enslave (net_device_s* dev, net_device_s* phys, struct netlink_e
     //
     if (rtnl_dereference(phys->rx_handler) == xlan_in) {
         printk("XLAN: ALREADY ATTACHED\n");
-        return -EBUSY;
+        return -EISCONN;
     }
 
     //
