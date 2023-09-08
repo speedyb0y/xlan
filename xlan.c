@@ -250,7 +250,8 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
         ? pkt->v4.protocol   // IP PROTOCOL
         + pkt->v4.saddr32    // SRC ADDR
         + pkt->v4.daddr32    // DST ADDR
-        + pkt->v4.ports      // SRC PORT, DST PORT
+        + pkt->v4.sport      // SRC PORT, DST PORT
+        + pkt->v4.dport
         : pkt->v6.protocol   // IP PROTOCOL
         + pkt->v6.saddr64[0] // SRC ADDR
         + pkt->v6.saddr64[1] // SRC ADDR
