@@ -135,7 +135,7 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
             if (lHost >= HOSTS_N
              || rHost >= HOSTS_N
              || rHost == lHost
-            // || lHost != xlan->host
+             || lHost != xlan->host
              || rPort >= xlan->portsN
              || phys != xlan->phys[lPort])
                 goto drop;
