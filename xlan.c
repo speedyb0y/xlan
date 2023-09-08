@@ -193,13 +193,8 @@ typedef struct pkt_s {
                 u16	daddr16[2];
                 u32 daddr32;
             };
-            union {
-                u32 ports;
-                struct {
-                    u16 sport;
-                    u16 dport;
-                };
-            };
+            u16 sport;
+            u16 dport;
             u16 _pad[10];
         } v4;
         struct {
@@ -215,14 +210,9 @@ typedef struct pkt_s {
             union {
 		        u16	daddr16[8];
                 u64 daddr64[2];
-            };
-            union {
-                u32 ports;
-                struct {
-                    u16 sport;
-                    u16 dport;
-                };
-            };
+            };                
+            u16 sport;
+            u16 dport;
         } v6;
     };
 } __attribute__((packed)) pkt_s;
