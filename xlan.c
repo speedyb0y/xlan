@@ -247,18 +247,19 @@ static int xlan_up (net_device_s* const dev) {
     xlan_s* const xlan = netdev_priv(dev);
 
     // TODO: XLAN MUST BE DOWN
-    const uint physN = xlan->physN;
+    const uint physN  = xlan->physN;
+    const uint portsN = xlan->portsN;
 
     if (physN) {
     
-        printk("XLAN: %s: UP WITH MTU %d VENDOR %04X V4 %04X V6 %04X INTERFACES %u PORTS %u\n",
+        printk("XLAN: %s: UP WITH MTU %d VENDOR %04X V4 %04X V6 %04X PORTS %u INTERFACES %u",
             dev->name,
             dev->mtu,
             BE16(xlan->vendor),
             BE16(xlan->prefix4),
-            BE16(xlan->prefix6),                        
-                 xlan->physN,
-                 xlan->portsN
+            BE16(xlan->prefix6),
+                 xlan->portsN,
+                 xlan->physN
         );
 
         net_device_s** const physs = xlan->physs;
@@ -266,18 +267,19 @@ static int xlan_up (net_device_s* const dev) {
         uint i = 0;
 
         while (i != physN) {
-            printk("XLAN: PORT %u %s\n", i, physs[i]->name);
+            printk(" %s", physs[i]->name);
             dev_set_promiscuity(physs[i], 1);
             i++;
         }
 
         // FILL UP THE REMAINING
-        while (i != xlan->portsN) {
+        while (i != portsN) {
             physs[i] =
             physs[i % physN];
-            printk("XLAN: PORT %u -> %s\n", i, physs[i]->name);
             i++;
         }
+
+        printk("\n");
 
     } else
         printk("XLAN: %s: UP WITHOUT INTERFACES\n", dev->name);
