@@ -217,7 +217,8 @@ typedef struct pkt_s {
         } __COMPACT v4;
         struct {
 	        u8 version;
-	        u8 flow[3];
+	        u8 _flow;
+            u16 flow;
 	        u16 payloadSize;
 	        u8 protocol;
 	        u8 ttl;
@@ -266,7 +267,8 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
         + pkt->v4.dst.addr32    // DST ADDR
         + pkt->v4.sport      // SRC PORT, DST PORT
         + pkt->v4.dport
-        : pkt->v6.protocol   // IP PROTOCOL
+        : pkt->v6.protocol      // IP PROTOCOL
+        + pkt->v6.flow          // FLOW
         + pkt->v6.src.addr64[0] // SRC ADDR
         + pkt->v6.src.addr64[1] // SRC ADDR
         + pkt->v6.dst.addr64[0] // DST ADDR
