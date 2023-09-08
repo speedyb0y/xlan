@@ -180,7 +180,7 @@ typedef struct ip4_hdr_s {
             u16	daddr[2];
             u16 sport;
             u16 dport;
-            char _pad[20];
+            char _pad[26];
         } v4;
         struct {
 	        u8 version;
@@ -192,6 +192,7 @@ typedef struct ip4_hdr_s {
 		    u16	daddr[8];
             u16 sport;
             u16 dport;
+            char _pad[6];
         } v6;
     };
 } ip4_hdr_s;
