@@ -181,21 +181,18 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
         + *(u32*)(ip + IP6_O_PAYLOAD)  // SRC PORT, DST PORT
     ))];
 
-    u64 ports = path->ports;
-    u64 last  = path->last;
     u64 now   = jiffies;
+    u64 last  = path->last;
+    u64 ports = path->ports + (now - last) > HZ/5; // SE DEU UMA PAUSA, TROCA DE PORTA
 
     const uint portsN = xlan->portsN;
-
-    // SE DEU UMA PAUSA, TROCA DE PORTA
-    ports += (now - last) > HZ/5;
 
     uint rPort;
     uint lPort;
     
     net_device_s* phys;
 
-    uint c = portsN + 1;
+    uint c = portsN * portsN + 1;
 
     while (1) {
 
