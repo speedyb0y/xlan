@@ -188,16 +188,39 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
     const uint portsN = xlan->portsN;
 
     // SE DEU UMA PAUSA, TROCA DE PORTA
-    ports = (ports + ((now - last) > HZ/5)) // INCREMENTA O COUNTER
-        % (portsN * portsN); // LIMITADO A QUANTIDADE DE COMBINACOES
+    ports += (now - last) > HZ/5;
+
+    uint rPort;
+    uint lPort;
+    
+    net_device_s* phys;
+
+    uint c = portsN + 1;
+
+    while (c--) {
+        
+        // NOTE: MUDA A PORTA LOCAL COM MAIS FREQUENCIA, PARA QUE O SWITCH A DESCUBRA
+        // for PORTS_N in range(7): assert len(set((_ // PORTS_N, _ % PORTS_N) for _ in range(PORTS_N*PORTS_N))) == PORTS_N*PORTS_N
+        ports %= portsN * portsN;
+        rPort = ports / portsN;
+        lPort = ports % portsN;
+
+        //
+        phys = xlan->physs[lPort];
+
+        // SOMENTE SE ELA ESTIVER ATIVA E OK
+        if (phys && (phys->flags & (IFF_UP )) == (IFF_UP )) // IFF_RUNNING // IFF_LOWER_UP
+            break;
+
+        ports++;
+    }
+
+    if (c == 0)
+        // NO PHYS FOUND
+        goto drop;
 
     path->ports = ports;
     path->last  = now;
-
-    // NOTE: MUDA A PORTA LOCAL COM MAIS FREQUENCIA, PARA QUE O SWITCH A DESCUBRA
-    // for PORTS_N in range(7): assert len(set((_ // PORTS_N, _ % PORTS_N) for _ in range(PORTS_N*PORTS_N))) == PORTS_N*PORTS_N
-    const uint rPort = ports / portsN;
-    const uint lPort = ports % portsN;
 
     // INSERT ETHERNET HEADER
     u16* const eth = PTR(ip) - ETH_HLEN;
@@ -224,17 +247,6 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
 #endif
     skb->len        = SKB_TAIL(skb) - PTR(eth);
     skb->mac_len    = ETH_HLEN;
-
-    //
-    net_device_s* const phys = xlan->physs[lPort];
-
-    //
-    if (phys == NULL)
-        goto drop;
-
-    // SOMENTE SE ELA ESTIVER ATIVA E OK
-    if ((phys->flags & (IFF_UP )) != (IFF_UP )) // IFF_RUNNING // IFF_LOWER_UP
-        goto drop;
 
     skb->dev = phys;
 
@@ -285,7 +297,7 @@ static int xlan_up (net_device_s* const dev) {
         while (i != portsN) {
             physs[i] =
             physs[i % physN];
-            i++;
+                  i++;
         }
 
         printk("\n");
