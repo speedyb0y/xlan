@@ -197,7 +197,11 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
 
     uint c = portsN + 1;
 
-    while (c--) {
+    while (1) {
+
+        if (c-- == 0)
+            // NO PHYS FOUND
+            goto drop;
         
         // NOTE: MUDA A PORTA LOCAL COM MAIS FREQUENCIA, PARA QUE O SWITCH A DESCUBRA
         // for PORTS_N in range(7): assert len(set((_ // PORTS_N, _ % PORTS_N) for _ in range(PORTS_N*PORTS_N))) == PORTS_N*PORTS_N
@@ -214,10 +218,6 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
 
         ports++;
     }
-
-    if (c == 0)
-        // NO PHYS FOUND
-        goto drop;
 
     path->ports = ports;
     path->last  = now;
