@@ -96,17 +96,18 @@ typedef struct notifier_block notifier_block_s;
 #define MTU     CONFIG_XLAN_MTU
 
 typedef struct xlan_path_s {
-    u32 ports;
-    u32 host;
+    u64 ports;
     u64 last;
 } xlan_path_s;
 
 typedef struct xlan_s {
     u16 vendor;
+    u16 host;
+    u16 gw;
     u16 prefix4;
     u16 prefix6;
-    u8 physN; // PHYSICAL INTERFACES
-    u8 portsN; // NA REDE
+    u16 physN; // PHYSICAL INTERFACES
+    u16 portsN; // NA REDE
     net_device_s* physs[PORTS_N];
     xlan_path_s paths[HOSTS_N][64];
     u64 seen[HOSTS_N][PORTS_N]; // ULTIMA VEZ QUE RECEBEU ALGO COM SRC HOST:PORT; DAI TODA VEZ QUE TENTAR mandar pra ele, se ja faz tempo que nao o ve, muda
@@ -134,7 +135,7 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
             if (lHost >= HOSTS_N
              || rHost >= HOSTS_N
              || rHost == lHost
-             || lHost != xlan->host
+            // || lHost != xlan->host
              || rPort >= xlan->portsN
              || phys != xlan->phys[lPort])
                 goto drop;
@@ -178,12 +179,11 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
     const int v4 = *(u8*)ip == 0x45;
 
     // IDENTIFY HOSTS
-    const uint lHost = v4 ? // ORIGIN
-        (*(u16*)(ip + IP4_O_SRC) == xlan->prefix4) * BE16(*(u16*)(ip + IP4_O_SRC+2 )) :
-        (*(u16*)(ip + IP6_O_SRC) == xlan->prefix6) * BE16(*(u16*)(ip + IP6_O_SRC+14)) ;
+    const uint lHost = xlan->host;
+
     const uint rHost = v4 ? // DESTINATION
-        (*(u16*)(ip + IP4_O_DST) == xlan->prefix4) * BE16(*(u16*)(ip + IP4_O_DST+2 )) :
-        (*(u16*)(ip + IP6_O_DST) == xlan->prefix6) * BE16(*(u16*)(ip + IP6_O_DST+14)) ;
+        ( *(u16*)(ip + IP4_O_DST) == xlan->prefix4 ? BE16(*(u16*)(ip + IP4_O_DST+2 )) : xlan->gw ) :
+        ( *(u16*)(ip + IP6_O_DST) == xlan->prefix6 ? BE16(*(u16*)(ip + IP6_O_DST+14)) : xlan->gw ) ;
 
     // SELECT A PATH
     // OK: TCP | UDP | UDPLITE | SCTP | DCCP
@@ -473,6 +473,8 @@ static void xlan_setup (net_device_s* const dev) {
     xlan->prefix6 = BE16(PREFIX6);
     xlan->physN   = 0;
     xlan->portsN  = PORTS_N;
+    xlan->host    = 20;
+    xlan->gw      = 50;
 }
 
 static int __init xlan_init (void) {
