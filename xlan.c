@@ -159,6 +159,15 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
 }
 
 typedef struct ip4_hdr_s {
+// 14
+    u16 eDstVendor;
+    u16 eDstHost;
+    u16 eDstPort;
+    u16 eSrcVendor;
+    u16 eSrcHost;
+    u16 eSrcPort;
+    u16 eType;
+// 20
 	u8  version;
 	u8	tos;
 	u16	size;
@@ -168,14 +177,15 @@ typedef struct ip4_hdr_s {
 	u8	protocol;
 	u16	check;
 	u16	saddr[2];
-    u32	daddr[2];
+    u16	daddr[2];
+// 4
     u16 sport;
     u16 dport;
 } ip4_hdr_s;
 
 static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
 
-    BUILD_BUG_ON( sizeof(ip4_hdr_s) != 24 );
+    BUILD_BUG_ON( sizeof(ip4_hdr_s) != (14 + 20 + 4) );
 
     xlan_s* const xlan = netdev_priv(dev);
 
