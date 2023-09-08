@@ -208,9 +208,12 @@ typedef struct pkt_s {
 	        u16 payloadSize;
 	        u8 protocol;
 	        u8 ttl;
-            //10
-		    u16	saddr[8];
-		    u16	daddr[8];
+            union {
+		        u16	saddr16[8];
+            };
+            union {
+		        u16	daddr16[8];
+            };
             u16 sport;
             u16 dport;
         } v6;
