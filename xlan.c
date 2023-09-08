@@ -302,6 +302,7 @@ static int xlan_enslave (net_device_s* dev, net_device_s* phys, struct netlink_e
     (void)extack;
 
     // TODO: XLAN MUST BE DOWN
+    xlan_s* const xlan = netdev_priv(dev);
 
     //
     if (rtnl_dereference(phys->rx_handler) == xlan_in) {
@@ -338,6 +339,8 @@ static int xlan_enslave (net_device_s* dev, net_device_s* phys, struct netlink_e
         printk("XLAN: ATTACH FAILED\n");
         return -EBUSY;
     }
+
+    phys->rx_handler_data = dev;
 
     dev_hold(phys);
 
