@@ -161,6 +161,7 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
 #define PKT_SIZE 64
 
 typedef struct pkt_s {
+    u16 _pad[3];
     u16 eDstVendor;
     u16 eDstHost;
     u16 eDstPort;
@@ -178,11 +179,12 @@ typedef struct pkt_s {
             u8	ttl;
             u8	protocol;
             u16	check;
+            //26 ,13u16
             u16	saddr[2];
             u16	daddr[2];
             u16 sport;
             u16 dport;
-            u16 _pad[13];
+            u16 _pad[10];
         } v4;
         struct {
 	        u8 version;
@@ -190,11 +192,12 @@ typedef struct pkt_s {
 	        u16 payloadSize;
 	        u8 protocol;
 	        u8 ttl;
+            //10
 		    u16	saddr[8];
 		    u16	daddr[8];
             u16 sport;
             u16 dport;
-            u16 _pad[3];
+            
         } v6;
     };
 } pkt_s;
