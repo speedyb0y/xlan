@@ -15,7 +15,7 @@ CFLAGS_xlan.o += -Wno-sign-compare
 CFLAGS_xlan.o += -Wno-implicit-fallthrough
 CFLAGS_xlan.o += -mpopcnt
 
-obj-m += xlan.o
+obj-$(CONFIG_XLAN) += xlan.o
 
 default:
 	$(MAKE) -C $(KBUILD) M=$(PWD) modules
