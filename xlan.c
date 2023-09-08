@@ -108,6 +108,7 @@ typedef struct xlan_s {
     u8 portsN; // NA REDE
     net_device_s* physs[PORTS_N];
     xlan_path_s paths[HOSTS_N][64];
+    u64 seen[HOSTS_N][PORTS_N]; // ULTIMA VEZ QUE RECEBEU ALGO COM SRC HOST:PORT; DAI TODA VEZ QUE TENTAR mandar pra ele, se ja faz tempo que nao o ve, muda
 } xlan_s;
 
 static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
@@ -121,7 +122,7 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
     const u16* const eth = SKB_MAC(skb);
 
     if (eth[ETH_IDX_DST_VENDOR] == xlan->vendor
-     || eth[ETH_IDX_SRC_VENDOR] == xlan->vendor) {
+     || eth[ETH_IDX_SRC_VENDOR] == xlan->vendor) {    // TODO: DROP SE RECEBER ALGO QUE NAO EH NA PORTA CERTA
         if (virt) { // ->flags & UP
 #if 0 // PULA O ETHERNET HEADER
             // NOTE: skb->network_header JA ESTA CORRETO
@@ -132,6 +133,10 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
 #endif
             skb->pkt_type   = PACKET_HOST;
             skb->dev        = virt;
+
+            xlan->seen
+                [BE16(eth[ETH_IDX_SRC_HOST]) % HOSTS_N]
+                [BE16(eth[ETH_IDX_SRC_PORT]) % PORTS_N] = jiffies;
 
             return RX_HANDLER_ANOTHER;
         }
@@ -181,11 +186,14 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
         + *(u32*)(ip + IP6_O_PAYLOAD)  // SRC PORT, DST PORT
     ))];
 
+    const uint portsN = xlan->portsN;
+
     u64 now   = jiffies;
     u64 last  = path->last;
-    u64 ports = path->ports + (now - last) > HZ/5; // SE DEU UMA PAUSA, TROCA DE PORTA
-
-    const uint portsN = xlan->portsN;
+    u64 ports = path->ports;
+    
+    ports += (now - last) > HZ/5 // SE DEU UMA PAUSA, TROCA DE PORTA
+        || (now - xlan->seen[rHost][ports/portsN]) > 2*HZ; 
 
     uint rPort;
     uint lPort;
@@ -284,7 +292,7 @@ static int xlan_up (net_device_s* const dev) {
         );
         
         foreach (i, portsN)
-            printk("XLAN: %u -> %s\n", i, physs[i]->name);
+            printk("XLAN: %s: PORT %u PHYS %s\n", dev->name, i, physs[i]->name);
 
         foreach (i, physN)
             dev_set_promiscuity(physs[i], 1);
