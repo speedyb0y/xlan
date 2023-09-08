@@ -268,7 +268,7 @@ static int xlan_up (net_device_s* const dev) {
 
     if (physN) {
     
-        printk("XLAN: %s: UP WITH MTU %d VENDOR %04X V4 %04X V6 %04X PORTS %u INTERFACES %u",
+        printk("XLAN: %s: UP WITH MTU %d VENDOR %04X V4 %04X V6 %04X PORTS %u INTERFACES %u\n",
             dev->name,
             dev->mtu,
             BE16(xlan->vendor),
@@ -283,7 +283,7 @@ static int xlan_up (net_device_s* const dev) {
         uint i = 0;
 
         while (i != physN) {
-            printk(" %s", physs[i]->name);
+            printk("XLAN: %s\n", i, physs[i]->name);
             dev_set_promiscuity(physs[i], 1);
             i++;
         }
@@ -294,8 +294,6 @@ static int xlan_up (net_device_s* const dev) {
             physs[i % physN];
                   i++;
         }
-
-        printk("\n");
 
     } else
         printk("XLAN: %s: UP WITHOUT INTERFACES\n", dev->name);
@@ -464,6 +462,8 @@ static int __init xlan_init (void) {
 
     // CREATE THE VIRTUAL INTERFACE
     // MAKE IT VISIBLE IN THE SYSTEM
+    printk("XLAN: INIT\n");
+
     register_netdev(alloc_netdev(sizeof(xlan_s), "xlan", NET_NAME_USER, xlan_setup));
 
     return 0;
