@@ -196,7 +196,7 @@ typedef struct pkt_s {
             u16 sport;
             u16 dport;
             u16 _pad[10];
-        } v4;
+        } __attribute__((packed)) v4;
         struct {
 	        u8 version;
 	        u8 flow[3];
@@ -213,7 +213,7 @@ typedef struct pkt_s {
             };                
             u16 sport;
             u16 dport;
-        } v6;
+        } __attribute__((packed)) v6;
     };
 } __attribute__((packed)) pkt_s;
 
