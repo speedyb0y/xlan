@@ -113,11 +113,11 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
 
     sk_buff_s* const skb = *pskb;
 
-    const u16* const eth = SKB_MAC(skb);
-
     net_device_s* const virt = skb->dev->rx_handler_data;
 
     const xlan_s* const xlan = netdev_priv(virt);
+
+    const u16* const eth = SKB_MAC(skb);
 
     if (eth[ETH_IDX_DST_VENDOR] == xlan->vendor
      || eth[ETH_IDX_SRC_VENDOR] == xlan->vendor) {
@@ -395,24 +395,31 @@ static void xlan_setup (net_device_s* const dev) {
         // | NETIF_F_RXALL
         ;
 
-    printk("XLAN: %s: CREATED WITH MTU %d\n", dev->name, dev->mtu);
+    // INITIALIZE
+    xlan_s* const xlan = netdev_priv(dev);
+
+    xlan->vendor  = BE16(VENDOR);
+    xlan->prefix4 = BE16(PREFIX4);
+    xlan->prefix6 = BE16(PREFIX6);
+    xlan->physN   = 0;
+
+    memset(xlan->paths, 0, sizeof(xlan->paths));
+    memset(xlan->physs, 0, sizeof(xlan->physs));
+
+    printk("XLAN: %s: CREATED WITH VENDOR 0x%04X PREFIX V4 0x%04X V6 0x%04X MTU %d\n",
+        dev->name,
+        (uint)xlan->vendor,
+        (uint)xlan->prefix4,
+        (uint)xlan->prefix6,
+        dev->mtu
+    );
 }
 
 static int __init xlan_init (void) {
 
-    // INITIALIZE
-    instance->vendor  = BE16(VENDOR);
-    instance->prefix4 = BE16(PREFIX4);
-    instance->prefix6 = BE16(PREFIX6);
-    instance->physN   = 0;
-
-    memset(instance->paths, 0, sizeof(instance->paths));
-    memset(instance->physs, 0, sizeof(instance->physs));
-
     // CREATE THE VIRTUAL INTERFACE
     // MAKE IT VISIBLE IN THE SYSTEM
-    if ((virt = alloc_netdev(0, "xlan", NET_NAME_USER, xlan_setup)))
-        register_netdev(virt);
+    register_netdev(alloc_netdev(sizeof(xlan_s), "xlan", NET_NAME_USER, xlan_setup));
 
     return 0;
 }
@@ -422,11 +429,6 @@ static void __exit xlan_exit (void) {
     printk("XLAN: EXIT\n");
 
     // TODO: REFUSE TO EXIT IF WE HAVE INTERFACES
-
-    // DESTROY VIRTUAL INTERFACE
-    unregister_netdev(virt);
-
-    free_netdev(virt);
 }
 
 module_init(xlan_init);
