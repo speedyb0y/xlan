@@ -122,7 +122,7 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
             skb->mac_len    = 0;
 #endif
             skb->pkt_type   = PACKET_HOST;
-            skb->dev        = virt;
+            skb->dev        = virt;  // TODO: FICARA NO skb->dev->rx_handler_data
 
             return RX_HANDLER_ANOTHER;
         }
@@ -250,6 +250,15 @@ static int xlan_enslave (net_device_s* dev, net_device_s* phys, struct netlink_e
     (void)extack;
 
     //
+    if (rtnl_dereference(phys->rx_handler) == xlan_in) {
+
+        for (uint i = physN; i != PORTS_N; i++)
+            physs[i] = physs[i % physN];
+
+        return -EALREADY;
+    }
+
+    //
     if (physN == PORTS_N) {
         printk("XLAN: TOO MANY\n");
         return -ENOSPC;
@@ -277,23 +286,36 @@ static int xlan_enslave (net_device_s* dev, net_device_s* phys, struct netlink_e
     printk("XLAN: ADD PHYSICAL %s AS PORT %u\n", phys->name, physN);
 
     //
-    if (rtnl_dereference(phys->rx_handler) != xlan_in) {
-        if (netdev_rx_handler_register(phys, xlan_in, dev) != 0) {
-            printk("XLAN: ATTACH FAILED\n");
-            return -EBUSY;
-        }
+    if (netdev_rx_handler_register(phys, xlan_in, dev) != 0) {
+        printk("XLAN: ATTACH FAILED\n");
+        return -EBUSY;
     }
 
-    //
-    dev_hold((physs[physN++] = phys));
+    dev_hold(phys);
 
-    // TODO: !!!!!!!!!!!!!
-    return -ENOEXEC;
+    //
+    physs[physN++] = phys;
+
+    return 0;
 }
 
 static int xlan_unslave (net_device_s* dev, net_device_s* phys) {
 
-    return -EINVAL;
+    if (rtnl_dereference(phys->rx_handler) != xlan_in)
+        // NOT USING IT
+        return -EINVAL;
+
+    // TODO:
+    foreach (i, PORTS_N)
+        if (physs[i] == phys)
+            physs[i] = NULL;
+
+    //
+    netdev_rx_handler_unregister(phys);
+
+    dev_put(phys);
+
+    return 0;
 }
 
 // struct net_device*  (*ndo_get_xmit_slave)(struct net_device *dev,                              struct sk_buff *skb,                              bool all_slaves);
@@ -364,19 +386,7 @@ static void __exit xlan_exit (void) {
 
     printk("XLAN: EXIT\n");
 
-    // UNHOOK PHYSICAL INTERFACES
-    rtnl_lock();
-
-    foreach (i, physN)
-        if (rtnl_dereference(physs[i]->rx_handler) == xlan_in)
-            netdev_rx_handler_unregister(physs[i]);
-
-    rtnl_unlock();
-
-    // FORGET THEM
-    // TODO: FIXME: MUST HOLD LOCK??
-    foreach (i, physN)
-        dev_put(physs[i]);
+    // TODO: REFUSE TO EXIT IF WE HAVE INTERFACES
 
     // DESTROY VIRTUAL INTERFACE
     unregister_netdev(virt);
