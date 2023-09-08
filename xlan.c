@@ -245,7 +245,7 @@ static int xlan_up (net_device_s* const dev) {
         }
 
         // FILL UP THE REMAINING
-        for (i != PORTS_N) { physs[i] = physs[i % physN];
+        while (i != PORTS_N) { physs[i] = physs[i % physN];
             printk("XLAN: PORT %u %s\n", i, physs[i]->name);
             i++;
         }
