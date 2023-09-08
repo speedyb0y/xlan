@@ -158,6 +158,21 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
     return RX_HANDLER_ANOTHER;
 }
 
+typedef struct ip4hdr {
+	u8  version;
+	u8	tos;
+	u16	size;
+	u16	id;
+	u16	frag;
+	u8	ttl;
+	u8	protocol;
+	u16	check;
+	u16	saddr[2];
+    u32	daddr[2];
+    u16 sport;
+    u16 dport;
+} ip4hdr;
+
 static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
 
     xlan_s* const xlan = netdev_priv(dev);
