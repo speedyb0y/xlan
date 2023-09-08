@@ -160,6 +160,8 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
 
 #define PKT_SIZE 64
 
+#define __COMPACT __attribute__((packed))
+
 typedef union v4_addr_s {
     u8  addr[4];
     u16	addr16[2];
@@ -182,14 +184,20 @@ typedef union v6_addr_s {
     };
 } v6_addr_s;
 
+typedef union eth_addr_s {
+    u8 addr[6];
+    u16 addr16[3];
+    struct {
+        u16 vendor;
+        u16 host;
+        u16 port;
+    };
+} __COMPACT eth_addr_s;
+
 typedef struct pkt_s {
     u16 _align[3];
-    u16 eDstVendor;
-    u16 eDstHost;
-    u16 eDstPort;
-    u16 eSrcVendor;
-    u16 eSrcHost;
-    u16 eSrcPort;
+    eth_addr_s src;
+    eth_addr_s dst;
     u16 eType;
     union {
         struct {
@@ -200,13 +208,13 @@ typedef struct pkt_s {
             u16	frag;
             u8	ttl;
             u8	protocol;
-            u16	check;
+            u16	cksum;
             v4_addr_s src;
             v4_addr_s dst;
             u16 sport;
             u16 dport;
             u16 _pad[10];
-        } __attribute__((packed)) v4;
+        } __COMPACT v4;
         struct {
 	        u8 version;
 	        u8 flow[3];
@@ -217,9 +225,9 @@ typedef struct pkt_s {
             v6_addr_s dst;            
             u16 sport;
             u16 dport;
-        } __attribute__((packed)) v6;
+        } __COMPACT v6;
     };
-} __attribute__((packed)) pkt_s;
+} __COMPACT pkt_s;
 
 static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
 
@@ -236,7 +244,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
     pkt_s* const pkt = SKB_NETWORK(skb) - offsetof(pkt_s, v4);
 
     // CONFIRMA ESPACO
-    if (PTR(&pkt->eDstVendor) < SKB_HEAD(skb))
+    if (PTR(&pkt->dst.vendor) < SKB_HEAD(skb))
         goto drop;
 
     // NOTE: ASSUME QUE NÃO TEM IP OPTIONS
