@@ -356,6 +356,8 @@ static int xlan_enslave (net_device_s* dev, net_device_s* phys, struct netlink_e
 
 static int xlan_unslave (net_device_s* dev, net_device_s* phys) {
 
+    xlan_s* const xlan = netdev_priv(dev);
+
     // TODO: XLAN MUST BE DOWN
 
     if (rtnl_dereference(phys->rx_handler) != xlan_in)
