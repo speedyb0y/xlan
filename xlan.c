@@ -85,7 +85,12 @@ typedef struct notifier_block notifier_block_s;
 #define ETH_IDX_SRC_PORT   5
 #define ETH_IDX_TYPE       6
 
-#define VENDOR 0x4050
+// SAME IN ANY ENDIANESS
+#define VENDOR 0x5050
+
+//
+#define PREFIX4 0x6464 // 100.100.H.H
+#define PREFIX6 0xFC00 // fc00::HH
 
 #define HOSTS_N 256
 #define PORTS_N 6 // MMC DAS QUANTIDADES DE PORTAS DOS HOSTS DA REDE
@@ -106,8 +111,8 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
 
     const u16* const eth = SKB_MAC(skb);
 
-    if (eth[ETH_IDX_DST_VENDOR] == htons(VENDOR)
-     && eth[ETH_IDX_SRC_VENDOR] == htons(VENDOR)) {
+    if (eth[ETH_IDX_DST_VENDOR] == VENDOR
+     || eth[ETH_IDX_SRC_VENDOR] == VENDOR) {
 #if 0 // PULA O ETHERNET HEADER
         // NOTE: skb->network_header JA ESTA CORRETO
         skb->data       = SKB_NETWORK(ip);
@@ -135,9 +140,13 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* dev) {
     // NOTE: ASSUME QUE NÃO TEM IP OPTIONS
     const int v4 = *(u8*)ip == 0x45;
 
-    // IDENTIFY DESTINATION
-    const uint lHost = ntohs(*(u16*)(ip + (v4 ? IP4_O_SRC+2 : IP6_O_SRC+14)));
-    const uint rHost = ntohs(*(u16*)(ip + (v4 ? IP4_O_DST+2 : IP6_O_DST+14)));
+    // IDENTIFY HOSTS
+    const uint lHost = v4 ? // ORIGIN
+        (*(u16*)(ip + IP4_O_SRC) == BE16(PREFIX4)) * BE16(*(u16*)(ip + IP4_O_SRC+2 )) :
+        (*(u16*)(ip + IP6_O_SRC) == BE16(PREFIX6)) * BE16(*(u16*)(ip + IP6_O_SRC+14)) ;
+    const uint rHost = v4 ? // DESTINATION
+        (*(u16*)(ip + IP4_O_DST) == BE16(PREFIX4)) * BE16(*(u16*)(ip + IP4_O_DST+2 )) :
+        (*(u16*)(ip + IP6_O_DST) == BE16(PREFIX6)) * BE16(*(u16*)(ip + IP6_O_DST+14)) ;
 
     // SELECT A PATH
     // OK: TCP | UDP | UDPLITE | SCTP | DCCP
@@ -183,12 +192,12 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* dev) {
         goto drop;
 
     // BUILD HEADER
-    eth[ETH_IDX_DST_VENDOR] = htons(VENDOR);
-    eth[ETH_IDX_DST_HOST  ] = htons(rHost);
-    eth[ETH_IDX_DST_PORT  ] = htons(rPort);
-    eth[ETH_IDX_SRC_VENDOR] = htons(VENDOR);
-    eth[ETH_IDX_SRC_HOST  ] = htons(lHost);
-    eth[ETH_IDX_SRC_PORT  ] = htons(lPort);
+    eth[ETH_IDX_DST_VENDOR] = VENDOR;
+    eth[ETH_IDX_DST_HOST  ] = BE16(rHost);
+    eth[ETH_IDX_DST_PORT  ] = BE16(rPort);
+    eth[ETH_IDX_SRC_VENDOR] = VENDOR;
+    eth[ETH_IDX_SRC_HOST  ] = BE16(lHost);
+    eth[ETH_IDX_SRC_PORT  ] = BE16(lPort);
     eth[ETH_IDX_TYPE      ] = skb->protocol;
 
     // UPDATE SKB
