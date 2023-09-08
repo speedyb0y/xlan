@@ -184,13 +184,14 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
      || rVendor != xlan->vendor)
         return RX_HANDLER_PASS;
 
-    if (lHost >= HOSTS_N
-     || rHost >= HOSTS_N
-     || rHost == lHost
-     || lHost != xlan->host
-     || lPort >= xlan->portsN
-     || rPort >= xlan->portsN
-     || phys  != xlan->physs[lPort]
+    // DROP CASES
+    if (lHost >= HOSTS_N            // INVALID L HOST
+     || rHost >= HOSTS_N            // INVALID R HOST
+     || rHost == lHost              // SAME HOST
+     || lHost != xlan->host         // NOT TO ME
+     || lPort >= xlan->portsN       // INVALID L PORT
+     || rPort >= xlan->portsN       // INVALID R PORT
+     || phys  != xlan->physs[lPort] // SHOULD RECEIVE ON OTHER INTERFACE
      || virt->flags == 0) { // ->flags & UP
         kfree_skb(skb);
         return RX_HANDLER_CONSUMED;
