@@ -199,7 +199,7 @@ typedef struct ip4_hdr_s {
 
 static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
 
-    BUILD_BUG_ON( sizeof(ip4_hdr_s) != (14 + 40 + 4) );
+    BUILD_BUG_ON( sizeof(ip4_hdr_s) != 64 );
 
     xlan_s* const xlan = netdev_priv(dev);
 
