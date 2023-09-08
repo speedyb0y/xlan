@@ -1,6 +1,8 @@
 
 KBUILD := /lib/modules/$(shell uname -r)/build/
 
+CONFIG_XLAN := m
+
 CFLAGS_xlan.o += -Wfatal-errors
 CFLAGS_xlan.o += -Werror
 CFLAGS_xlan.o += -Wall
