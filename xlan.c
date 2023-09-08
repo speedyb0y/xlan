@@ -257,7 +257,8 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
         + pkt->v6.saddr64[1] // SRC ADDR
         + pkt->v6.daddr64[0] // DST ADDR
         + pkt->v6.daddr64[1] // DST ADDR
-        + pkt->v6.ports      // SRC PORT, DST PORT
+        + pkt->v6.sport      // SRC PORT, DST PORT
+        + pkt->v6.dport
     ))];
 
     const uint portsN = xlan->portsN;
