@@ -92,8 +92,8 @@ typedef struct notifier_block notifier_block_s;
 #define PREFIX4 0x6464 // 100.100.H.H
 #define PREFIX6 0xFC00 // fc00::HH
 
-#define HOSTS_N 256
-#define PORTS_N 6 // MMC DAS QUANTIDADES DE PORTAS DOS HOSTS DA REDE
+#define HOSTS_N CONFIG_XLAN_HOSTS_N
+#define PORTS_N CONFIG_XLAN_PORTS_N // MMC DAS QUANTIDADES DE PORTAS DOS HOSTS DA REDE
 
 typedef struct path_s {
     u64 last;
