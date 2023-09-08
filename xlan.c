@@ -85,8 +85,8 @@ typedef struct notifier_block notifier_block_s;
 #define ETH_IDX_SRC_PORT   5
 #define ETH_IDX_TYPE       6
 
-// SAME IN ANY ENDIANESS
-#define VENDOR 0x5050
+//
+#define VENDOR 0x5062
 
 //
 #define PREFIX4 0x6464 // 100.100.H.H
@@ -111,8 +111,8 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
 
     const u16* const eth = SKB_MAC(skb);
 
-    if (eth[ETH_IDX_DST_VENDOR] == VENDOR
-     || eth[ETH_IDX_SRC_VENDOR] == VENDOR) {
+    if (eth[ETH_IDX_DST_VENDOR] == BE16(VENDOR)
+     || eth[ETH_IDX_SRC_VENDOR] == BE16(VENDOR)) {
 #if 0 // PULA O ETHERNET HEADER
         // NOTE: skb->network_header JA ESTA CORRETO
         skb->data       = SKB_NETWORK(ip);
@@ -192,10 +192,10 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* dev) {
         goto drop;
 
     // BUILD HEADER
-    eth[ETH_IDX_DST_VENDOR] = VENDOR;
+    eth[ETH_IDX_DST_VENDOR] = BE16(VENDOR);
     eth[ETH_IDX_DST_HOST  ] = BE16(rHost);
     eth[ETH_IDX_DST_PORT  ] = BE16(rPort);
-    eth[ETH_IDX_SRC_VENDOR] = VENDOR;
+    eth[ETH_IDX_SRC_VENDOR] = BE16(VENDOR);
     eth[ETH_IDX_SRC_HOST  ] = BE16(lHost);
     eth[ETH_IDX_SRC_PORT  ] = BE16(lPort);
     eth[ETH_IDX_TYPE      ] = skb->protocol;
