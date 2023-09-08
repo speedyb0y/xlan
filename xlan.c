@@ -248,9 +248,10 @@ static int xlan_up (net_device_s* const dev) {
     // TODO: XLAN MUST BE DOWN
     const uint physN = xlan->physN;
 
-    printk("XLAN: UP WITH %u INTERFACES / %u PORTS\n", physN, PORTS_N);
-
     if (physN) {
+    
+        printk("XLAN: %s: UP WITH %u INTERFACES / %u PORTS\n",
+            dev->name, physN, PORTS_N);
 
         net_device_s** const physs = xlan->physs;
 
@@ -269,6 +270,11 @@ static int xlan_up (net_device_s* const dev) {
             printk("XLAN: PORT %u -> %s\n", i, physs[i]->name);
             i++;
         }
+
+    } else {
+
+        printk("XLAN: %s: UP WITHOUT INTERFACES / %u PORTS\n",
+            dev->name, PORTS_N);
     }
 
     return 0;
@@ -278,7 +284,7 @@ static int xlan_down (net_device_s* const dev) {
 
     xlan_s* const xlan = netdev_priv(dev);
 
-    printk("XLAN: DOWN\n");
+    printk("XLAN: %s: DOWN\n", dev->name);
 
     // TODO: XLAN MUST BE UP
     const uint physN = xlan->physN;
