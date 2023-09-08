@@ -179,10 +179,18 @@ typedef struct pkt_s {
             u8	ttl;
             u8	protocol;
             u16	check;
-            //26 ,13u16
-            union { u16	saddr16[2]; u32 saddr32; };
-            union { u16	daddr16[2]; u32 daddr32; };
-            union { u32 ports;
+            union {
+                u8  saddr[4];
+                u16	saddr16[2];
+                u32 saddr32;
+            };
+            union {
+                u8  daddr[4];
+                u16	daddr16[2];
+                u32 daddr32;
+            };
+            union {
+                u32 ports;
                 struct {
                     u16 sport;
                     u16 dport;
@@ -215,31 +223,36 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
     if (skb_linearize(skb))
         goto drop;
 
-    void* const ip = SKB_NETWORK(skb);
+    pkt_s* const pkt = SKB_NETWORK(skb) - offsetof(pkt_s, v4);
+
+    // CONFIRMA ESPACO
+    if (PTR(&eth->eDstVendor) < SKB_HEAD(skb))
+        goto drop;
 
     // NOTE: ASSUME QUE NÃO TEM IP OPTIONS
-    const int v4 = *(u8*)ip == 0x45;
+    const int v4 = pkt->v4.version == 0x45;
 
     // IDENTIFY HOSTS
     const uint lHost = xlan->host;
 
     const uint rHost = v4 ? // DESTINATION
-        ( *(u16*)(ip + IP4_O_DST) == xlan->prefix4 ? BE16(*(u16*)(ip + IP4_O_DST+2 )) : xlan->gw ) :
-        ( *(u16*)(ip + IP6_O_DST) == xlan->prefix6 ? BE16(*(u16*)(ip + IP6_O_DST+14)) : xlan->gw ) ;
+        ( pkt->v4.daddr16[0] == xlan->prefix4 ? BE16(pkt->v4.daddr16[1]) : xlan->gw ) :
+        ( pkt->v6.daddr16[0] == xlan->prefix6 ? BE16(pkt->v6.daddr16[7]) : xlan->gw ) ;
 
     // SELECT A PATH
     // OK: TCP | UDP | UDPLITE | SCTP | DCCP
     // FAIL: ICMP
     xlan_path_s* const path = &xlan->paths[rHost % HOSTS_N][__builtin_popcountll( (u64) ( v4
-        ? *(u8 *)(ip + IP4_O_PROTO)    // IP PROTOCOL
-        + *(u64*)(ip + IP4_O_SRC)      // SRC ADDR, DST ADDR
-        + *(u32*)(ip + IP4_O_PAYLOAD)  // SRC PORT, DST PORT
-        : *(u8 *)(ip + IP6_O_PROTO)    // IP PROTOCOL
-        + *(u64*)(ip + IP6_O_SRC1)     // SRC ADDR
-        + *(u64*)(ip + IP6_O_SRC2)     // SRC ADDR
-        + *(u64*)(ip + IP6_O_DST1)     // DST ADDR
-        + *(u64*)(ip + IP6_O_DST2)     // DST ADDR
-        + *(u32*)(ip + IP6_O_PAYLOAD)  // SRC PORT, DST PORT
+        ? pkt->v4.protocol   // IP PROTOCOL
+        + pkt->v4.saddr32    // SRC ADDR
+        + pkt->v4.daddr32    // DST ADDR
+        + pkt->v4.ports      // SRC PORT, DST PORT
+        : pkt->v6.protocol   // IP PROTOCOL
+        + pkt->v6.saddr64[0] // SRC ADDR
+        + pkt->v6.saddr64[1] // SRC ADDR
+        + pkt->v6.daddr64[0] // DST ADDR
+        + pkt->v6.daddr64[1] // DST ADDR
+        + pkt->v6.ports      // SRC PORT, DST PORT
     ))];
 
     const uint portsN = xlan->portsN;
@@ -282,11 +295,6 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
     path->last  = now;
 
     // INSERT ETHERNET HEADER
-    pkt_s* const eth = PTR(ip) - ETH_HLEN;
-
-    // CONFIRMA ESPACO
-    if (PTR(eth) < SKB_HEAD(skb))
-        goto drop;
 
     // BUILD HEADER
     eth->eDstVendor = xlan->vendor;
