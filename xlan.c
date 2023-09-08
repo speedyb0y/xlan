@@ -116,53 +116,46 @@ typedef struct xlan_s {
 static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
 
     sk_buff_s* const skb = *pskb;
-
+    net_device_s* const phys = skb->dev;
     net_device_s* const virt = skb->dev->rx_handler_data;
-
     xlan_s* const xlan = netdev_priv(virt);
 
     const u16* const eth = SKB_MAC(skb);
 
-    if (eth[ETH_IDX_DST_VENDOR] == xlan->vendor
-     && eth[ETH_IDX_SRC_VENDOR] == xlan->vendor) {    // TODO: DROP SE RECEBER ALGO QUE NAO EH NA PORTA CERTA
-        if (virt) { // ->flags & UP
+    // SO INTERCEPTA O QUE FOR
+    if (eth[ETH_IDX_DST_VENDOR] != xlan->vendor
+     || eth[ETH_IDX_SRC_VENDOR] != xlan->vendor)
+        return RX_HANDLER_PASS;
 
-            const uint lHost = BE16(eth[ETH_IDX_DST_HOST]);
-            const uint lPort = BE16(eth[ETH_IDX_DST_PORT]);
-            const uint rHost = BE16(eth[ETH_IDX_SRC_HOST]);            
-            const uint rPort = BE16(eth[ETH_IDX_SRC_PORT]);
+    const uint lHost = BE16(eth[ETH_IDX_DST_HOST]);
+    const uint lPort = BE16(eth[ETH_IDX_DST_PORT]);
+    const uint rHost = BE16(eth[ETH_IDX_SRC_HOST]);            
+    const uint rPort = BE16(eth[ETH_IDX_SRC_PORT]);
 
-            if (lHost >= HOSTS_N
-             || rHost >= HOSTS_N
-             || rHost == lHost
-             || lHost != xlan->host
-             || rPort >= xlan->portsN
-             || phys != xlan->phys[lPort])
-                goto drop;
-
-            xlan->seen[rHost][rPort] = jiffies;
-            
-#if 0 // PULA O ETHERNET HEADER
-            // NOTE: skb->network_header JA ESTA CORRETO
-            skb->data       = SKB_NETWORK(ip);
-            skb->len        = SKB_TAIL(skb) - SKB_NETWORK(ip);
-            skb->mac_header = skb->network_header;
-            skb->mac_len    = 0;
-#endif
-            skb->pkt_type   = PACKET_HOST;
-            skb->dev        = virt;
-            
-            return RX_HANDLER_ANOTHER;
-        }
-        // DONT LET THE REAL INTERFACES SEE THEM UNLESS THEY'RE IN PROMISCUOUS MODE
-        if (0)
-            goto drop;
+    if (lHost >= HOSTS_N
+     || rHost >= HOSTS_N
+     || rHost == lHost
+     || lHost != xlan->host
+     || rPort >= xlan->portsN
+     || phys != xlan->phys[lPort]        
+     || virt->flags == 0) { // ->flags & UP
+        kfree_skb(skb);
+        return RX_HANDLER_CONSUMED;
     }
 
-    return RX_HANDLER_PASS;
-drop:
-    kfree_skb(skb);
-    return RX_HANDLER_CONSUMED;
+    xlan->seen[rHost][rPort] = jiffies;
+    
+#if 0 // PULA O ETHERNET HEADER
+    // NOTE: skb->network_header JA ESTA CORRETO
+    skb->data       = SKB_NETWORK(ip);
+    skb->len        = SKB_TAIL(skb) - SKB_NETWORK(ip);
+    skb->mac_header = skb->network_header;
+    skb->mac_len    = 0;
+#endif
+    skb->pkt_type   = PACKET_HOST;
+    skb->dev        = virt;
+    
+    return RX_HANDLER_ANOTHER;
 }
 
 static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
