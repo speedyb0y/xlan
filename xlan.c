@@ -129,7 +129,7 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
 
     const uint lHost = BE16(eth[ETH_IDX_DST_HOST]);
     const uint lPort = BE16(eth[ETH_IDX_DST_PORT]);
-    const uint rHost = BE16(eth[ETH_IDX_SRC_HOST]);            
+    const uint rHost = BE16(eth[ETH_IDX_SRC_HOST]);
     const uint rPort = BE16(eth[ETH_IDX_SRC_PORT]);
 
     if (lHost >= HOSTS_N
@@ -137,14 +137,14 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
      || rHost == lHost
      || lHost != xlan->host
      || rPort >= xlan->portsN
-     || phys != xlan->phys[lPort]        
+     || phys  != xlan->physs[lPort]
      || virt->flags == 0) { // ->flags & UP
         kfree_skb(skb);
         return RX_HANDLER_CONSUMED;
     }
 
     xlan->seen[rHost][rPort] = jiffies;
-    
+
 #if 0 // PULA O ETHERNET HEADER
     // NOTE: skb->network_header JA ESTA CORRETO
     skb->data       = SKB_NETWORK(ip);
@@ -154,7 +154,7 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
 #endif
     skb->pkt_type   = PACKET_HOST;
     skb->dev        = virt;
-    
+
     return RX_HANDLER_ANOTHER;
 }
 
@@ -198,9 +198,9 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
     u64 now   = jiffies;
     u64 last  = path->last;
     u64 ports = path->ports;
-    
+
     ports += (now - last) > HZ/5 // SE DEU UMA PAUSA, TROCA DE PORTA
-        || (now - xlan->seen[rHost][ports/portsN]) > 2*HZ; 
+        || (now - xlan->seen[rHost][ports/portsN]) > 2*HZ;
 
     uint rPort;
     uint lPort;
@@ -214,7 +214,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
         if (c-- == 0)
             // NO PHYS FOUND
             goto drop;
-        
+
         // NOTE: MUDA A PORTA LOCAL COM MAIS FREQUENCIA, PARA QUE O SWITCH A DESCUBRA
         // for PORTS_N in range(7): assert len(set((_ // PORTS_N, _ % PORTS_N) for _ in range(PORTS_N*PORTS_N))) == PORTS_N*PORTS_N
         ports %= portsN * portsN;
@@ -288,7 +288,7 @@ static int xlan_up (net_device_s* const dev) {
         for (uint i = physN; i != portsN; i++)
             physs[i] =
             physs[i % physN];
-        
+
         printk("XLAN: %s: UP WITH MTU %d VENDOR %04X V4 %04X V6 %04X PORTS %u INTERFACES %u\n",
             dev->name,
             dev->mtu,
@@ -298,7 +298,7 @@ static int xlan_up (net_device_s* const dev) {
                  xlan->portsN,
                  xlan->physN
         );
-        
+
         foreach (i, portsN)
             printk("XLAN: %s: PORT %u PHYS %s\n", dev->name, i, physs[i]->name);
 
@@ -319,7 +319,7 @@ static int xlan_down (net_device_s* const dev) {
 
     // TODO: XLAN MUST BE UP
     const uint physN = xlan->physN;
-    
+
     net_device_s* const* const physs = xlan->physs;
 
     foreach (i, physN)
