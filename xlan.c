@@ -251,8 +251,15 @@ static int xlan_up (net_device_s* const dev) {
 
     if (physN) {
     
-        printk("XLAN: %s: UP WITH %u INTERFACES / %u PORTS\n",
-            dev->name, physN, xlan->portsN);
+        printk("XLAN: %s: UP WITH MTU %d VENDOR %04X V4 %04X V6 %04X INTERFACES %u PORTS %u\n",
+            dev->name,
+            dev->mtu,
+            BE16(xlan->vendor),
+            BE16(xlan->prefix4),
+            BE16(xlan->prefix6),                        
+                 xlan->physN,
+                 xlan->portsN
+        );
 
         net_device_s** const physs = xlan->physs;
 
@@ -272,11 +279,8 @@ static int xlan_up (net_device_s* const dev) {
             i++;
         }
 
-    } else {
-
-        printk("XLAN: %s: UP WITHOUT INTERFACES / %u PORTS\n",
-            dev->name, xlan->portsN);
-    }
+    } else
+        printk("XLAN: %s: UP WITHOUT INTERFACES\n", dev->name);
 
     return 0;
 }
@@ -436,15 +440,6 @@ static void xlan_setup (net_device_s* const dev) {
     xlan->prefix6 = BE16(PREFIX6);
     xlan->physN   = 0;
     xlan->portsN  = PORTS_N;
-
-    printk("XLAN: %s: CREATED WITH VENDOR %04X PREFIX V4 %04X V6 %04X PORTS %u MTU %d\n",
-        dev->name,
-        (uint)xlan->vendor,
-        (uint)xlan->prefix4,
-        (uint)xlan->prefix6,
-        (uint)xlan->portsN,
-        dev->mtu
-    );
 }
 
 static int __init xlan_init (void) {
