@@ -100,10 +100,17 @@ typedef struct path_s {
     u64 ports;
 } path_s;
 
-static uint physN; // PHYSICAL INTERFACES
-static net_device_s* physs[PORTS_N];
-static net_device_s* virt; // VIRTUAL INTERFACE
-static path_s paths[HOSTS_N][64];
+typedef struct seila_s {
+    u16 vendor;
+    u16 prefix4;
+    u16 prefix6;
+    u16 physN; // PHYSICAL INTERFACES
+    net_device_s* virt; // VIRTUAL INTERFACE
+    net_device_s* physs[PORTS_N];
+    path_s paths[HOSTS_N][64];
+} seila_s;
+
+static seila_s instance[1];
 
 static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
 
@@ -111,8 +118,8 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
 
     const u16* const eth = SKB_MAC(skb);
 
-    if (eth[ETH_IDX_DST_VENDOR] == BE16(VENDOR)
-     || eth[ETH_IDX_SRC_VENDOR] == BE16(VENDOR)) {
+    if (eth[ETH_IDX_DST_VENDOR] == instance->vendor
+     || eth[ETH_IDX_SRC_VENDOR] == instance->vendor) {
         if (virt) { // ->flags & UP
 #if 0 // PULA O ETHERNET HEADER
             // NOTE: skb->network_header JA ESTA CORRETO
@@ -122,7 +129,7 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
             skb->mac_len    = 0;
 #endif
             skb->pkt_type   = PACKET_HOST;
-            skb->dev        = virt;  // TODO: FICARA NO skb->dev->rx_handler_data
+            skb->dev        = instance->virt;  // TODO: FICARA NO skb->dev->rx_handler_data
 
             return RX_HANDLER_ANOTHER;
         }
@@ -149,16 +156,16 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* dev) {
 
     // IDENTIFY HOSTS
     const uint lHost = v4 ? // ORIGIN
-        (*(u16*)(ip + IP4_O_SRC) == BE16(PREFIX4)) * BE16(*(u16*)(ip + IP4_O_SRC+2 )) :
-        (*(u16*)(ip + IP6_O_SRC) == BE16(PREFIX6)) * BE16(*(u16*)(ip + IP6_O_SRC+14)) ;
+        (*(u16*)(ip + IP4_O_SRC) == instance->prefix4) * BE16(*(u16*)(ip + IP4_O_SRC+2 )) :
+        (*(u16*)(ip + IP6_O_SRC) == instance->prefix6) * BE16(*(u16*)(ip + IP6_O_SRC+14)) ;
     const uint rHost = v4 ? // DESTINATION
-        (*(u16*)(ip + IP4_O_DST) == BE16(PREFIX4)) * BE16(*(u16*)(ip + IP4_O_DST+2 )) :
-        (*(u16*)(ip + IP6_O_DST) == BE16(PREFIX6)) * BE16(*(u16*)(ip + IP6_O_DST+14)) ;
+        (*(u16*)(ip + IP4_O_DST) == instance->prefix4) * BE16(*(u16*)(ip + IP4_O_DST+2 )) :
+        (*(u16*)(ip + IP6_O_DST) == instance->prefix6) * BE16(*(u16*)(ip + IP6_O_DST+14)) ;
 
     // SELECT A PATH
     // OK: TCP | UDP | UDPLITE | SCTP | DCCP
     // FAIL: ICMP
-    path_s* const path = &paths[rHost % HOSTS_N][__builtin_popcountll( (u64) ( v4
+    path_s* const path = &instance->paths[rHost % HOSTS_N][__builtin_popcountll( (u64) ( v4
         ? *(u8 *)(ip + IP4_O_PROTO)    // IP PROTOCOL
         + *(u64*)(ip + IP4_O_SRC)      // SRC ADDR, DST ADDR
         + *(u32*)(ip + IP4_O_PAYLOAD)  // SRC PORT, DST PORT
@@ -199,10 +206,10 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* dev) {
         goto drop;
 
     // BUILD HEADER
-    eth[ETH_IDX_DST_VENDOR] = BE16(VENDOR);
+    eth[ETH_IDX_DST_VENDOR] = instance->vendor;
     eth[ETH_IDX_DST_HOST  ] = BE16(rHost);
     eth[ETH_IDX_DST_PORT  ] = BE16(rPort);
-    eth[ETH_IDX_SRC_VENDOR] = BE16(VENDOR);
+    eth[ETH_IDX_SRC_VENDOR] = instance->vendor;
     eth[ETH_IDX_SRC_HOST  ] = BE16(lHost);
     eth[ETH_IDX_SRC_PORT  ] = BE16(lPort);
     eth[ETH_IDX_TYPE      ] = skb->protocol;
@@ -391,10 +398,13 @@ static void xlan_setup (net_device_s* const dev) {
 static int __init xlan_init (void) {
 
     // INITIALIZE
-    physN = 0;
+    instance->vendor  = BE16(VENDOR);
+    instance->prefix4 = BE16(PREFIX4);
+    instance->prefix6 = BE16(PREFIX6);
+    instance->physN   = 0;
 
-    memset(paths, 0, sizeof(paths));
-    memset(physs, 0, sizeof(physs));
+    memset(instance->paths, 0, sizeof(instance->paths));
+    memset(instance->physs, 0, sizeof(instance->physs));
 
     // CREATE THE VIRTUAL INTERFACE
     // MAKE IT VISIBLE IN THE SYSTEM
