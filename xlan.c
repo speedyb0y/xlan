@@ -223,6 +223,8 @@ typedef struct pkt_s {
 
 static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
 
+    BUILD_BUG_ON( sizeof(v4_addr_s) != 4 );
+    BUILD_BUG_ON( sizeof(v6_addr_s) != 16 );
     BUILD_BUG_ON( sizeof(pkt_s) != PKT_SIZE );
 
     xlan_s* const xlan = netdev_priv(dev);
@@ -252,15 +254,15 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
     // FAIL: ICMP
     xlan_path_s* const path = &xlan->paths[rHost % HOSTS_N][__builtin_popcountll( (u64) ( v4
         ? pkt->v4.protocol   // IP PROTOCOL
-        + pkt->v4.saddr32    // SRC ADDR
-        + pkt->v4.daddr32    // DST ADDR
+        + pkt->v4.src.addr32    // SRC ADDR
+        + pkt->v4.dst.addr32    // DST ADDR
         + pkt->v4.sport      // SRC PORT, DST PORT
         + pkt->v4.dport
         : pkt->v6.protocol   // IP PROTOCOL
-        + pkt->v6.saddr64[0] // SRC ADDR
-        + pkt->v6.saddr64[1] // SRC ADDR
-        + pkt->v6.daddr64[0] // DST ADDR
-        + pkt->v6.daddr64[1] // DST ADDR
+        + pkt->v6.src.addr64[0] // SRC ADDR
+        + pkt->v6.src.addr64[1] // SRC ADDR
+        + pkt->v6.dst.addr64[0] // DST ADDR
+        + pkt->v6.dst.addr64[1] // DST ADDR
         + pkt->v6.sport      // SRC PORT, DST PORT
         + pkt->v6.dport
     ))];
