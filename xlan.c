@@ -358,6 +358,8 @@ static int xlan_unslave (net_device_s* dev, net_device_s* phys) {
 
     xlan_s* const xlan = netdev_priv(dev);
 
+    net_device_s** const physs = xlan->physs;
+
     // TODO: XLAN MUST BE DOWN
 
     if (rtnl_dereference(phys->rx_handler) != xlan_in)
