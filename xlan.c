@@ -75,7 +75,7 @@ typedef struct notifier_block notifier_block_s;
 #define IP6_O_DST2    32
 #define IP6_O_PAYLOAD 40
 
-#define MTU 7600
+#define MTU CONFIG_XLAN_MTU
 
 #define ETH_IDX_DST_VENDOR 0
 #define ETH_IDX_DST_HOST   1
