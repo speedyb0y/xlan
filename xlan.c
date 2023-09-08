@@ -311,7 +311,8 @@ static int xlan_enslave (net_device_s* dev, net_device_s* phys, struct netlink_e
     }
 
     //
-    if (physN == PORTS_N) {
+    if (xlan->physN
+     == xlan->portsN) {
         printk("XLAN: TOO MANY\n");
         return -ENOSPC;
     }
@@ -345,7 +346,9 @@ static int xlan_enslave (net_device_s* dev, net_device_s* phys, struct netlink_e
     dev_hold(phys);
 
     //
-    physs[physN++] = phys;
+    xlan->physs [
+    xlan->physN++
+        ] = phys;
 
     return 0;
 }
