@@ -283,7 +283,7 @@ static int xlan_up (net_device_s* const dev) {
         uint i = 0;
 
         while (i != physN) {
-            printk("XLAN: %s\n", i, physs[i]->name);
+            printk("XLAN: %s\n", physs[i]->name);
             dev_set_promiscuity(physs[i], 1);
             i++;
         }
