@@ -197,7 +197,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
 
     u64 now   = jiffies;
     u64 last  = path->last;
-    u64 ports = path->ports;
+    uint ports = path->ports;
 
     ports += (now - last) > HZ/5 // SE DEU UMA PAUSA, TROCA DE PORTA
         || (now - xlan->seen[rHost][ports/portsN]) > 2*HZ;
@@ -230,7 +230,6 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
     }
 
     path->ports = ports;
-    path->host  = lHost;
     path->last  = now;
 
     // INSERT ETHERNET HEADER
