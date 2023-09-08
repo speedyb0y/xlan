@@ -88,13 +88,12 @@ typedef struct notifier_block notifier_block_s;
 #endif
 
 //
-#define MTU CONFIG_XLAN_MTU
-#define VENDOR CONFIG_XLAN_VENDOR
-#define PREFIX4 0x6464 // 100.100.H.H
-#define PREFIX6 0xFC00 // fc00::HH
-
+#define VENDOR  CONFIG_XLAN_VENDOR
+#define PREFIX4 CONFIG_XLAN_PREFIX4
+#define PREFIX6 CONFIG_XLAN_PREFIX6
 #define HOSTS_N CONFIG_XLAN_HOSTS_N
 #define PORTS_N CONFIG_XLAN_PORTS_N // MMC DAS QUANTIDADES DE PORTAS DOS HOSTS DA REDE
+#define MTU     CONFIG_XLAN_MTU
 
 typedef struct path_s {
     u64 last;
