@@ -224,9 +224,11 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
     //
     net_device_s* const phys = xlan->physs[lPort];
 
-    // SOMENTE SE ELA ESTIVER ATIVA E OK
+    //
     if (phys == NULL)
         goto drop;
+
+    // SOMENTE SE ELA ESTIVER ATIVA E OK
     if ((phys->flags & (IFF_UP )) != (IFF_UP )) // IFF_RUNNING // IFF_LOWER_UP
         goto drop;
 
