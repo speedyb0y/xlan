@@ -210,9 +210,11 @@ typedef struct pkt_s {
 	        u8 ttl;
             union {
 		        u16	saddr16[8];
+                u64 saddr64[2];
             };
             union {
 		        u16	daddr16[8];
+                u64 daddr64[2];
             };
             u16 sport;
             u16 dport;
