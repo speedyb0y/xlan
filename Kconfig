@@ -12,7 +12,7 @@ config XLAN_HOSTS_N
 	int "HOSTS N"
 	default 16
 
-config XLAN_PORS_N
+config XLAN_PORTS_N
 	int "PORTS N"
 	default 6
 
