@@ -171,7 +171,7 @@ typedef struct ip4_hdr_s {
     u32	daddr[2];
     u16 sport;
     u16 dport;
-} ip4hdr;
+} ip4_hdr_s;
 
 static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
 
