@@ -366,6 +366,8 @@ static int xlan_unslave (net_device_s* dev, net_device_s* phys) {
         // NOT USING IT
         return -EINVAL;
 
+    phys->rx_handler_data = NULL;
+
     // TODO:
     foreach (i, xlan->portsN)
         if (physs[i] == phys)
