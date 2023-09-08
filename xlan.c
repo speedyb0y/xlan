@@ -311,22 +311,22 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
     // INSERT ETHERNET HEADER
 
     // BUILD HEADER
-    eth->eDstVendor = xlan->vendor;
-    eth->eDstHost   = BE16(rHost);
-    eth->eDstPort   = BE16(rPort);
-    eth->eSrcVendor = xlan->vendor;
-    eth->eSrcHost   = BE16(lHost);
-    eth->eSrcPort   = BE16(lPort);
-    eth->eType      = skb->protocol;
+    pkt->eDstVendor = xlan->vendor;
+    pkt->eDstHost   = BE16(rHost);
+    pkt->eDstPort   = BE16(rPort);
+    pkt->eSrcVendor = xlan->vendor;
+    pkt->eSrcHost   = BE16(lHost);
+    pkt->eSrcPort   = BE16(lPort);
+    pkt->eType      = skb->protocol;
 
     // UPDATE SKB
-    skb->data       = PTR(eth);
+    skb->data       = PTR(pkt);
 #ifdef NET_SKBUFF_DATA_USES_OFFSET
-    skb->mac_header = PTR(eth) - SKB_HEAD(skb);
+    skb->mac_header = PTR(pkt) - SKB_HEAD(skb);
 #else
-    skb->mac_header = PTR(eth);
+    skb->mac_header = PTR(pkt);
 #endif
-    skb->len        = SKB_TAIL(skb) - PTR(eth);
+    skb->len        = SKB_TAIL(skb) - PTR(pkt);
     skb->mac_len    = ETH_HLEN;
 
     skb->dev = phys;
