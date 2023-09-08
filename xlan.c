@@ -191,7 +191,7 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
      || lhost != xlan->host         // NOT TO ME
      || lport >= xlan->portsN       // INVALID L PORT
      || rport >= xlan->portsN       // INVALID R PORT
-     || phys  != xlan->physs[lPort] // SHOULD RECEIVE ON OTHER INTERFACE
+     || phys  != xlan->physs[lport] // SHOULD RECEIVE ON OTHER INTERFACE
      || virt->flags == 0) { // ->flags & UP
         kfree_skb(skb);
         return RX_HANDLER_CONSUMED;
