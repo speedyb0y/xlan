@@ -329,7 +329,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
     pkt->src.vendor = BE16(xlan->vendor);
     pkt->src.host   = BE16(xlan->host);
     pkt->src.port   = BE16(lPort);
-    pkt->eType      = skb->protocol;
+    pkt->type       = skb->protocol;
 
     // UPDATE SKB
     skb->data       = PTR(pkt);
