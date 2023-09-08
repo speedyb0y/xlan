@@ -3,3 +3,16 @@ config XLAN
 	tristate "XLAN"
 	help
 	  example
+
+config XLAN_MTU
+	int "MTU"
+	default 1500
+
+config XLAN_HOSTS_N
+	int "HOSTS N"
+	default 16
+
+config XLAN_PORS_N
+	int "PORTS N"
+	default 6
+
