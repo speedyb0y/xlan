@@ -283,13 +283,13 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
         goto drop;
 
     // BUILD HEADER
-    eth[ETH_IDX_DST_VENDOR] = xlan->vendor;
-    eth[ETH_IDX_DST_HOST  ] = BE16(rHost);
-    eth[ETH_IDX_DST_PORT  ] = BE16(rPort);
-    eth[ETH_IDX_SRC_VENDOR] = xlan->vendor;
-    eth[ETH_IDX_SRC_HOST  ] = BE16(lHost);
-    eth[ETH_IDX_SRC_PORT  ] = BE16(lPort);
-    eth[ETH_IDX_TYPE      ] = skb->protocol;
+    eth->eDstVendor = xlan->vendor;
+    eth->eDstHost   = BE16(rHost);
+    eth->eDstPort   = BE16(rPort);
+    eth->eSrcVendor = xlan->vendor;
+    eth->eSrcHost   = BE16(lHost);
+    eth->eSrcPort   = BE16(lPort);
+    eth->eType      = skb->protocol;
 
     // UPDATE SKB
     skb->data       = PTR(eth);
