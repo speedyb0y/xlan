@@ -122,15 +122,18 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
     const u16* const eth = SKB_MAC(skb);
 
     if (eth[ETH_IDX_DST_VENDOR] == xlan->vendor
-     || eth[ETH_IDX_SRC_VENDOR] == xlan->vendor) {    // TODO: DROP SE RECEBER ALGO QUE NAO EH NA PORTA CERTA
+     && eth[ETH_IDX_SRC_VENDOR] == xlan->vendor) {    // TODO: DROP SE RECEBER ALGO QUE NAO EH NA PORTA CERTA
         if (virt) { // ->flags & UP
 
+            const uint lHost = BE16(eth[ETH_IDX_DST_HOST]);
             const uint lPort = BE16(eth[ETH_IDX_DST_PORT]);
             const uint rHost = BE16(eth[ETH_IDX_SRC_HOST]);            
             const uint rPort = BE16(eth[ETH_IDX_SRC_PORT]);
 
-            if (rHost > HOSTS_N
-             || rPort > xlan->portsN
+            if (lHost >= HOSTS_N
+             || rHost >= HOSTS_N
+             || rHost == lHost
+             || rPort >= xlan->portsN
              || phys != xlan->phys[lPort])
                 goto drop;
 
