@@ -201,7 +201,7 @@ typedef struct pkt_s {
 
 static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
 
-    BUILD_BUG_ON( sizeof(ip4_hdr_s) != PKT_SIZE );
+    BUILD_BUG_ON( sizeof(pkt_s) != PKT_SIZE );
 
     xlan_s* const xlan = netdev_priv(dev);
 
