@@ -247,6 +247,7 @@ static int xlan_up (net_device_s* const dev) {
 
     // TODO: XLAN MUST BE DOWN
     const uint physN = xlan->physN;
+    net_device_s** const physs = xlan->physs;
 
     printk("XLAN: UP WITH %u INTERFACES / %u PORTS\n", physN, PORTS_N);
 
@@ -255,16 +256,16 @@ static int xlan_up (net_device_s* const dev) {
         uint i = 0;
 
         while (i != physN) {
-            printk("XLAN: PORT %u %s\n", i, xlan->physs[i]->name);
-            dev_set_promiscuity(xlan->physs[i], 1);
+            printk("XLAN: PORT %u %s\n", i, physs[i]->name);
+            dev_set_promiscuity(physs[i], 1);
             i++;
         }
 
         // FILL UP THE REMAINING
         while (i != PORTS_N) {
-            xlan->physs[i] =
-            xlan->physs[i % physN];
-            printk("XLAN: PORT %u -> %s\n", i, xlan->physs[i]->name);
+            physs[i] =
+            physs[i % physN];
+            printk("XLAN: PORT %u -> %s\n", i, physs[i]->name);
             i++;
         }
     }
@@ -280,8 +281,10 @@ static int xlan_down (net_device_s* const dev) {
 
     // TODO: XLAN MUST BE UP
     const uint physN = xlan->physN;
+    
+    const net_device_s** const physs = xlan->physs;
 
-    foreach (i, xlan->physN)
+    foreach (i, physN)
         dev_set_promiscuity(physs[i], -1);
 
     return 0;
