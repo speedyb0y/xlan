@@ -263,7 +263,7 @@ static int xlan_down (net_device_s* const dev) {
 
     printk("XLAN: DOWN\n");
 
-    foreach (i, PORTS_N)
+    foreach (i, physN)
         dev_set_promiscuity(physs[i], -1);
 
     return 0;
