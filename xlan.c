@@ -100,7 +100,7 @@ typedef struct path_s {
     u64 ports;
 } path_s;
 
-typedef struct xlan_ctx_s {
+typedef struct xlan_s {
     u16 vendor;
     u16 prefix4;
     u16 prefix6;
@@ -108,15 +108,15 @@ typedef struct xlan_ctx_s {
     net_device_s* virt; // VIRTUAL INTERFACE
     net_device_s* physs[PORTS_N];
     path_s paths[HOSTS_N][64];
-} xlan_ctx_s;
-
-static xlan_ctx_s instance[1];
+} xlan_s;
 
 static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
 
     sk_buff_s* const skb = *pskb;
 
     const u16* const eth = SKB_MAC(skb);
+
+    xlan_s* const instance = skb->dev->rx_handler_data;
 
     if (eth[ETH_IDX_DST_VENDOR] == instance->vendor
      || eth[ETH_IDX_SRC_VENDOR] == instance->vendor) {
@@ -129,7 +129,7 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
             skb->mac_len    = 0;
 #endif
             skb->pkt_type   = PACKET_HOST;
-            skb->dev        = instance->virt;  // TODO: FICARA NO skb->dev->rx_handler_data
+            skb->dev        = instance->virt;
 
             return RX_HANDLER_ANOTHER;
         }
@@ -144,6 +144,8 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
 }
 
 static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* dev) {
+
+    xlan_s* const xlan = netdev_priv(dev);
 
     // ONLY LINEAR
     if (skb_linearize(skb))
@@ -206,10 +208,10 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* dev) {
         goto drop;
 
     // BUILD HEADER
-    eth[ETH_IDX_DST_VENDOR] = instance->vendor;
+    eth[ETH_IDX_DST_VENDOR] = xlan->vendor;
     eth[ETH_IDX_DST_HOST  ] = BE16(rHost);
     eth[ETH_IDX_DST_PORT  ] = BE16(rPort);
-    eth[ETH_IDX_SRC_VENDOR] = instance->vendor;
+    eth[ETH_IDX_SRC_VENDOR] = xlan->vendor;
     eth[ETH_IDX_SRC_HOST  ] = BE16(lHost);
     eth[ETH_IDX_SRC_PORT  ] = BE16(lPort);
     eth[ETH_IDX_TYPE      ] = skb->protocol;
