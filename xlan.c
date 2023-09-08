@@ -172,32 +172,32 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
 
     const pkt_s* const pkt = SKB_MAC(skb) - offsetof(pkt_s, dst);
 
-    const uint lVendor = BE16(pkt->dst.vendor);
-    const uint lHost   = BE16(pkt->dst.host);
-    const uint lPort   = BE16(pkt->dst.port);
-    const uint rVendor = BE16(pkt->src.vendor);
-    const uint rHost   = BE16(pkt->src.host);
-    const uint rPort   = BE16(pkt->src.port);
+    const uint lvendor = BE16(pkt->dst.vendor);
+    const uint lhost   = BE16(pkt->dst.host);
+    const uint lport   = BE16(pkt->dst.port);
+    const uint rvendor = BE16(pkt->src.vendor);
+    const uint rhost   = BE16(pkt->src.host);
+    const uint rport   = BE16(pkt->src.port);
 
     // SO INTERCEPTA O QUE FOR
-    if (lVendor != xlan->vendor
-     || rVendor != xlan->vendor)
+    if (lvendor != xlan->vendor
+     || rvendor != xlan->vendor)
         return RX_HANDLER_PASS;
 
     // DROP CASES
-    if (lHost >= HOSTS_N            // INVALID L HOST
-     || rHost >= HOSTS_N            // INVALID R HOST
-     || rHost == lHost              // SAME HOST
-     || lHost != xlan->host         // NOT TO ME
-     || lPort >= xlan->portsN       // INVALID L PORT
-     || rPort >= xlan->portsN       // INVALID R PORT
+    if (lhost >= HOSTS_N            // INVALID L HOST
+     || rhost >= HOSTS_N            // INVALID R HOST
+     || rhost == lhost              // SAME HOST
+     || lhost != xlan->host         // NOT TO ME
+     || lport >= xlan->portsN       // INVALID L PORT
+     || rport >= xlan->portsN       // INVALID R PORT
      || phys  != xlan->physs[lPort] // SHOULD RECEIVE ON OTHER INTERFACE
      || virt->flags == 0) { // ->flags & UP
         kfree_skb(skb);
         return RX_HANDLER_CONSUMED;
     }
 
-    xlan->seen[rHost][rPort] = jiffies;
+    xlan->seen[rhost][rport] = jiffies;
 
 #if 0 // PULA O ETHERNET HEADER
     // NOTE: skb->network_header JA ESTA CORRETO
