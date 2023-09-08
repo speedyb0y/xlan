@@ -185,7 +185,7 @@ typedef union v6_addr_s {
 } v6_addr_s;
 
 typedef union eth_addr_s {
-    u8 addr[6];
+    u8  addr[6];
     u16 addr16[3];
     struct {
         u16 vendor;
@@ -198,7 +198,7 @@ typedef struct pkt_s {
     u16 _align[3];
     eth_addr_s src;
     eth_addr_s dst;
-    u16 eType;
+    u16 type;
     union {
         struct {
             u8  version;
@@ -219,7 +219,7 @@ typedef struct pkt_s {
 	        u8 version;
 	        u8 _flow;
             u16 flow;
-	        u16 payloadSize;
+	        u16 psize;
 	        u8 protocol;
 	        u8 ttl;
             v6_addr_s src;
@@ -232,6 +232,7 @@ typedef struct pkt_s {
 
 static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
 
+    BUILD_BUG_ON( sizeof(eth_addr_s) != ETH_ALEN );
     BUILD_BUG_ON( sizeof(v4_addr_s) != 4 );
     BUILD_BUG_ON( sizeof(v6_addr_s) != 16 );
     BUILD_BUG_ON( sizeof(pkt_s) != PKT_SIZE );
@@ -251,22 +252,25 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
     // NOTE: ASSUME QUE NÃO TEM IP OPTIONS
     const int v4 = pkt->v4.version == 0x45;
 
-    // IDENTIFY HOSTS
-    const uint lHost = xlan->host;
+    // IDENTIFY DESTINATION
+    const uint rHost = v4 ?
+        ( BE16(pkt->v4.dst.prefix) == xlan->prefix4 ? 
+          BE16(pkt->v4.dst.host  ) :  xlan->gw ) :
+        ( BE16(pkt->v6.dst.prefix) == xlan->prefix6 ?
+          BE16(pkt->v6.dst.host  ) :  xlan->gw ) ;
 
-    const uint rHost = v4 ? // DESTINATION
-        ( pkt->v4.dst.prefix == xlan->prefix4 ? BE16(pkt->v4.dst.host) : xlan->gw ) :
-        ( pkt->v6.dst.prefix == xlan->prefix6 ? BE16(pkt->v6.dst.host) : xlan->gw ) ;
+    if (rHost >= HOSTS_N)
+        goto drop;
 
     // SELECT A PATH
     // OK: TCP | UDP | UDPLITE | SCTP | DCCP
     // FAIL: ICMP
-    xlan_path_s* const path = &xlan->paths[rHost % HOSTS_N][__builtin_popcountll( (u64) ( v4
-        ? pkt->v4.protocol   // IP PROTOCOL
+    xlan_path_s* const path = &xlan->paths[rHost][__builtin_popcountll( (u64) ( v4
+        ? pkt->v4.protocol      // IP PROTOCOL
         + pkt->v4.src.addr32    // SRC ADDR
         + pkt->v4.dst.addr32    // DST ADDR
-        + pkt->v4.sport      // SRC PORT, DST PORT
-        + pkt->v4.dport
+        + pkt->v4.sport         // SRC PORT
+        + pkt->v4.dport         // DST PORT
         : pkt->v6.protocol      // IP PROTOCOL
         + pkt->v6.flow          // FLOW
         + pkt->v6.src.addr64[0] // SRC ADDR
@@ -319,11 +323,11 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
     // INSERT ETHERNET HEADER
 
     // BUILD HEADER
-    pkt->dst.vendor = xlan->vendor;
+    pkt->dst.vendor = BE16(xlan->vendor);
     pkt->dst.host   = BE16(rHost);
     pkt->dst.port   = BE16(rPort);
-    pkt->src.vendor = xlan->vendor;
-    pkt->src.host   = BE16(lHost);
+    pkt->src.vendor = BE16(xlan->vendor);
+    pkt->src.host   = BE16(xlan->host);
     pkt->src.port   = BE16(lPort);
     pkt->eType      = skb->protocol;
 
@@ -539,9 +543,9 @@ static void xlan_setup (net_device_s* const dev) {
 
     memset(xlan, 0, sizeof(*xlan));
 
-    xlan->vendor  = BE16(VENDOR);
-    xlan->prefix4 = BE16(PREFIX4);
-    xlan->prefix6 = BE16(PREFIX6);
+    xlan->vendor  = VENDOR;
+    xlan->prefix4 = PREFIX4;
+    xlan->prefix6 = PREFIX6;
     xlan->physN   = 0;
     xlan->portsN  = PORTS_N;
     xlan->host    = 20;
