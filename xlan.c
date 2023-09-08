@@ -183,10 +183,10 @@ typedef struct pkt_s {
                 u8  saddr[4];
                 u16	saddr16[2];
                 u32 saddr32;
-                struct {
-                    u16 prefix;
-                    u16 host;
-                };
+                //struct {
+                    //u16 prefix;
+                    //u16 host;
+                //};
             };
             union {
                 u8  daddr[4];
