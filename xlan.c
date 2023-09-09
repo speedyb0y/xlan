@@ -15,8 +15,8 @@
 #include <net/addrconf.h>
 #include <linux/module.h>
 
-#define __hot __attribute__((hot))
-#define __cold __attribute__((cold))
+#define __f_hot __attribute__((hot))
+#define __f_cold __attribute__((cold))
 #define __packed __attribute__((packed))
 
 typedef __u8  u8;
@@ -375,21 +375,21 @@ drop:
     return NETDEV_TX_OK;
 }
 
-static int xlan_up (net_device_s* const dev) {
+static int xlan_up (net_device_s* const dev) __f_cold {
 
     printk("XLAN: %s: UP\n", dev->name);
 
     return 0;
 }
 
-static int xlan_down (net_device_s* const dev) {
+static int xlan_down (net_device_s* const dev) __f_cold {
 
     printk("XLAN: %s: DOWN\n", dev->name);
 
     return 0;
 }
 
-static int xlan_enslave (net_device_s* dev, net_device_s* phys, struct netlink_ext_ack* extack) {
+static int xlan_enslave (net_device_s* dev, net_device_s* phys, struct netlink_ext_ack* extack) __f_cold {
 
     enum {
         _ENSL_SUCCESS,
@@ -495,7 +495,7 @@ static int xlan_enslave (net_device_s* dev, net_device_s* phys, struct netlink_e
     return -(int)codes[ret];
 }
 
-static int xlan_unslave (net_device_s* dev, net_device_s* phys) {
+static int xlan_unslave (net_device_s* dev, net_device_s* phys) __f_cold {
 
     xlan_s* const xlan = netdev_priv(dev);
 
@@ -576,7 +576,7 @@ static const net_device_ops_s xlanDevOps = {
     // TODO: SET MTU - NAO EH PARA SETAR AQUI E SIM NO ROUTE
 };
 
-static void xlan_setup (net_device_s* const dev) {
+static void xlan_setup (net_device_s* const dev) __f_cold {
 
     dev->netdev_ops      = &xlanDevOps;
     dev->header_ops      = NULL;
