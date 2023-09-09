@@ -3,7 +3,3 @@ config XLAN
 	tristate "XLAN"
 	help
 	  example
-
-config XLAN_MTU
-	int "MTU"
-	default 1500
