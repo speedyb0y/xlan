@@ -184,9 +184,10 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
     //
     xlan->seen[rhost][rport][lport] = jiffies;
 
-    skb->protocol = pkt->type == BE16(ETH_P_XLAN4) ?
-                                 BE16(ETH_P_IP) :
-                                 BE16(ETH_P_IPV6);
+    skb->protocol =
+        pkt->type == BE16(ETH_P_XLAN4) ?
+                     BE16(ETH_P_IP) :
+                     BE16(ETH_P_IPV6);
     skb->dev = virt;
 
     return RX_HANDLER_ANOTHER;
