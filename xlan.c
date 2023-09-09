@@ -153,6 +153,8 @@ typedef struct xlan_path_s {
 typedef struct xlan_s {
     u16 vendor;
     u16 host;
+    u16 host0;
+    u16 hostL;
     u16 gw;
     u16 prefix4;
     u16 prefix6;
