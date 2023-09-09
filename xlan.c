@@ -371,7 +371,7 @@ static int xlan_enslave (net_device_s* dev, net_device_s* phys, struct netlink_e
     elif (0)
         // TODO: CANNOT BE OF XLAN TYPE
         ret = _ENSL_ANOTHER_XLAN;
-    elif (rtnl_dereference(phys->rx_handler) == xlan_in)
+    elif (xlan->ports[port] == dev)
         // ALREADY
         ret = _ENSL_ALREADY;
     elif (xlan->ports[port])
@@ -395,6 +395,9 @@ static int xlan_enslave (net_device_s* dev, net_device_s* phys, struct netlink_e
     elif (port >= PORTS_N)
         // BAD PORT - TOO HIGH
         ret = _ENSL_PORT_HIGH;
+    elif (rtnl_dereference(phys->rx_handler) == xlan_in)
+        // TODO: WTF?
+        ret = _ENSL_ATTACH_FAILED;
     elif (netdev_rx_handler_register(phys, xlan_in, dev) != 0)
         // FAILED TO ATTACH
         ret = _ENSL_ATTACH_FAILED;
