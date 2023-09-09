@@ -455,24 +455,28 @@ static int xlan_unslave (net_device_s* dev, net_device_s* phys) {
     return 0;
 }
 
+typedef struct xlan_info_s {
+    u16 vendor;
+    u16 net4;
+    u16 net6;
+    u16 host;
+    u16 gw;    
+    u16 portsN;
+} xlan_info_s;
+
 // TODO: ip link set dev xlan addr 50:62:N4:N4:N6:N6:HH:GG
 static int xlan_setup (net_device_s* const dev, void* const addr) {
 
     xlan_s* const xlan = netdev_priv(dev);
 
-    struct {
-        u16 vendor;
-        u16 net4;
-        u16 net6;
-        u16 host;
-        u16 gw;    
-    }* const info = addr;
+    const xlan_info_s* const info = addr;
 
     xlan->vendor = info->vendor;
     xlan->net4   = info->net4;
     xlan->net6   = info->net6;
     xlan->host   = BE16(info->host);
-    xlan->gw     = BE16(info->host);
+    xlan->gw     = BE16(info->gw);
+    xlan->portsN = BE16(info->portsN);
 
     return 0;
 }
@@ -493,7 +497,7 @@ static void xlan_setup (net_device_s* const dev) {
     dev->netdev_ops      = &xlanDevOps;
     dev->header_ops      = NULL;
     dev->type            = ARPHRD_NONE;
-    dev->addr_len        = 0;
+    dev->addr_len        = sizeof(xlan_info_s);
     dev->hard_header_len = ETH_HLEN;
     dev->min_header_len  = ETH_HLEN;
     //dev->needed_headroom = ;
