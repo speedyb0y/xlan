@@ -148,8 +148,8 @@ typedef void pkt_s;
 #define flow6       pkt->ip.v6.flow
 #define proto4      pkt->ip.v4.protocol
 #define proto6      pkt->ip.v6.protocol
-#define addrs4      pkt->ip.v4.addrs
-#define addrs6      pkt->ip.v6.addrs
+#define addrs4      pkt->ip.v4.addrs64
+#define addrs6      pkt->ip.v6.addrs64
 #define ports4      pkt->ip.v4.ports
 #define ports6      pkt->ip.v6.ports
 #define from_net4   pkt->ip.v4.addrs16[0]
