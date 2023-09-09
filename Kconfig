@@ -1,17 +1,17 @@
 
 config XLAN
-	tristate "XLAN"
-	help
-	  example
+    tristate "XLAN"
+    help
+      example
 
 config XLAN_VENDOR
-	hex "XLAN_VENDOR"
-	default 0x5062
+    hex "XLAN_VENDOR"
+    default 0x5062
 
 config XLAN_HOSTS_N
-	int "XLAN_HOSTS_N"
-	default 64
+    int "XLAN_HOSTS_N"
+    default 64
 
 config XLAN_PORTS_N
-	int "XLAN_PORTS_N"
-	default 4
+    int "XLAN_PORTS_N"
+    default 4

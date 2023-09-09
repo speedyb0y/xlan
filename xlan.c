@@ -216,8 +216,8 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
     const pkt_s* const pkt = SKB_MAC(skb) - PKT_OFFSET_ETH;
 
     // SO HANDLE O QUE FOR
-    if (pkt_dst_vendor != BE16(VENDOR)
-     || pkt_src_vendor != BE16(VENDOR))
+    if (pkt_dst_vendor != BE16(XLAN_VENDOR)
+     || pkt_src_vendor != BE16(XLAN_VENDOR))
         return RX_HANDLER_PASS;
 
     // ASSERT: skb->type PKT_HOST
@@ -330,10 +330,10 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
     path->last  = now;
 
     // INSERT ETHERNET HEADER
-    pkt_dst_vendor = BE16(VENDOR);
+    pkt_dst_vendor = BE16(XLAN_VENDOR);
     pkt_dst_host   = HP_ENCODE(rhost);
     pkt_dst_port   = HP_ENCODE(rport);
-    pkt_src_vendor = BE16(VENDOR);
+    pkt_src_vendor = BE16(XLAN_VENDOR);
     pkt_src_host   = HP_ENCODE(xlan->host);
     pkt_src_port   = HP_ENCODE(lport);
     pkt_type       = skb->protocol;
@@ -448,7 +448,7 @@ static int xlan_enslave (net_device_s* dev, net_device_s* phys, struct netlink_e
     elif (phys->addr_len != ETH_ALEN)
         // NOT ETHERNET
         ret = _ENSL_NOT_ETHERNET;
-    elif (mac->vendor != BE16(VENDOR))
+    elif (mac->vendor != BE16(XLAN_VENDOR))
         // WRONG VENDOR
         ret = _ENSL_VENDOR_WRONG;
     elif (mac->host != HP_ENCODE(xlan->host))
