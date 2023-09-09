@@ -371,7 +371,7 @@ static int xlan_enslave (net_device_s* dev, net_device_s* phys, struct netlink_e
     elif (phys->addr_len != ETH_ALEN)
         // NOT ETHERNET
         ret = -EINVAL;
-    elif (xlan->portsN == PORTS_N)
+    elif (xlan->lportsN == PORTS_N)
         // ALL SLOTS USED
         ret = -ENOSPC;
     elif (netdev_rx_handler_register(phys, xlan_in, dev) != 0)
