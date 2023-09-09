@@ -413,9 +413,6 @@ static int xlan_unslave (net_device_s* dev, net_device_s* phys) {
     return 0;
 }
 
-// struct net_device*  (*ndo_get_xmit_slave)(struct net_device *dev,                              struct sk_buff *skb,                              bool all_slaves);
-//  struct net_device*  (*ndo_sk_get_lower_dev)(struct net_device *dev,                            struct sock *sk);
-
 static const net_device_ops_s xlanDevOps = {
     .ndo_init             = NULL,
     .ndo_open             = xlan_up,
