@@ -97,8 +97,8 @@ typedef struct pkt_s {
     mac_s src;
     mac_s dst;
     u16 type;
-    union {
-        struct {
+    union pkt_ip_s {
+        struct pkt_ip_v4_s {
             u8 _x[9];
             u8 protocol;
             u8 _y[2];
@@ -111,7 +111,7 @@ typedef struct pkt_s {
             u32 ports;
             u8 _z[20];
         } __COMPACT v4;
-        struct {
+        struct pkt_ip_v6_s {
             u8 _x[2];
             u16 flow;
             u8 _y[2];
@@ -125,13 +125,15 @@ typedef struct pkt_s {
             } __COMPACT;
             u32 ports;
         } __COMPACT v6;
-    };
+    } ip;
 } __COMPACT pkt_s;
 #else
 typedef void pkt_s;
 #endif
 
 #if 1
+#define PKT_OFFSET_ETH offsetof(pkt_s, dst)
+#define PKT_OFFSET_IP  offsetof(pkt_s, ip)
 #define pkt_eth       (&pkt->dst)
 #define pkt_dst_vendor  pkt->dst.vendor
 #define pkt_dst_host    pkt->dst.host
@@ -140,22 +142,24 @@ typedef void pkt_s;
 #define pkt_src_host    pkt->src.host
 #define pkt_src_port    pkt->src.port
 #define pkt_type        pkt->type
-#define pkt_v4_protocol pkt->v4.protocol
-#define pkt_v4_addrs    pkt->v4.addrs
-#define pkt_v4_ports    pkt->v4.ports
-#define pkt_v6_flow     pkt->v6.flow
-#define pkt_v6_protocol pkt->v6.protocol
-#define pkt_v6_addrs    pkt->v6.addrs
-#define pkt_v6_ports    pkt->v6.ports
-#define pkt_v4_src_net  pkt->v4.src.net
-#define pkt_v4_src_host pkt->v4.src.host
-#define pkt_v4_dst_net  pkt->v4.dst.net
-#define pkt_v4_dst_host pkt->v4.dst.host
-#define pkt_v6_src_net  pkt->v6.src.net
-#define pkt_v6_src_host pkt->v6.src.host
-#define pkt_v6_dst_net  pkt->v6.dst.net
-#define pkt_v6_dst_host pkt->v6.dst.host
+#define pkt_v4_protocol pkt->ip.v4.protocol
+#define pkt_v4_addrs    pkt->ip.v4.addrs
+#define pkt_v4_ports    pkt->ip.v4.ports
+#define pkt_v6_flow     pkt->ip.v6.flow
+#define pkt_v6_protocol pkt->ip.v6.protocol
+#define pkt_v6_addrs    pkt->ip.v6.addrs
+#define pkt_v6_ports    pkt->ip.v6.ports
+#define pkt_v4_src_net  pkt->ip.v4.src.net
+#define pkt_v4_src_host pkt->ip.v4.src.host
+#define pkt_v4_dst_net  pkt->ip.v4.dst.net
+#define pkt_v4_dst_host pkt->ip.v4.dst.host
+#define pkt_v6_src_net  pkt->ip.v6.src.net
+#define pkt_v6_src_host pkt->ip.v6.src.host
+#define pkt_v6_dst_net  pkt->ip.v6.dst.net
+#define pkt_v6_dst_host pkt->ip.v6.dst.host
 #else
+#define PKT_OFFSET_ETH 0
+#define PKT_OFFSET_IP  14
 #define pkt_eth                pkt
 #define pkt_dst_vendor  ((u16*)pkt)[0]
 #define pkt_dst_host    ((u16*)pkt)[1]
@@ -167,19 +171,18 @@ typedef void pkt_s;
 #define pkt_v4_protocol (*(u8* )(pkt + 14 +  9))
 #define pkt_v4_addrs    (*(u64*)(pkt + 14 + 12))
 #define pkt_v4_ports    (*(u32*)(pkt + 14 + 20))
-#define pkt_v6_flow     (*(u16*)(pkt + 14 +  2))
+#define pkt_v6_flow     ((u16*)pkt)[8]
 #define pkt_v6_protocol (*(u8* )(pkt + 14 +  6))
 #define pkt_v6_addrs    ( (u64*)(pkt + 14 +  8))
 #define pkt_v6_ports    (*(u32*)(pkt + 14 + 40))
-
-#define pkt_v4_src_net  (((u16*)pkt)[13])
-#define pkt_v4_src_host (((u16*)pkt)[14])
-#define pkt_v4_dst_net  (((u16*)pkt)[15])
-#define pkt_v4_dst_host (((u16*)pkt)[16])
-#define pkt_v6_src_net  (((u16*)pkt)[11])
-#define pkt_v6_src_host (((u16*)pkt)[18])
-#define pkt_v6_dst_net  (((u16*)pkt)[19])
-#define pkt_v6_dst_host (((u16*)pkt)[26])
+#define pkt_v4_src_net  ((u16*)pkt)[13]
+#define pkt_v4_src_host ((u16*)pkt)[14]
+#define pkt_v4_dst_net  ((u16*)pkt)[15]
+#define pkt_v4_dst_host ((u16*)pkt)[16]
+#define pkt_v6_src_net  ((u16*)pkt)[11]
+#define pkt_v6_src_host ((u16*)pkt)[18]
+#define pkt_v6_dst_net  ((u16*)pkt)[19]
+#define pkt_v6_dst_host ((u16*)pkt)[26]
 #endif
 
 typedef struct xlan_stream_s {
@@ -206,7 +209,7 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
     net_device_s* const virt = skb->dev->rx_handler_data;
     xlan_s* const xlan = netdev_priv(virt);
 
-    const pkt_s* const pkt = SKB_MAC(skb) - offsetof(pkt_s, dst);
+    const pkt_s* const pkt = SKB_MAC(skb) - PKT_OFFSET_ETH;
 
     // SO HANDLE O QUE FOR
     if (pkt_dst_vendor != BE16(VENDOR)
@@ -250,7 +253,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
     if (skb_linearize(skb))
         goto drop;
 
-    pkt_s* const pkt = SKB_NETWORK(skb) - offsetof(pkt_s, v4);
+    pkt_s* const pkt = SKB_NETWORK(skb) - PKT_OFFSET_IP;
 
     // CONFIRMA ESPACO
     if (PTR(pkt_eth) < SKB_HEAD(skb))
