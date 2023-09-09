@@ -150,12 +150,14 @@ typedef struct xlan_path_s {
     u64 last;
 } xlan_path_s;
 
+// NETWORK, HOST
+// NN.NN.HH.HH NNNN:?:HHHH
 typedef struct xlan_s {
     u16 vendor;
-    u16 host;
-    u16 gw;
-    u16 prefix4;
-    u16 prefix6;
+    u16 net4; // NN.NN.
+    u16 net6; // NNNN::
+    u16 host; // .HH.HH ::HHHH LHOST
+    u16 gw;   // .HH.HH ::HHHH RHOST, WHEN IT DOES NOT BELONG TO THE NET
     u16 physN; // PHYSICAL INTERFACES
     u16 portsN; // NA REDE
     net_device_s* physs[PORTS_N];
@@ -229,9 +231,9 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
 
     // IDENTIFY DESTINATION
     const uint rhost = v4 ?
-        ( pkt->v4.dst.prefix  == xlan->prefix4 ?
+        ( pkt->v4.dst.prefix  == xlan->net4 ?
           pkt->v4.dst.host    :  xlan->gw ) :
-        ( pkt->v6.dst.prefix  == xlan->prefix6 ?
+        ( pkt->v6.dst.prefix  == xlan->net6 ?
           pkt->v6.dst.host    :  xlan->gw ) ;
 
     if (rhost >= HOSTS_N)
@@ -349,8 +351,8 @@ static int xlan_up (net_device_s* const dev) {
             dev->name,
             dev->mtu,
             BE16(xlan->vendor),
-            BE16(xlan->prefix4),
-            BE16(xlan->prefix6),
+            BE16(xlan->net4),
+            BE16(xlan->net6),
                  xlan->portsN,
                  xlan->physN
         );
@@ -518,8 +520,8 @@ static void xlan_setup (net_device_s* const dev) {
     memset(xlan, 0, sizeof(*xlan));
 
     xlan->vendor  = BE16(VENDOR);
-    xlan->prefix4 = BE16(PREFIX4);
-    xlan->prefix6 = BE16(PREFIX6);
+    xlan->net4 = BE16(PREFIX4);
+    xlan->net6 = BE16(PREFIX6);
     xlan->host    = BE16(20);
     xlan->gw      = BE16(50);
     xlan->portsN  = PORTS_N;
