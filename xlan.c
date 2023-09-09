@@ -448,8 +448,6 @@ typedef struct xlan_info_s {
 
 static int xlan_cfg (net_device_s* const dev, void* const addr) {
 
-    xlan_s* const xlan = netdev_priv(dev);
-
     const xlan_info_s* const info = addr;
 
     // READ
@@ -461,13 +459,16 @@ static int xlan_cfg (net_device_s* const dev, void* const addr) {
     const uint portsN = BE16(info->portsN);
 
     // VERIFY
-    if ((vendor & 0x0300) == 0
-     && vendor != 0
-     && portsN >= 1
-     && net4 != 0
-     && net6 != 0
-     && gw != host
-     && portsN <= PORTS_N) {
+    if ((vendor & 0x0100) == 0
+      && vendor != 0
+      && net4 != 0
+      && net6 != 0
+      && host != 0
+      && gw != host
+      && portsN >= 1
+      && portsN <= PORTS_N) {
+
+        xlan_s* const xlan = netdev_priv(dev);
 
         // COMMIT
         xlan->vendor = BE16(vendor);
