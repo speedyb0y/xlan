@@ -17,6 +17,7 @@
 
 #define __f_hot __attribute__((hot))
 #define __f_cold __attribute__((cold))
+
 #ifndef __packed
 #define __packed __attribute__((packed))
 #endif
