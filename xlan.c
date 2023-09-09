@@ -232,7 +232,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
     // SELECT A PATH
     // OK: TCP | UDP | UDPLITE | SCTP | DCCP
     // FAIL: ICMP
-    xlan_stream_s* const path = &rh->paths[rhost][__builtin_popcountll( (u64) ( v4
+    xlan_stream_s* const path = &xlan->paths[rhost][__builtin_popcountll( (u64) ( v4
         ?  pkt->v4.protocol     // IP PROTOCOL
         + (pkt->v4.src.w32[0]   // SRC ADDR
          * pkt->v4.dst.w32[0])  // DST ADDR
