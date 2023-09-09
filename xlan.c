@@ -116,7 +116,7 @@ typedef struct pkt_s {
     mac_s src;
     mac_s dst;
     u16 type;
-    union pkt_ip_s {
+    const union pkt_ip_s {
         struct pkt_ip_v4_s {
             u8 _x[9];
             u8 protocol;
