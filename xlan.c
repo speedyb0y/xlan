@@ -209,7 +209,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
         goto drop;
 
     // NOTE: ASSUME QUE NÃO TEM IP OPTIONS
-    const int v4 = pkt->type == BE16(ETH_P_IP);
+    const int v4 = skb->protocol == BE16(ETH_P_IP);
 
     // IDENTIFY DESTINATION
     const uint rhost = v4 ?
@@ -275,13 +275,13 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
     path->last  = now;
 
     // INSERT ETHERNET HEADER
-    pkt->src.vendor =             xlan->vendor;
-    pkt->dst.vendor =             xlan->vendor;
-    pkt->src.host   =        BE16(xlan->host);
-    pkt->dst.host   =        BE16(rhost);
-    pkt->src.port   = PORT_ENCODE(lport);
-    pkt->dst.port   = PORT_ENCODE(rport);
-    pkt->type       = BE16(ETH_P_XLAN6-v4);
+    pkt->dst.vendor = BE16(VENDOR);
+    pkt->dst.host   = HP_ENCODE(rhost);
+    pkt->dst.port   = HP_ENCODE(rport);
+    pkt->src.vendor = BE16(VENDOR);
+    pkt->src.host   = HP_ENCODE(xlan->host);
+    pkt->src.port   = HP_ENCODE(lport);
+    pkt->type       = skb->protocol;
 
     // UPDATE SKB
     skb->data       = PTR(pkt);
