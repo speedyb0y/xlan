@@ -452,14 +452,35 @@ static int xlan_setup (net_device_s* const dev, void* const addr) {
 
     const xlan_info_s* const info = addr;
 
-    xlan->vendor = info->vendor;
-    xlan->net4   = info->net4;
-    xlan->net6   = info->net6;
-    xlan->host   = BE16(info->host);
-    xlan->gw     = BE16(info->gw);
-    xlan->portsN = BE16(info->portsN);
+    // READ
+    const uint vendor = info->vendor;
+    const uint net4   = info->net4;
+    const uint net6   = info->net6;
+    const uint host   = BE16(info->host);
+    const uint gw     = BE16(info->gw);
+    const uint portsN = BE16(info->portsN);
 
-    return 0;
+    // VERIFY
+    if (vendor
+     && vendor & 0b11U == 0
+     && portsN >= 1
+     && net4
+     && net6
+     && gw != host
+     && portsN <= PORTS_N) {
+
+        // COMMIT
+        xlan->vendor = vendor;
+        xlan->net4   = net4;
+        xlan->net6   = net6;
+        xlan->host   = host;
+        xlan->gw     = gw;
+        xlan->portsN = portsN;
+
+        return 0;
+    }
+
+    return -EINVAL;
 }
 
 static const net_device_ops_s xlanDevOps = {
@@ -509,11 +530,6 @@ static void xlan_setup (net_device_s* const dev) {
 
     memset(xlan, 0, sizeof(*xlan));
 
-    xlan->vendor = 0;
-    xlan->net4   = 0;
-    xlan->net6   = 0;
-    xlan->host   = 0;
-    xlan->gw     = 0;
     xlan->portsN = 1;
 }
 
