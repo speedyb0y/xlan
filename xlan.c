@@ -225,22 +225,22 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
         goto drop;
 
     // NOTE: ASSUME QUE NÃO TEM IP OPTIONS
-    const int v4 = pkt->v4.version == 0x45;
+    const int v4 = pkt->type == BE16(ETH_P_IP);
 
     // IDENTIFY DESTINATION
-    const uint rHost = v4 ?
+    const uint rhost = v4 ?
         ( pkt->v4.dst.prefix  == xlan->prefix4 ?
           pkt->v4.dst.host    :  xlan->gw ) :
         ( pkt->v6.dst.prefix  == xlan->prefix6 ?
           pkt->v6.dst.host    :  xlan->gw ) ;
 
-    if (rHost >= HOSTS_N)
+    if (rhost >= HOSTS_N)
         goto drop;
 
     // SELECT A PATH
     // OK: TCP | UDP | UDPLITE | SCTP | DCCP
     // FAIL: ICMP
-    xlan_path_s* const path = &xlan->paths[rHost][__builtin_popcountll( (u64) ( v4
+    xlan_path_s* const path = &xlan->paths[rhost][__builtin_popcountll( (u64) ( v4
         ? pkt->v4.protocol      // IP PROTOCOL
         + pkt->v4.src.addr32    // SRC ADDR
         + pkt->v4.dst.addr32    // DST ADDR
@@ -263,10 +263,10 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
     uint ports = path->ports;
 
     ports += (now - last) > HZ/5 // SE DEU UMA PAUSA, TROCA DE PORTA
-        || (now - xlan->seen[rHost][ports/portsN]) > 2*HZ;
+        || (now - xlan->seen[rhost][ports/portsN]) > 2*HZ;
 
-    uint rPort;
-    uint lPort;
+    uint rport;
+    uint lport;
 
     net_device_s* phys;
 
@@ -281,11 +281,11 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
         // NOTE: MUDA A PORTA LOCAL COM MAIS FREQUENCIA, PARA QUE O SWITCH A DESCUBRA
         // for PORTS_N in range(7): assert len(set((_ // PORTS_N, _ % PORTS_N) for _ in range(PORTS_N*PORTS_N))) == PORTS_N*PORTS_N
         ports %= portsN * portsN;
-        rPort = ports / portsN;
-        lPort = ports % portsN;
+        rport = ports / portsN;
+        lport = ports % portsN;
 
         // SOMENTE SE ELA ESTIVER ATIVA E OK
-        if ((phys = xlan->physs[lPort])) // IFF_RUNNING // IFF_LOWER_UP
+        if ((phys = xlan->physs[lport])) // IFF_RUNNING // IFF_LOWER_UP
             if ((phys->flags & IFF_UP) == IFF_UP)
                 break;
 
@@ -297,11 +297,11 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
 
     // INSERT ETHERNET HEADER
     pkt->dst.vendor =      xlan->vendor;
-    pkt->dst.host   = BE16(rHost);
-    pkt->dst.port   = BE16(rPort);
+    pkt->dst.host   = BE16(rhost);
+    pkt->dst.port   = BE16(rport);
     pkt->src.vendor =      xlan->vendor;
     pkt->src.host   =      xlan->host;
-    pkt->src.port   = BE16(lPort);
+    pkt->src.port   = BE16(lport);
     pkt->type       = skb->protocol;
 
     // UPDATE SKB
