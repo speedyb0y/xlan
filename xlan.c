@@ -161,7 +161,7 @@ typedef struct xlan_s {
     u16 portsN; // NA REDE
     u16 physN;  // PHYSICAL INTERFACES
     net_device_s* physs[PORTS_N];
-    xlan_path_s paths[HOSTS_N][64];
+    xlan_path_s paths[HOSTS_N][64]; // POPCOUNT64()
     u64 seen[HOSTS_N][PORTS_N]; // ULTIMA VEZ QUE RECEBEU ALGO COM SRC HOST:PORT; DAI TODA VEZ QUE TENTAR mandar pra ele, se ja faz tempo que nao o ve, muda
 } xlan_s;
 
