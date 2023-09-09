@@ -161,13 +161,15 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
         return RX_HANDLER_PASS;
 
     // ASSERT: skb->type PKT_HOST
-    const uint lhost = BE16(pkt->dst.host) % HOSTS_N;
-    const uint lport = BE16(pkt->dst.port) % PORTS_N;
-    const uint rhost = BE16(pkt->src.host) % HOSTS_N;
-    const uint rport = BE16(pkt->src.port) % PORTS_N;
+    const uint lhost =        BE16(pkt->dst.host) % HOSTS_N;
+    const uint rhost =        BE16(pkt->src.host) % HOSTS_N;
+    const uint lport = PORT_DECODE(pkt->dst.port) % PORTS_N;
+    const uint rport = PORT_DECODE(pkt->src.port) % PORTS_N;
 
     // DISCARD THOSE
-    if (xlan->host != lhost // NOT TO ME (POIS PODE TER RECEBIDO DEVIDO AO MODO PROMISCUO)
+    if (pkt->src.vendor != xlan->vendor
+     || pkt->dst.vendor != xlan->vendor
+     || xlan->host != lhost // NOT TO ME (POIS PODE TER RECEBIDO DEVIDO AO MODO PROMISCUO)
      || xlan->host == rhost
      || xlan->ports[lport] != phys // WRONG INTERFACE
      || virt->flags == 0) { // ->flags & UP
