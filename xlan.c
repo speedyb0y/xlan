@@ -186,6 +186,7 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
         return RX_HANDLER_CONSUMED;
     }
 
+    //
     xlan->seen
         [BE16(pkt->src.host) % HOSTS_N]
         [BE16(pkt->src.port) % PORTS_N]
@@ -220,7 +221,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
     pkt_s* const pkt = SKB_NETWORK(skb) - offsetof(pkt_s, v4);
 
     // CONFIRMA ESPACO
-    if (PTR(&pkt->dst.vendor) < SKB_HEAD(skb))
+    if (PTR(&pkt->dst) < SKB_HEAD(skb))
         goto drop;
 
     // NOTE: ASSUME QUE NÃO TEM IP OPTIONS
