@@ -331,7 +331,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
                 path->ports = ports;
                 path->last  = now;
 
-                // INSERT ETHERNET HEADER
+                // FILL ETHERNET HEADER
                 pkt_dst_vendor = BE16(VENDOR);
                 pkt_dst_host   = HP_ENCODE(rhost);
                 pkt_dst_port   = HP_ENCODE(rport);
