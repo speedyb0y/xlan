@@ -273,9 +273,6 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
          * pkt->v6.dport)       // DST PORT
     ))];
 
-    const uint lportsN = xlan->portsN;
-    const uint rportsN =   rh->portsN;
-
     uint now   = jiffies;
     uint ports = path->ports;
 
@@ -284,7 +281,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
 
     net_device_s* phys;
 
-    uint c = 1 + ROUNDS * (lportsN * rportsN);
+    uint c = 1 + ROUNDS * (PORTS_N * PORTS_N);
 
     foreach (r, ROUNDS) {
 
@@ -294,10 +291,10 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
 
         // NOTE: MUDA A PORTA LOCAL COM MAIS FREQUENCIA, PARA QUE O SWITCH A DESCUBRA
         // for PORTS_N in range(7): assert len(set((_ // PORTS_N, _ % PORTS_N) for _ in range(PORTS_N*PORTS_N))) == PORTS_N*PORTS_N
-        ports %= lportsN * rportsN;
+        ports %= PORTS_N * PORTS_N;
 
-        rport = ports / lportsN;
-        lport = ports % lportsN;
+        rport = ports / PORTS_N;
+        lport = ports % PORTS_N;
 
         phys = xlan->ports[lport];
 
