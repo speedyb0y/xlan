@@ -139,6 +139,13 @@ typedef void pkt_s;
 #define pkt_src_host   pkt->src.host
 #define pkt_src_port   pkt->src.port
 #define pkt_type       pkt->type
+#define pkt_v4_protocol pkt->v4.protocol
+#define pkt_v4_addrs    pkt->v4.addrs
+#define pkt_v4_ports    pkt->v4.ports
+#define pkt_v6_flow     pkt->v6.flow
+#define pkt_v6_protocol pkt->v6.protocol
+#define pkt_v6_addrs    pkt->v6.addrs
+#define pkt_v6_ports    pkt->v6.ports
 #else
 #define pkt_dst_vendor ((u16*)pkt)[0]
 #define pkt_dst_host   ((u16*)pkt)[1]
@@ -147,6 +154,13 @@ typedef void pkt_s;
 #define pkt_src_host   ((u16*)pkt)[4]
 #define pkt_src_port   ((u16*)pkt)[5]
 #define pkt_type       ((u16*)pkt)[6]
+#define pkt_v4_protocol 
+#define pkt_v4_addrs    (*(u64*)(pkt + 14 + 12))
+#define pkt_v4_ports    (*(u32*)(pkt + 14 + 20))
+#define pkt_v6_flow     (*(u16* )(pkt + 14 + ))
+#define pkt_v6_protocol (*(u8* )(pkt + 14 + ))
+#define pkt_v6_addrs    ( (u64*)(pkt + 14 + 8))
+#define pkt_v6_ports    (*(u32*)(pkt + 14 + 40))
 #endif
 
 typedef struct xlan_stream_s {
@@ -220,7 +234,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
     pkt_s* const pkt = SKB_NETWORK(skb) - offsetof(pkt_s, v4);
 
     // CONFIRMA ESPACO
-    if (PTR(&pkt->dst) < SKB_HEAD(skb))
+    if (PTR(&pkt_dst) < SKB_HEAD(skb))
         goto drop;
 
     // NOTE: ASSUME QUE NÃO TEM IP OPTIONS
@@ -240,16 +254,16 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
     // OK: TCP | UDP | UDPLITE | SCTP | DCCP
     // FAIL: ICMP
     xlan_stream_s* const path = &xlan->paths[rhost][__builtin_popcountll( (u64) ( v4
-        ? pkt->v4.protocol // IP PROTOCOL
-        * pkt->v4.ports    // SRC PORT, DST PORT
-        + pkt->v4.addrs    // SRC ADDR, DST ADDR
-        : pkt->v6.flow     // FLOW
-        * pkt->v6.protocol // IP PROTOCOL
-        * pkt->v6.ports    // SRC PORT, DST PORT
-        + pkt->v6.addrs[0] // SRC ADDR
-        + pkt->v6.addrs[1] // SRC ADDR
-        + pkt->v6.addrs[2] // DST ADDR
-        + pkt->v6.addrs[3] // DST ADDR
+        ? pkt_v4_protocol // IP PROTOCOL
+        * pkt_v4_ports    // SRC PORT, DST PORT
+        + pkt_v4_addrs    // SRC ADDR, DST ADDR
+        : pkt_v6_flow     // FLOW
+        * pkt_v6_protocol // IP PROTOCOL
+        * pkt_v6_ports    // SRC PORT, DST PORT
+        + pkt_v6_addrs[0] // SRC ADDR
+        + pkt_v6_addrs[1] // SRC ADDR
+        + pkt_v6_addrs[2] // DST ADDR
+        + pkt_v6_addrs[3] // DST ADDR
     ))];
 
     uint now   = jiffies;
@@ -290,13 +304,13 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
     path->last  = now;
 
     // INSERT ETHERNET HEADER
-    pkt->dst.vendor = BE16(VENDOR);
-    pkt->dst.host   = HP_ENCODE(rhost);
-    pkt->dst.port   = HP_ENCODE(rport);
-    pkt->src.vendor = BE16(VENDOR);
-    pkt->src.host   = HP_ENCODE(xlan->host);
-    pkt->src.port   = HP_ENCODE(lport);
-    pkt_type        = skb->protocol;
+    pkt_dst_vendor = BE16(VENDOR);
+    pkt_dst_host   = HP_ENCODE(rhost);
+    pkt_dst_port   = HP_ENCODE(rport);
+    pkt_src_vendor = BE16(VENDOR);
+    pkt_src_host   = HP_ENCODE(xlan->host);
+    pkt_src_port   = HP_ENCODE(lport);
+    pkt_type       = skb->protocol;
 
     // UPDATE SKB
     skb->data       = PTR(pkt);
