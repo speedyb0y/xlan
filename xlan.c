@@ -117,13 +117,9 @@ typedef struct pkt_s {
     union {
         struct {
             u8  version;
-            u8  tos;
-            u16 size;
-            u16 id;
-            u16 frag;
-            u8  ttl;
+            u8 _x[8];
             u8  protocol;
-            u16 cksum;
+            u8 _y[2];
             v4_addr_s src;
             v4_addr_s dst;
             u16 sport;
@@ -134,9 +130,9 @@ typedef struct pkt_s {
             u8 version;
             u8 flow8;
             u16 flow16;
-            u16 psize;
+            u8 _x[2];
             u8 protocol;
-            u8 ttl;
+            u8 _y[1];
             v6_addr_s src;
             v6_addr_s dst;
             u16 sport;
