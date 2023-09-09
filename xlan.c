@@ -375,7 +375,9 @@ static int xlan_enslave (net_device_s* dev, net_device_s* phys, struct netlink_e
         // HOOKED
         phys->rx_handler_data = dev;
         // HOLD IT
-        dev_hold((xlan->physs[lport] = phys));
+        dev_hold(phys);
+        // REGISTER IT
+        xlan->physs[lport] = phys;
         // SUCCESS
         ret = 0;
     }
@@ -390,21 +392,22 @@ static int xlan_unslave (net_device_s* dev, net_device_s* phys) {
     net_device_s** const physs = xlan->physs;
 
     // TODO: XLAN MUST BE DOWN
+    const uint lport = 0; // TODO: FROM MAC ADDRESS
 
-    if (rtnl_dereference(phys->rx_handler) != xlan_in)
-        // NOT USING IT
-        return -EINVAL;
-
-    phys->rx_handler_data = NULL;
-
+    // MATCHES?
     if (physs[lport] != phys)
         return -ENOTCONN;
 
-    // UNHOOK
-    netdev_rx_handler_unregister(phys);
+    // UNHOOK (IF ITS STILL HOOKED)
+    if (rtnl_dereference(phys->rx_handler) == xlan_in) {
+        phys->rx_handler_data = NULL;        
+        netdev_rx_handler_unregister(phys);
+    }
+
     // DROP IT
     dev_put(phys);
 
+    // UNREGISTER IT
     physs[lport] = NULL;
 
     return 0;
