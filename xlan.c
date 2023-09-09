@@ -199,6 +199,8 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
     return RX_HANDLER_ANOTHER;
 }
 
+#define ROUNDS 5
+
 static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
 
     BUILD_BUG_ON( sizeof(eth_addr_s) != ETH_ALEN );
@@ -251,8 +253,8 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
          * pkt->v6.dport)       // DST PORT
     ))];
 
-    const uint lportsN = xlan->lportLast        + 1;
-    const uint rportsN = xlan->rportLast[rhost] + 1;
+    const uint lportsN = xlan->lportsN;
+    const uint rportsN = xlan->rportsN[rhost];
 
     uint now   = jiffies;
     uint ports = path->ports;
@@ -261,7 +263,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
     uint lport;
 
     net_device_s* phys;
-#define ROUNDS 5
+
     uint c = 1 + ROUNDS * (lportsN * rportsN);
 
     foreach (r, ROUNDS) {
