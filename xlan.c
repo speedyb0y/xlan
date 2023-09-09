@@ -281,7 +281,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
 
         phys = xlan->physs[lport];
 
-        if (   (now - path->last) <= (r*HZ)/5 // SE DEU UMA PAUSA, TROCA DE PORTA
+        if (   ((now - path->last) <= (r*HZ)/5 || r == 4) // SE DEU UMA PAUSA, TROCA DE PORTA
             && ((now - xlan->rseen[rhost][rport]) <= (r*1*HZ)/1 || r == 4) // KNOWN TO WORK
             && ((now - xlan->lseen[lhost][lport]) <= (r*1*HZ)/1 || r == 4) // KNOWN TO WORK
             && phys && (phys->flags & IFF_UP) == IFF_UP) // IFF_RUNNING // IFF_LOWER_UP
