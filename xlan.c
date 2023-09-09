@@ -88,10 +88,10 @@ typedef union v4_addr_s {
 } v4_addr_s;
 
 typedef union v6_addr_s {
-    u8  addr[16];
-    u16 addr16[8];
-    u32 addr32[4];
-    u64 addr64[2];
+    struct {
+        u64 a;
+        u64 b;
+    };
     struct {
         u16 prefix;
         u16 _addr[6];
@@ -243,17 +243,17 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
     xlan_path_s* const path = &xlan->paths[rhost][__builtin_popcountll( (u64) ( v4
         ? pkt->v4.protocol      // IP PROTOCOL
         + pkt->v4.src.addr32    // SRC ADDR
-        + pkt->v4.dst.addr32    // DST ADDR
+        * pkt->v4.dst.addr32    // DST ADDR
         + pkt->v4.sport         // SRC PORT
-        + pkt->v4.dport         // DST PORT
+        * pkt->v4.dport         // DST PORT
         : pkt->v6.protocol      // IP PROTOCOL
         + pkt->v6.flow          // FLOW
-        + pkt->v6.src.addr64[0] // SRC ADDR
-        + pkt->v6.src.addr64[1] // SRC ADDR
-        + pkt->v6.dst.addr64[0] // DST ADDR
-        + pkt->v6.dst.addr64[1] // DST ADDR
-        + pkt->v6.sport      // SRC PORT, DST PORT
-        + pkt->v6.dport
+        + pkt->v6.src.a // SRC ADDR
+        + pkt->v6.src.b // SRC ADDR
+        + pkt->v6.dst.a // DST ADDR
+        + pkt->v6.dst.b // DST ADDR
+        + pkt->v6.sport         // SRC PORT
+        * pkt->v6.dport         // DST PORT
     ))];
 
     const uint portsN = xlan->portsN;
