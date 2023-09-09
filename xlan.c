@@ -180,7 +180,7 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
     // DROP CASES
     if (pkt->dst.host != xlan->host // NOT TO ME
      || pkt->src.host == xlan->host // FROM ME
-     || phys  != xlan->physs[BE16(pkt->dst.port) % PORTS_N] // WRONG INTERFACE
+     || phys != xlan->physs[BE16(pkt->dst.port) % PORTS_N] // WRONG INTERFACE
      || virt->flags == 0) { // ->flags & UP
         kfree_skb(skb);
         return RX_HANDLER_CONSUMED;
