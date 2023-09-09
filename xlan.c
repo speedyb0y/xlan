@@ -369,12 +369,16 @@ static int xlan_enslave (net_device_s* dev, net_device_s* phys, struct netlink_e
 
     xlan_s* const xlan = netdev_priv(dev);
 
-    const u16* const mac = dev->dev_addr;
+    const u8* const mac = dev->dev_addr;
 
-    const uint lport = BE16(mac[2]); // TODO: FROM MAC ADDRESS
+    const uint vendor = BE16(((eth_addr_s*)mac)->vendor);
+    const uint host   = BE16(((eth_addr_s*)mac)->host);
+    const uint port   = BE16(((eth_addr_s*)mac)->port); // TODO: FROM MAC ADDRESS
 
-    print("XLAN: %s: TRYING TO ENSLAVE ITFC %s AS PORT %u MAC %02X:%02X:%02X\n",
-        dev->name, phys->name, lport, mac[0], mac[1], mac[2]);
+    print("XLAN: %s: TRYING TO ENSLAVE ITFC %s VENDOR 0x%04X HOST %u PORT %u MAC %02X:%02X:%02X:%02X:%02X:%02X\n",
+        dev->name, phys->name, vendor, host, port,
+        mac[0], mac[1], mac[2],
+        mac[3], mac[4], mac[5]);
 
     if (phys == dev) 
         // ITSELF
@@ -385,7 +389,7 @@ static int xlan_enslave (net_device_s* dev, net_device_s* phys, struct netlink_e
     elif (rtnl_dereference(phys->rx_handler) == xlan_in)
         // ALREADY
         ret = -EISCONN;    
-    elif (xlan->ports[lport])
+    elif (xlan->ports[port])
         // ALREADY
         ret = -EISCONN;    
     elif (phys->flags & IFF_LOOPBACK)
@@ -394,14 +398,14 @@ static int xlan_enslave (net_device_s* dev, net_device_s* phys, struct netlink_e
     elif (phys->addr_len != ETH_ALEN)
         // NOT ETHERNET
         ret = -EINVAL;
-    elif (lport >= PORTS_N)
+    elif (port >= PORTS_N)
         // INVALID
         ret = -EINVAL;
     elif (mac[0] !=      xlan->vendor
        || mac[1] != BE16(xlan->host))
         // WRONG MAC
         ret = -EINVAL;
-    elif (lport >= xlan->portsN)
+    elif (port >= xlan->portsN)
         // NOT CONFIGURED FOR IT
         ret = -ENOSPC;
     elif (netdev_rx_handler_register(phys, xlan_in, dev) != 0)
@@ -413,7 +417,7 @@ static int xlan_enslave (net_device_s* dev, net_device_s* phys, struct netlink_e
         // HOLD IT
         dev_hold(phys);
         // REGISTER IT
-        xlan->ports[lport] = phys;
+        xlan->ports[port] = phys;
         // SUCCESS
         ret = 0;
     }
@@ -425,10 +429,10 @@ static int xlan_unslave (net_device_s* dev, net_device_s* phys) {
 
     xlan_s* const xlan = netdev_priv(dev);
 
-    const uint lport = 0; // TODO: FROM MAC ADDRESS
+    const uint port = 0; // TODO: FROM MAC ADDRESS
 
     // MATCHES?
-    if (xlan->ports[lport] != phys)
+    if (xlan->ports[port] != phys)
         return -ENOTCONN;
 
     // UNHOOK (IF ITS STILL HOOKED)
@@ -441,7 +445,7 @@ static int xlan_unslave (net_device_s* dev, net_device_s* phys) {
     dev_put(phys);
 
     // UNREGISTER IT
-    xlan->ports[lport] = NULL;
+    xlan->ports[port] = NULL;
 
     return 0;
 }
