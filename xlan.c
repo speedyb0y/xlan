@@ -189,7 +189,7 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
         return RX_HANDLER_PASS;
     
     // DROP CASES
-    if (lhost >= xlan->hostL        // INVALID L HOST
+    if (lhost >  xlan->hostL        // INVALID L HOST
      || lhost <  xlan->host0        // INVALID L HOST
      || lhost != xlan->host         // NOT TO ME
      || rhost >  xlan->hostL        // INVALID R HOST
