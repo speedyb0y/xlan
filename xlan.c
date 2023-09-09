@@ -150,13 +150,6 @@ typedef struct xlan_stream_s {
     u32 last;
 } xlan_stream_s;
 
-typedef struct xlan_rh_s {
-    u16 portsN;
-    u32 rseen[PORTS_N];
-    u32 lseen[PORTS_N][PORTS_N]; // TODO: FIXME: ATOMIC
-    xlan_stream_s paths[64]; // POPCOUNT64()
-} xlan_rh_s;
-
 // NETWORK, HOST
 // NN.NN.HH.HH NNNN:?:HHHH
 typedef struct xlan_s {
@@ -165,9 +158,9 @@ typedef struct xlan_s {
     u16 net6;   // NNNN::
     u16 host;   // .HH.HH ::HHHH LHOST
     u16 gw;     // .HH.HH ::HHHH RHOST, WHEN IT DOES NOT BELONG TO THE NET
-    u16 portsN;  // PHYSICAL INTERFACES
     net_device_s* ports[PORTS_N];
-    xlan_rh_s hosts[HOSTS_N];
+    xlan_stream_s paths[HOSTS_N][64]; // POPCOUNT64()
+    u32 seen[HOSTS_N][PORTS_N][PORTS_N]; // TODO: FIXME: ATOMIC
 } xlan_s;
 
 static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
@@ -198,23 +191,8 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
         return RX_HANDLER_CONSUMED;
     }
 
-    //
-    xlan_rh_s* const rh = &xlan->hosts[rhost];
-    
-    rh->lseen[rport][lport] = jiffies;
-    rh->rseen[rport]        = jiffies;
-
-    // KEEP REMOTE PORTS NUMBER FRESH
-    const u64 expired = jiffies - 30*HZ;
-
-    if (rh->rseen[rh->portsN - 1] < expired) {
-        uint last = 0;
-        foreach (i, PORTS_N) {
-            if (rh->rseen[i] >= expired)
-                last = i;
-        }   rh->portsN =  last + 1;
-    } elif (rh->portsN <= rport)
-            rh->portsN =  rport + 1;
+    //    
+    xlan->seen[rhost][rport][lport] = jiffies;
 
     skb->protocol = pkt->v4.version == 0x45 ?
         BE16(ETH_P_IP) :
@@ -250,8 +228,6 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
 
     if (rhost >= HOSTS_N)
         goto drop;
-
-    xlan_rh_s* const rh = &xlan->hosts[rhost];
 
     // SELECT A PATH
     // OK: TCP | UDP | UDPLITE | SCTP | DCCP
@@ -301,7 +277,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
         if (phys && (phys->flags & IFF_UP) == IFF_UP && // IFF_RUNNING // IFF_LOWER_UP
             ( r == 4 || ( // NO ULTIMO ROUND FORCA MESMO ASSIM
                 (r*1*HZ)/5 >= (now - path->last) && // SE DEU UMA PAUSA, TROCA DE PORTA
-                (r*2*HZ)/1 >= (now - rh->lseen[rport][lport]) // KNOWN TO WORK
+                (r*2*HZ)/1 >= (now - xlan->seen[rhost][rport][lport]) // KNOWN TO WORK
             ))) break;
 
         ports++;
@@ -372,7 +348,6 @@ static int xlan_enslave (net_device_s* dev, net_device_s* phys, struct netlink_e
         __X_WRONG_HOST,
         __X_INVALID_PORT,
         __X_ANOTHER_XLAN,
-        __X_PORT_HIGHER,
         __N,
     };
 
@@ -386,7 +361,6 @@ static int xlan_enslave (net_device_s* dev, net_device_s* phys, struct netlink_e
         [__X_INVALID_PORT  ] = -EINVAL,
         [__X_ATTACH_FAILED ] = -EBUSY,
         [__X_ANOTHER_XLAN  ] = -EINVAL,
-        [__X_PORT_HIGHER   ] = -ENOSPC,
     };
 
     static const char* strs [__N] = {
@@ -399,7 +373,6 @@ static int xlan_enslave (net_device_s* dev, net_device_s* phys, struct netlink_e
         [__X_ATTACH_FAILED ] = "FAILED: COULD NOT ATTACH",
         [__X_INVALID_PORT  ] = "FAILED: INVALID PORT",
         [__X_ANOTHER_XLAN  ] = "FAILED: ANOTHER XLAN AS PHYSICAL",
-        [__X_PORT_HIGHER   ] = "FAILED: PORT NOT HOLD BY CONFIG",
     };
 
     uint ret;
@@ -444,9 +417,6 @@ static int xlan_enslave (net_device_s* dev, net_device_s* phys, struct netlink_e
     elif (host != xlan->host)
         // WRONG HOST
         ret = __X_WRONG_HOST;
-    elif (port >= xlan->portsN)
-        // NOT CONFIGURED FOR IT
-        ret = __X_PORT_HIGHER;
     elif (netdev_rx_handler_register(phys, xlan_in, dev) != 0)
         // FAILED TO ATTACH
         ret = __X_ATTACH_FAILED;
@@ -496,15 +466,14 @@ static int xlan_unslave (net_device_s* dev, net_device_s* phys) {
 }
 
 // ip link set dev xlan addr 50:62:N4:N4:N6:N6:HH:HH:GG:GG
-#define XLAN_INFO_LEN 12
+#define XLAN_INFO_LEN 10
 typedef struct xlan_info_s {
     u16 vendor;
     u16 net4;
     u16 net6;
     u16 host;
     u16 gw;    
-    u16 portsN;
-    u16 _pad[2];
+    u16 _pad[3];
 } xlan_info_s;
 
 static int xlan_cfg (net_device_s* const dev, void* const addr) {
@@ -520,7 +489,6 @@ static int xlan_cfg (net_device_s* const dev, void* const addr) {
     const uint net6   = BE16(info->net6);
     const uint host   = BE16(info->host);
     const uint gw     = BE16(info->gw);
-    const uint portsN = BE16(info->portsN);
 
     printk("XLAN: %s: CONFIGURING: VENDOR 0x%04X HOST %u GW %u PORTS %u NET4 0x%04X NET6 0x%04X\n",
         dev->name, vendor, host, gw, portsN, net4, net6);
@@ -531,9 +499,7 @@ static int xlan_cfg (net_device_s* const dev, void* const addr) {
       && net4 != 0
       && net6 != 0
       && host != 0
-      && gw != host
-      && portsN >= 1
-      && portsN <= PORTS_N) {
+      && gw != host) {
 
         xlan_s* const xlan = netdev_priv(dev);
 
@@ -543,7 +509,6 @@ static int xlan_cfg (net_device_s* const dev, void* const addr) {
         xlan->net6   = BE16(net6);
         xlan->host   = host;
         xlan->gw     = gw;
-        xlan->portsN = portsN;
 
         return 0;
     }
@@ -594,11 +559,7 @@ static void xlan_setup (net_device_s* const dev) {
         ;
 
     // INITIALIZE
-    xlan_s* const xlan = netdev_priv(dev);
-
-    memset(xlan, 0, sizeof(*xlan));
-
-    xlan->portsN = 1;
+    memset(netdev_priv(dev), 0, sizeof(xlan_s));
 }
 
 static int __init xlan_init (void) {
