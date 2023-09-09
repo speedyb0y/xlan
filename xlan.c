@@ -278,7 +278,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
          * pkt->v6.dport)       // DST PORT
     ))];
 
-    const uint lportsN = xlan->lportsN;
+    const uint lportsN = xlan->portsN;
     const uint rportsN = xlan->rportsN[rhost];
 
     uint now   = jiffies;
@@ -394,7 +394,7 @@ static int xlan_enslave (net_device_s* dev, net_device_s* phys, struct netlink_e
     elif (phys->addr_len != ETH_ALEN)
         // NOT ETHERNET
         ret = -EINVAL;
-    elif (xlan->lportsN == PORTS_N)
+    elif (xlan->portsN == PORTS_N)
         // ALL SLOTS USED
         ret = -ENOSPC;
     elif (netdev_rx_handler_register(phys, xlan_in, dev) != 0)
@@ -408,8 +408,8 @@ static int xlan_enslave (net_device_s* dev, net_device_s* phys, struct netlink_e
         // REGISTER IT
         xlan->physs[lport] = phys;
         //
-        if (xlan->lportsN <= lport)
-            xlan->lportsN =  lport + 1;
+        if (xlan->portsN <= lport)
+            xlan->portsN =  lport + 1;
         // SUCCESS
         ret = 0;
     }
@@ -449,7 +449,7 @@ static int xlan_unslave (net_device_s* dev, net_device_s* phys) {
         if (physs[i])
             last = i;
 
-    xlan->lportsN = last + 1; 
+    xlan->portsN = last + 1; 
 
     return 0;
 }
@@ -501,12 +501,12 @@ static void xlan_setup (net_device_s* const dev) {
 
     memset(xlan, 0, sizeof(*xlan));
 
-    xlan->vendor  = BE16(VENDOR); // TODO: ip link set dev xlan addr 50:62:N4:N4:N6:N6
-    xlan->net4    = BE16(NET4);
-    xlan->net6    = BE16(NET6);
-    xlan->host    = BE16(20);
-    xlan->gw      = BE16(50);
-    xlan->lportsN = 1;
+    xlan->vendor = BE16(VENDOR); // TODO: ip link set dev xlan addr 50:62:N4:N4:N6:N6
+    xlan->net4   = BE16(NET4);
+    xlan->net6   = BE16(NET6);
+    xlan->host   = BE16(20);
+    xlan->gw     = BE16(50);
+    xlan->portsN = 1;
 }
 
 static int __init xlan_init (void) {
