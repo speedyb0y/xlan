@@ -82,16 +82,10 @@ typedef struct v4_addr_s {
     u16 host;
 } v4_addr_s;
 
-typedef union v6_addr_s {
-    u8  w8[16];
-    u16 w16[8];
-    u32 w32[4];
-    u64 w64[2];
-    struct {
-        u16 net;
-        u16 _addr[6];
-        u16 host;
-    };
+typedef struct v6_addr_s {
+    u16 net;
+    u16 _[6];
+    u16 host;
 } v6_addr_s;
 
 typedef union eth_addr_s {
@@ -130,8 +124,12 @@ typedef struct pkt_s {
             u8 _x[2];
             u8 protocol;
             u8 _y[1];
-            v6_addr_s src;
-            v6_addr_s dst;
+            union { u64 addrs[4];
+                struct {
+                    v6_addr_s src;
+                    v6_addr_s dst;
+                };
+            } __COMPACT;
             u32 ports;
         } __COMPACT v6;
     };
@@ -227,16 +225,16 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
     // OK: TCP | UDP | UDPLITE | SCTP | DCCP
     // FAIL: ICMP
     xlan_stream_s* const path = &xlan->paths[rhost][__builtin_popcountll( (u64) ( v4
-        ? (pkt->v4.protocol *   // IP PROTOCOL
-           pkt->v4.ports)       // SRC PORT, DST PORT
-        +  pkt->v4.addrs        // SRC ADDR, DST ADDR
-        : (pkt->v6.flow *       // FLOW
-           pkt->v6.protocol *   // IP PROTOCOL
-           pkt->v6.ports)       // SRC PORT, DST PORT
-        + (pkt->v6.src.w64[0] ^ // SRC ADDR
-           pkt->v6.src.w64[1])  // SRC ADDR
-        + (pkt->v6.dst.w64[0] ^ // DST ADDR
-           pkt->v6.dst.w64[1])  // DST ADDR
+        ? pkt->v4.protocol // IP PROTOCOL
+        * pkt->v4.ports    // SRC PORT, DST PORT
+        + pkt->v4.addrs    // SRC ADDR, DST ADDR
+        : pkt->v6.flow     // FLOW
+        * pkt->v6.protocol // IP PROTOCOL
+        * pkt->v6.ports    // SRC PORT, DST PORT
+        + pkt->v6.addrs[0] // SRC ADDR
+        + pkt->v6.addrs[1] // SRC ADDR
+        + pkt->v6.addrs[2] // DST ADDR
+        + pkt->v6.addrs[3] // DST ADDR
     ))];
 
     uint now   = jiffies;
