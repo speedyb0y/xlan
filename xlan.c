@@ -172,26 +172,24 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
 
     const pkt_s* const pkt = SKB_MAC(skb) - offsetof(pkt_s, dst);
 
-    // SO INTERCEPTA O QUE FOR
+    // SO HANDLE O QUE FOR
     if (pkt->dst.vendor != xlan->vendor
      || pkt->src.vendor != xlan->vendor)
         return RX_HANDLER_PASS;
 
-    const uint lhost = BE16(pkt->dst.host) % HOSTS_N; // IP -> ID
-    const uint lport = BE16(pkt->dst.port) % PORTS_N;
-    const uint rhost = BE16(pkt->src.host) % HOSTS_N;
-    const uint rport = BE16(pkt->src.port) % PORTS_N;
-
     // DROP CASES
-    if (lhost != xlan->host         // NOT TO ME
-     || rhost == xlan->host         // FROM ME
-     || phys  != xlan->physs[lport] // SHOULD RECEIVE ON OTHER INTERFACE
+    if (pkt->dst.host != xlan->host // NOT TO ME
+     || pkt->src.host == xlan->host // FROM ME
+     || phys  != xlan->physs[BE16(pkt->dst.port) % PORTS_N] // WRONG INTERFACE
      || virt->flags == 0) { // ->flags & UP
         kfree_skb(skb);
         return RX_HANDLER_CONSUMED;
     }
 
-    xlan->seen[rhost][rport] = jiffies;
+    xlan->seen
+        [BE16(pkt->src.host) % HOSTS_N]
+        [BE16(pkt->src.port) % PORTS_N]
+            = jiffies;
 
 #if 0 // PULA O ETHERNET HEADER
     // NOTE: skb->network_header JA ESTA CORRETO
@@ -301,7 +299,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
     pkt->dst.host   = BE16(rHost);
     pkt->dst.port   = BE16(rPort);
     pkt->src.vendor =      xlan->vendor;
-    pkt->src.host   = BE16(xlan->host);
+    pkt->src.host   =      xlan->host;
     pkt->src.port   = BE16(lPort);
     pkt->type       = skb->protocol;
 
@@ -522,7 +520,7 @@ static void xlan_setup (net_device_s* const dev) {
     xlan->prefix6 = BE16(PREFIX6);
     xlan->physN   = 0;
     xlan->portsN  = PORTS_N;
-    xlan->host    = 20;
+    xlan->host    = BE16(20);
     xlan->gw      = BE16(50);
 }
 
