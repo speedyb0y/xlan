@@ -378,21 +378,21 @@ drop:
     return NETDEV_TX_OK;
 }
 
-static int xlan_up (net_device_s* const dev) __f_cold {
+static int __f_cold xlan_up (net_device_s* const dev) {
 
     printk("XLAN: %s: UP\n", dev->name);
 
     return 0;
 }
 
-static int xlan_down (net_device_s* const dev) __f_cold {
+static int __f_cold xlan_down (net_device_s* const dev) {
 
     printk("XLAN: %s: DOWN\n", dev->name);
 
     return 0;
 }
 
-static int xlan_enslave (net_device_s* dev, net_device_s* phys, struct netlink_ext_ack* extack) __f_cold {
+static int __f_cold xlan_enslave (net_device_s* dev, net_device_s* phys, struct netlink_ext_ack* extack) {
 
     enum {
         _ENSL_SUCCESS,
@@ -498,7 +498,7 @@ static int xlan_enslave (net_device_s* dev, net_device_s* phys, struct netlink_e
     return -(int)codes[ret];
 }
 
-static int xlan_unslave (net_device_s* dev, net_device_s* phys) __f_cold {
+static int __f_cold xlan_unslave (net_device_s* dev, net_device_s* phys) {
 
     xlan_s* const xlan = netdev_priv(dev);
 
@@ -535,7 +535,7 @@ typedef struct xlan_info_s {
     u16 _pad;
 } xlan_info_s;
 
-static int xlan_cfg (net_device_s* const dev, void* const addr) {
+static int __f_cold xlan_cfg (net_device_s* const dev, void* const addr) {
 
     if(netif_running(dev))
         return -EBUSY;
