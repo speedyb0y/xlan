@@ -70,8 +70,6 @@ typedef struct notifier_block notifier_block_s;
 #define UDP_SIZE  8
 #define TCP_SIZE 20
 
-#define PKT_SIZE 64
-
 #define __COMPACT __attribute__((packed))
 
 typedef struct mac_s {
@@ -90,6 +88,8 @@ typedef struct addr6_s {
     u16 _[6];
     u16 host;
 } addr6_s;
+
+#define PKT_SIZE 64
 
 typedef struct pkt_s {
     u16 _align[3];
@@ -360,7 +360,7 @@ static int xlan_enslave (net_device_s* dev, net_device_s* phys, struct netlink_e
 
     xlan_s* const xlan = netdev_priv(dev);
 
-    const mac_s* const mac = dev->dev_addr;
+    const mac_s* const mac = (const void*)dev->dev_addr;
 
     const uint vendor = BE16(mac->vendor);
     const uint host   = BE16(mac->host);
