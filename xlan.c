@@ -74,6 +74,12 @@ typedef struct notifier_block notifier_block_s;
 
 #define __COMPACT __attribute__((packed))
 
+typedef struct mac_s {
+    u16 vendor;
+    u16 host;
+    u16 port;
+} __COMPACT mac_s;
+
 typedef struct addr4_s {
     u16 net;
     u16 host;
@@ -84,16 +90,6 @@ typedef struct addr6_s {
     u16 _[6];
     u16 host;
 } addr6_s;
-
-typedef union mac_s {
-    u8  addr[6];
-    u16 addr16[3];
-    struct {
-        u16 vendor;
-        u16 host;
-        u16 port;
-    };
-} __COMPACT mac_s;
 
 typedef struct pkt_s {
     u16 _align[3];
@@ -364,16 +360,14 @@ static int xlan_enslave (net_device_s* dev, net_device_s* phys, struct netlink_e
 
     xlan_s* const xlan = netdev_priv(dev);
 
-    const u8* const mac = dev->dev_addr;
+    const mac_s* const mac = dev->dev_addr;
 
-    const uint vendor = BE16(((const mac_s*)mac)->vendor);
-    const uint host   = BE16(((const mac_s*)mac)->host);
-    const uint port   = BE16(((const mac_s*)mac)->port);
+    const uint vendor = BE16(mac->vendor);
+    const uint host   = BE16(mac->host);
+    const uint port   = BE16(mac->port);
 
-    printk("XLAN: %s: ENSLAVE ITFC %s: VENDOR 0x%04X HOST %u PORT %u MAC %02X:%02X:%02X:%02X:%02X:%02X\n",
-        dev->name, phys->name, vendor, host, port,
-        mac[0], mac[1], mac[2],
-        mac[3], mac[4], mac[5]);
+    printk("XLAN: %s: ENSLAVE ITFC %s: VENDOR 0x%04X HOST %u PORT %u\n",
+        dev->name, phys->name, vendor, host, port);
 
     if (phys == dev) 
         // ITSELF
