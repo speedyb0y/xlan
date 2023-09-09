@@ -315,62 +315,59 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
 
     net_device_s* phys;
 
-    uint c = 1 + ROUNDS * (PORTS_N * PORTS_N);
-
     foreach (r, ROUNDS) {
 
-        // LIMIT
-        if (c-- == 0)
-            goto drop;
+        foreach (c, (PORTS_N * PORTS_N)) {
 
-        // NOTE: MUDA A PORTA LOCAL COM MAIS FREQUENCIA, PARA QUE O SWITCH A DESCUBRA
-        // for PORTS_N in range(7): assert len(set((_ // PORTS_N, _ % PORTS_N) for _ in range(PORTS_N*PORTS_N))) == PORTS_N*PORTS_N
-        ports %= PORTS_N * PORTS_N;
+            // NOTE: MUDA A PORTA LOCAL COM MAIS FREQUENCIA, PARA QUE O SWITCH A DESCUBRA
+            // for PORTS_N in range(7): assert len(set((_ // PORTS_N, _ % PORTS_N) for _ in range(PORTS_N*PORTS_N))) == PORTS_N*PORTS_N
+            ports %= PORTS_N * PORTS_N;
 
-        rport = ports / PORTS_N;
-        lport = ports % PORTS_N;
+            rport = ports / PORTS_N;
+            lport = ports % PORTS_N;
 
-        phys = xlan->ports[lport];
+            phys = xlan->ports[lport];
 
-        if (phys && (phys->flags & IFF_UP) == IFF_UP && // IFF_RUNNING // IFF_LOWER_UP
-            ( r == 4 || ( // NO ULTIMO ROUND FORCA MESMO ASSIM
-                (r*1*HZ)/5 >= (now - path->last) && // SE DEU UMA PAUSA, TROCA DE PORTA
-                (r*2*HZ)/1 >= (now - xlan->seen[rhost][rport][lport]) // KNOWN TO WORK
-            ))) break;
+            if (phys && (phys->flags & IFF_UP) == IFF_UP && // IFF_RUNNING // IFF_LOWER_UP
+                ( r == 4 || ( // NO ULTIMO ROUND FORCA MESMO ASSIM
+                    (r*1*HZ)/5 >= (now - path->last) && // SE DEU UMA PAUSA, TROCA DE PORTA
+                    (r*2*HZ)/1 >= (now - xlan->seen[rhost][rport][lport]) // KNOWN TO WORK
+                ))) {
 
-        ports++;
-    }
+                    path->ports = ports;
+                    path->last  = now;
 
-    path->ports = ports;
-    path->last  = now;
+                    // INSERT ETHERNET HEADER
+                    pkt_dst_vendor = BE16(VENDOR);
+                    pkt_dst_host   = HP_ENCODE(rhost);
+                    pkt_dst_port   = HP_ENCODE(rport);
+                    pkt_src_vendor = BE16(VENDOR);
+                    pkt_src_host   = HP_ENCODE(xlan->host);
+                    pkt_src_port   = HP_ENCODE(lport);
+                    pkt_type       = skb->protocol;
 
-    // INSERT ETHERNET HEADER
-    pkt_dst_vendor = BE16(VENDOR);
-    pkt_dst_host   = HP_ENCODE(rhost);
-    pkt_dst_port   = HP_ENCODE(rport);
-    pkt_src_vendor = BE16(VENDOR);
-    pkt_src_host   = HP_ENCODE(xlan->host);
-    pkt_src_port   = HP_ENCODE(lport);
-    pkt_type       = skb->protocol;
-
-    // UPDATE SKB
-    skb->data       = PTR(pkt);
+                    // UPDATE SKB
+                    skb->data       = PTR(pkt);
 #ifdef NET_SKBUFF_DATA_USES_OFFSET
-    skb->mac_header = PTR(pkt) - SKB_HEAD(skb);
+                skb->mac_header = PTR(pkt) - SKB_HEAD(skb);
 #else
-    skb->mac_header = PTR(pkt);
+                skb->mac_header = PTR(pkt);
 #endif
-    skb->len        = SKB_TAIL(skb) - PTR(pkt);
-    skb->mac_len    = ETH_HLEN;
+                skb->len        = SKB_TAIL(skb) - PTR(pkt);
+                skb->mac_len    = ETH_HLEN;
+                skb->dev = phys;
 
-    skb->dev = phys;
+                // -- THE FUNCTION CAN BE CALLED FROM AN INTERRUPT
+                // -- WHEN CALLING THIS METHOD, INTERRUPTS MUST BE ENABLED
+                // -- REGARDLESS OF THE RETURN VALUE, THE SKB IS CONSUMED
+                dev_queue_xmit(skb);
 
-    // -- THE FUNCTION CAN BE CALLED FROM AN INTERRUPT
-    // -- WHEN CALLING THIS METHOD, INTERRUPTS MUST BE ENABLED
-    // -- REGARDLESS OF THE RETURN VALUE, THE SKB IS CONSUMED
-    dev_queue_xmit(skb);
+                return NETDEV_TX_OK;
+            }
 
-    return NETDEV_TX_OK;
+            ports++;
+        }
+    }
 
 drop:
     dev_kfree_skb(skb);
