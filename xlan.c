@@ -317,43 +317,41 @@ static int xlan_down (net_device_s* const dev) {
 
 static int xlan_enslave (net_device_s* dev, net_device_s* phys, struct netlink_ext_ack* extack) {
 
-    (void)extack;
-
     enum {
-        __X_SUCCESS,
-        __X_ITSELF,
-        __X_ALREADY,
-        __X_ATTACH_FAILED,
-        __X_NOT_ETHERNET,
-        __X_WRONG_VENDOR,
-        __X_WRONG_HOST,
-        __X_INVALID_PORT,
-        __X_ANOTHER_XLAN,
+        _ENSL_SUCCESS,
+        _ENSL_ITSELF,
+        _ENSL_ALREADY,
+        _ENSL_ATTACH_FAILED,
+        _ENSL_NOT_ETHERNET,
+        _ENSL_WRONG_VENDOR,
+        _ENSL_WRONG_HOST,
+        _ENSL_INVALID_PORT,
+        _ENSL_ANOTHER_XLAN,
         __N,
     };
 
     static const u16 codes [__N] ={
-        [__X_SUCCESS       ] = 0,
-        [__X_NOT_ETHERNET  ] = -EINVAL,
-        [__X_ITSELF        ] = -ELOOP,
-        [__X_ALREADY       ] = -1,
-        [__X_WRONG_VENDOR  ] = -EINVAL,
-        [__X_WRONG_HOST    ] = -EINVAL,
-        [__X_INVALID_PORT  ] = -EINVAL,
-        [__X_ATTACH_FAILED ] = -EBUSY,
-        [__X_ANOTHER_XLAN  ] = -EINVAL,
+        [_ENSL_SUCCESS       ] = 0,
+        [_ENSL_NOT_ETHERNET  ] = EINVAL,
+        [_ENSL_ITSELF        ] = ELOOP,
+        [_ENSL_ALREADY       ] = 1,
+        [_ENSL_WRONG_VENDOR  ] = EINVAL,
+        [_ENSL_WRONG_HOST    ] = EINVAL,
+        [_ENSL_INVALID_PORT  ] = EINVAL,
+        [_ENSL_ATTACH_FAILED ] = EBUSY,
+        [_ENSL_ANOTHER_XLAN  ] = EINVAL,
     };
 
     static const char* strs [__N] = {
-        [__X_SUCCESS       ] = "SUCCESS",
-        [__X_NOT_ETHERNET  ] = "FAILED: NOT ETHERNET",
-        [__X_ALREADY       ] = "FAILED: ALREADY",
-        [__X_ITSELF        ] = "FAILED: ITSELF",
-        [__X_WRONG_VENDOR  ] = "FAILED: WRONG VENDOR",
-        [__X_WRONG_HOST    ] = "FAILED: WRONG HOST",
-        [__X_ATTACH_FAILED ] = "FAILED: COULD NOT ATTACH",
-        [__X_INVALID_PORT  ] = "FAILED: INVALID PORT",
-        [__X_ANOTHER_XLAN  ] = "FAILED: ANOTHER XLAN AS PHYSICAL",
+        [_ENSL_SUCCESS       ] = "SUCCESS",
+        [_ENSL_NOT_ETHERNET  ] = "FAILED: NOT ETHERNET",
+        [_ENSL_ALREADY       ] = "FAILED: ALREADY",
+        [_ENSL_ITSELF        ] = "FAILED: ITSELF",
+        [_ENSL_WRONG_VENDOR  ] = "FAILED: WRONG VENDOR",
+        [_ENSL_WRONG_HOST    ] = "FAILED: WRONG HOST",
+        [_ENSL_ATTACH_FAILED ] = "FAILED: COULD NOT ATTACH",
+        [_ENSL_INVALID_PORT  ] = "FAILED: INVALID PORT",
+        [_ENSL_ANOTHER_XLAN  ] = "FAILED: ANOTHER XLAN AS PHYSICAL",
     };
 
     uint ret;
@@ -368,34 +366,34 @@ static int xlan_enslave (net_device_s* dev, net_device_s* phys, struct netlink_e
 
     if (phys == dev) 
         // ITSELF
-        ret = __X_ITSELF;
+        ret = _ENSL_ITSELF;
     elif (0)
         // TODO: CANNOT BE OF XLAN TYPE
-        ret = __X_ANOTHER_XLAN;
+        ret = _ENSL_ANOTHER_XLAN;
     elif (rtnl_dereference(phys->rx_handler) == xlan_in)
         // ALREADY
-        ret = __X_ALREADY;    
+        ret = _ENSL_ALREADY;    
     elif (xlan->ports[port])
         // ALREADY
-        ret = __X_ALREADY;    
+        ret = _ENSL_ALREADY;    
     elif (phys->flags & IFF_LOOPBACK)
         // LOOPBACK
-        ret = __X_NOT_ETHERNET;    
+        ret = _ENSL_NOT_ETHERNET;    
     elif (phys->addr_len != ETH_ALEN)
         // NOT ETHERNET
-        ret = __X_NOT_ETHERNET;
+        ret = _ENSL_NOT_ETHERNET;
     elif (port >= PORTS_N)
         // INVALID
-        ret = __X_INVALID_PORT;
+        ret = _ENSL_INVALID_PORT;
     elif (vendor != BE16(xlan->vendor))
         // WRONG VENDOR
-        ret = __X_WRONG_VENDOR;
+        ret = _ENSL_WRONG_VENDOR;
     elif (host != xlan->host)
         // WRONG HOST
-        ret = __X_WRONG_HOST;
+        ret = _ENSL_WRONG_HOST;
     elif (netdev_rx_handler_register(phys, xlan_in, dev) != 0)
         // FAILED TO ATTACH
-        ret = __X_ATTACH_FAILED;
+        ret = _ENSL_ATTACH_FAILED;
     else {
         // HOOKED
         phys->rx_handler_data = dev;
@@ -404,7 +402,7 @@ static int xlan_enslave (net_device_s* dev, net_device_s* phys, struct netlink_e
         // REGISTER IT
         xlan->ports[port] = phys;
         // SUCCESS
-        ret = __X_SUCCESS;
+        ret = _ENSL_SUCCESS;
     }
 
     printk("XLAN: %s: ENSLAVE ITFC %s: VENDOR 0x%04X HOST %u PORT %u: %s\n",
@@ -415,32 +413,50 @@ static int xlan_enslave (net_device_s* dev, net_device_s* phys, struct netlink_e
 
 static int xlan_unslave (net_device_s* dev, net_device_s* phys) {
 
+    enum {
+        _ENSL_SUCCESS,
+        _ENSL_NOT_ON_SLOT,
+        __N,
+    };
+
+    static const u16 codes [__N] ={
+        [_ENSL_SUCCESS      ] = 0,
+        [_ENSL_NOT_ON_SLOT  ] = ENOTCONN,
+    };
+
+    static const char* strs [__N] = {
+        [_ENSL_SUCCESS       ] = "SUCCESS",
+        [_ENSL_NOT_ON_SLOT   ] = "FAILED: ITFC IS NOT PORT",
+    };
+
     xlan_s* const xlan = netdev_priv(dev);
 
     const uint port = BE16(((const mac_s*)dev->dev_addr)->port);
     
+    uint ret;
+
+    // MATCHES?
+    if (xlan->ports[port] != phys)
+        ret = _ENSL_NOT_ON_SLOT;
+    else {
+
+        // UNHOOK (IF ITS STILL HOOKED)
+        if (rtnl_dereference(phys->rx_handler) == xlan_in) {
+                            phys->rx_handler_data = NULL;        
+            netdev_rx_handler_unregister(phys);
+        }
+
+        // DROP IT
+        dev_put(phys);
+
+        // UNREGISTER IT
+        xlan->ports[port] = NULL;
+    }
+
     printk("XLAN: %s: UNSLAVE ITFC %s: PORT %u\n",
         dev->name, phys->name, port);
 
-    // MATCHES?
-    if (xlan->ports[port] != phys) {
-        printk("XLAN: ITFC IS NOT PORT\n");
-        return -ENOTCONN;
-    }
-
-    // UNHOOK (IF ITS STILL HOOKED)
-    if (rtnl_dereference(phys->rx_handler) == xlan_in) {
-                         phys->rx_handler_data = NULL;        
-        netdev_rx_handler_unregister(phys);
-    }
-
-    // DROP IT
-    dev_put(phys);
-
-    // UNREGISTER IT
-    xlan->ports[port] = NULL;
-
-    return 0;
+    return -(int)codes[ret];
 }
 
 // ip link set dev xlan addr 50:62:N4:N4:N6:N6:HH:HH:GG:GG
