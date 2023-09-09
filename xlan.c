@@ -446,7 +446,7 @@ typedef struct xlan_info_s {
     u16 _pad[2];
 } xlan_info_s;
 
-static int xlan_setup (net_device_s* const dev, void* const addr) {
+static int xlan_cfg (net_device_s* const dev, void* const addr) {
 
     xlan_s* const xlan = netdev_priv(dev);
 
@@ -488,7 +488,7 @@ static const net_device_ops_s xlanDevOps = {
     .ndo_open             = xlan_up,
     .ndo_stop             = xlan_down,
     .ndo_start_xmit       = xlan_out,
-    .ndo_set_mac_address  = xlan_setup,
+    .ndo_set_mac_address  = xlan_cfg,
     .ndo_add_slave        = xlan_enslave,
     .ndo_del_slave        = xlan_unslave,
     // TODO: SET MTU - NAO EH PARA SETAR AQUI E SIM NO ROUTE
