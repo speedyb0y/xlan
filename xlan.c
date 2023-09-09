@@ -65,16 +65,24 @@ typedef struct notifier_block notifier_block_s;
 #define UDP_SIZE  8
 #define TCP_SIZE 20
 
+#ifdef CONFIG_XLAN_VENDOR
+#define VENDOR CONFIG_XLAN_VENDOR
+#else
 #define VENDOR 0x5062
-
-#define HP_ENCODE(hp) (((uint)(hp)) * 0x0101U)
-#define HP_DECODE(hp) (((uint)(hp)) & 0x00FFU)
+#endif
 
 #ifdef CONFIG_XLAN_STRUCT
+#if    CONFIG_XLAN_STRUCT
 #define XCONF_XLAN_STRUCT 1
 #else
 #define XCONF_XLAN_STRUCT 0
 #endif
+#else
+#define XCONF_XLAN_STRUCT 0
+#endif
+
+#define HP_ENCODE(hp) (((uint)(hp)) * 0x0101U)
+#define HP_DECODE(hp) (((uint)(hp)) & 0x00FFU)
 
 #define __COMPACT __attribute__((packed))
 
