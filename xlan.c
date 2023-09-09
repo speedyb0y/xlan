@@ -55,7 +55,7 @@ typedef struct notifier_block notifier_block_s;
 #define BE64(x) ((u64)__builtin_bswap64((u64)(x)))
 #endif
 
-#define HOSTS_N 65536
+#define HOSTS_N 256
 #define PORTS_N 4
 #define MTU     7600 // TODO: FIXME:
 
@@ -64,6 +64,9 @@ typedef struct notifier_block notifier_block_s;
 #define IP6_SIZE 40
 #define UDP_SIZE  8
 #define TCP_SIZE 20
+
+#define ETH_P_XLAN4 0x2562
+#define ETH_P_XLAN6 0x2563
 
 #define __COMPACT __attribute__((packed))
 
@@ -93,8 +96,7 @@ typedef struct pkt_s {
     u16 type;
     union {
         struct {
-            u8 version;
-            u8 _x[8];
+            u8 _x[9];
             u8 protocol;
             u8 _y[2];
             union { u64 addrs;
@@ -151,7 +153,8 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
     const pkt_s* const pkt = SKB_MAC(skb) - offsetof(pkt_s, dst);
 
     // SO HANDLE O QUE FOR
-    if (pkt->type != BE16(0x2562))
+    if (pkt->type != BE16(ETH_P_XLAN4)
+     && pkt->type != BE16(ETH_P_XLAN6))
         return RX_HANDLER_PASS;
 
     // ASSERT: skb->type PKT_HOST
@@ -172,9 +175,9 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
     //
     xlan->seen[rhost][rport][lport] = jiffies;
 
-    skb->protocol = pkt->v4.version == 0x45 ?
-        BE16(ETH_P_IP) :
-        BE16(ETH_P_IPV6);
+    skb->protocol = pkt->type == BE16(ETH_P_XLAN4) ?
+                                 BE16(ETH_P_IP) :
+                                 BE16(ETH_P_IPV6);
     skb->dev = virt;
 
     return RX_HANDLER_ANOTHER;
@@ -268,8 +271,10 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
     pkt->dst.port   = BE16(rport);
     pkt->src.vendor =      xlan->vendor;
     pkt->src.host   = BE16(xlan->host);
-    pkt->src.port   = BE16(lport);
-    pkt->type       = BE16(0x2562);
+    pkt->src.port   = BE16(0xAAAA + 0x1111*lport);
+    pkt->type       = v4 ?
+                      BE16(ETH_P_XLAN4) :
+                      BE16(ETH_P_XLAN6);
 
     // UPDATE SKB
     skb->data       = PTR(pkt);
