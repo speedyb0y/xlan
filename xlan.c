@@ -316,12 +316,13 @@ static int xlan_enslave (net_device_s* dev, net_device_s* phys, struct netlink_e
         _ENSL_SUCCESS,
         _ENSL_ITSELF,
         _ENSL_ALREADY,
-        _ENSL_ATTACH_FAILED,
         _ENSL_NOT_ETHERNET,
         _ENSL_WRONG_VENDOR,
         _ENSL_WRONG_HOST,
-        _ENSL_INVALID_PORT,
+        _ENSL_PORT_INVALID,
+        _ENSL_PORT_HIGH,
         _ENSL_ANOTHER_XLAN,
+        _ENSL_ATTACH_FAILED,
         __N,
     };
 
@@ -332,9 +333,10 @@ static int xlan_enslave (net_device_s* dev, net_device_s* phys, struct netlink_e
         [_ENSL_ALREADY       ] = 1,
         [_ENSL_WRONG_VENDOR  ] = EINVAL,
         [_ENSL_WRONG_HOST    ] = EINVAL,
-        [_ENSL_INVALID_PORT  ] = EINVAL,
-        [_ENSL_ATTACH_FAILED ] = EBUSY,
+        [_ENSL_PORT_INVALID  ] = EINVAL,
+        [_ENSL_PORT_HIGH     ] = ENOSPC,
         [_ENSL_ANOTHER_XLAN  ] = EINVAL,
+        [_ENSL_ATTACH_FAILED ] = EBUSY,
     };
 
     static const char* strs [__N] = {
@@ -344,8 +346,9 @@ static int xlan_enslave (net_device_s* dev, net_device_s* phys, struct netlink_e
         [_ENSL_ITSELF        ] = "FAILED: ITSELF",
         [_ENSL_WRONG_VENDOR  ] = "FAILED: WRONG VENDOR",
         [_ENSL_WRONG_HOST    ] = "FAILED: WRONG HOST",
+        [_ENSL_PORT_INVALID  ] = "FAILED: INVALID PORT",
+        [_ENSL_PORT_HIGH     ] = "FAILED: PORT TOO HIGH",
         [_ENSL_ATTACH_FAILED ] = "FAILED: COULD NOT ATTACH",
-        [_ENSL_INVALID_PORT  ] = "FAILED: INVALID PORT",
         [_ENSL_ANOTHER_XLAN  ] = "FAILED: ANOTHER XLAN AS PHYSICAL",
     };
 
@@ -355,9 +358,9 @@ static int xlan_enslave (net_device_s* dev, net_device_s* phys, struct netlink_e
 
     const mac_s* const mac = (const void*)dev->dev_addr;
 
-    const uint vendor = BE16(mac->vendor);
-    const uint host   = BE16(mac->host);
-    const uint port   = BE16(mac->port);
+    const uint vendor =  BE16(mac->vendor);
+    const uint host   =  BE16(mac->host);
+    const uint port   = (BE16(mac->port) & 0xF) - 0xA;
 
     if (phys == dev)
         // ITSELF
@@ -377,9 +380,12 @@ static int xlan_enslave (net_device_s* dev, net_device_s* phys, struct netlink_e
     elif (phys->addr_len != ETH_ALEN)
         // NOT ETHERNET
         ret = _ENSL_NOT_ETHERNET;
+    elif ((0xAAAA + 0x1111*port) != BE16(mac->port))
+        // INVALID
+        ret = _ENSL_PORT_INVALID;
     elif (port >= PORTS_N)
         // INVALID
-        ret = _ENSL_INVALID_PORT;
+        ret = _ENSL_PORT_HIGH;
     elif (vendor != BE16(xlan->vendor))
         // WRONG VENDOR
         ret = _ENSL_WRONG_VENDOR;
