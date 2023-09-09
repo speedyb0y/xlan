@@ -99,7 +99,7 @@ typedef union eth_addr_s {
 } __COMPACT eth_addr_s;
 
 typedef struct pkt_s {
-   // u16 _align[3];
+    u16 _align[3];
     eth_addr_s src;
     eth_addr_s dst;
     u16 type;
