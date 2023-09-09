@@ -481,7 +481,7 @@ static int xlan_cfg (net_device_s* const dev, void* const addr) {
     const uint portsN = BE16(info->portsN);
 
     printk("XLAN: %s: CONFIGURING: VENDOR 0x%04X HOST %u GW %u PORTS %u NET4 0x%04X NET6 0x%04X\n",
-        dev->name, vendor, host, gw, ports, net4, net6);
+        dev->name, vendor, host, gw, portsN, net4, net6);
 
     // VERIFY
     if ((vendor & 0x0100) == 0
