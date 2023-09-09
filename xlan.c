@@ -307,9 +307,9 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
         phys = xlan->physs[lport];
 
         if (phys && (phys->flags & IFF_UP) == IFF_UP && // IFF_RUNNING // IFF_LOWER_UP
-            ( r == 4 || (
+            ( r == 4 || ( // NO ULTIMO ROUND FORCA MESMO ASSIM
                 (r*1*HZ)/5 >= (now - path->last) && // SE DEU UMA PAUSA, TROCA DE PORTA
-                (r*2*HZ)/1 >= (now - rh->seen[rport][lport]) // KNOWN TO WORK
+                (r*2*HZ)/1 >= (now - rh->lseen[rport][lport]) // KNOWN TO WORK
             ))) break;
 
         ports++;
