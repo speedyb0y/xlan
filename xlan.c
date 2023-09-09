@@ -490,16 +490,11 @@ static int xlan_cfg (net_device_s* const dev, void* const addr) {
     const uint host   = BE16(info->host);
     const uint gw     = BE16(info->gw);
 
-    printk("XLAN: %s: CONFIGURING: VENDOR 0x%04X HOST %u GW %u PORTS %u NET4 0x%04X NET6 0x%04X\n",
-        dev->name, vendor, host, gw, portsN, net4, net6);
+    printk("XLAN: %s: CONFIGURING: VENDOR 0x%04X HOST %u GW %u NET4 0x%04X NET6 0x%04X\n",
+        dev->name, vendor, host, gw, net4, net6);
 
     // VERIFY
-    if ((vendor & 0x0100) == 0
-      && vendor != 0
-      && net4 != 0
-      && net6 != 0
-      && host != 0
-      && gw != host) {
+    if (vendor && (vendor & 0x0100) == 0 && net4 && net6 && host && host < HOSTS_N && gw < HOSTS_N && gw != host) {
 
         xlan_s* const xlan = netdev_priv(dev);
 
@@ -508,7 +503,7 @@ static int xlan_cfg (net_device_s* const dev, void* const addr) {
         xlan->net4   = BE16(net4);
         xlan->net6   = BE16(net6);
         xlan->host   = host;
-        xlan->gw     = gw;
+        xlan->gw     = gw ?: HOSTS_N;
 
         return 0;
     }
