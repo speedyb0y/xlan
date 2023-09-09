@@ -250,8 +250,8 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
 
     // IDENTIFY DESTINATION
     const uint rhost = v4 ?
-        ( BE16(pkt->v4.dst.net) == xlan->net4 ? BE16(pkt->v4.dst.host) : xlan->gw ) :
-        ( BE16(pkt->v6.dst.net) == xlan->net6 ? BE16(pkt->v6.dst.host) : xlan->gw ) ;
+        ( BE16(pkt->v4.dst.net) == xlan->net4 ? BE16(pkt->v4.dst.host) : xlan->gw ):
+        ( BE16(pkt->v6.dst.net) == xlan->net6 ? BE16(pkt->v6.dst.host) : xlan->gw );
 
     if (rhost >= HOSTS_N)
         goto drop;
