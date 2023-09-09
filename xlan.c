@@ -136,7 +136,6 @@ typedef struct xlan_stream_s {
 // NETWORK, HOST
 // NN.NN.HH.HH NNNN:?:HHHH
 typedef struct xlan_s {
-    u16 vendor;
     u16 net4;   // NN.NN.
     u16 net6;   // NNNN::
     u16 host;   // .HH.HH ::HHHH LHOST
@@ -167,8 +166,8 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
     const uint rport = HP_DECODE(pkt->src.port);
 
     // DISCARD THOSE
-    if (pkt->src.vendor != xlan->vendor
-     || pkt->dst.vendor != xlan->vendor
+    if (pkt->src.vendor != BE16(VENDOR)
+     || pkt->dst.vendor != BE16(VENDOR)
      || lhost != xlan->host // NOT TO ME (POIS PODE TER RECEBIDO DEVIDO AO MODO PROMISCUO)
      || rhost == xlan->host
      || lhost >= HOSTS_N
@@ -372,9 +371,7 @@ static int xlan_enslave (net_device_s* dev, net_device_s* phys, struct netlink_e
 
     const mac_s* const mac = (const void*)dev->dev_addr;
 
-    const uint vendor =        BE16(mac->vendor);
-    const uint host   =        BE16(mac->host);
-    const uint port   = PORT_DECODE(mac->port);
+    const uint port = HP_DECODE(mac->port);
 
     uint ret;
 
@@ -396,13 +393,13 @@ static int xlan_enslave (net_device_s* dev, net_device_s* phys, struct netlink_e
     elif (phys->addr_len != ETH_ALEN)
         // NOT ETHERNET
         ret = _ENSL_NOT_ETHERNET;
-    elif (vendor != BE16(xlan->vendor))
+    elif (mac->vendor != BE16(VENDOR))
         // WRONG VENDOR
         ret = _ENSL_VENDOR_WRONG;
-    elif (host != xlan->host)
+    elif (mac->host != HP_ENCODE(xlan->host))
         // WRONG HOST
         ret = _ENSL_HOST_WRONG;
-    elif (PORT_ENCODE(port) != mac->port)
+    elif (mac->port != HP_ENCODE(port))
         // BAD PORT - MISMATCH
         ret = _ENSL_PORT_INVALID;
     elif (port >= PORTS_N)
@@ -425,8 +422,8 @@ static int xlan_enslave (net_device_s* dev, net_device_s* phys, struct netlink_e
         ret = _ENSL_SUCCESS;
     }
 
-    printk("XLAN: %s: ENSLAVE ITFC %s: VENDOR 0x%04X HOST %u PORT %u: %s\n",
-        dev->name, phys->name, vendor, host, port, strs[ret]);
+    printk("XLAN: %s: ENSLAVE ITFC %s: PORT %u: %s\n",
+        dev->name, phys->name, port, strs[ret]);
 
     return -(int)codes[ret];
 }
@@ -459,9 +456,8 @@ static int xlan_unslave (net_device_s* dev, net_device_s* phys) {
 }
 
 // ip link set dev xlan addr 50:62:N4:N4:N6:N6:HH:HH:GG:GG
-#define XLAN_INFO_LEN 10
+#define XLAN_INFO_LEN 8
 typedef struct xlan_info_s {
-    u16 vendor;
     u16 net4;
     u16 net6;
     u16 host;
@@ -477,22 +473,20 @@ static int xlan_cfg (net_device_s* const dev, void* const addr) {
     const xlan_info_s* const info = addr;
 
     // READ
-    const uint vendor = BE16(info->vendor);
     const uint net4   = BE16(info->net4);
     const uint net6   = BE16(info->net6);
     const uint host   = BE16(info->host);
     const uint gw     = BE16(info->gw);
 
-    printk("XLAN: %s: CONFIGURING: VENDOR 0x%04X HOST %u GW %u NET4 0x%04X NET6 0x%04X\n",
-        dev->name, vendor, host, gw, net4, net6);
+    printk("XLAN: %s: CONFIGURING: HOST %u GW %u NET4 0x%04X NET6 0x%04X\n",
+        dev->name, host, gw, net4, net6);
 
     // VERIFY
-    if (vendor && (vendor & 0x0100) == 0 && net4 && net6 && host && host < HOSTS_N && gw < HOSTS_N && gw != host) {
+    if (net4 && net6 && host && host < HOSTS_N && gw < HOSTS_N && gw != host) {
 
         xlan_s* const xlan = netdev_priv(dev);
 
         // COMMIT
-        xlan->vendor = BE16(vendor);
         xlan->net4   = BE16(net4);
         xlan->net6   = BE16(net6);
         xlan->host   = host;
