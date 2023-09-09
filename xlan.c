@@ -77,18 +77,18 @@ typedef struct notifier_block notifier_block_s;
 
 #define __COMPACT __attribute__((packed))
 
-typedef struct v4_addr_s {
+typedef struct addr4_s {
     u16 net;
     u16 host;
-} v4_addr_s;
+} addr4_s;
 
-typedef struct v6_addr_s {
+typedef struct addr6_s {
     u16 net;
     u16 _[6];
     u16 host;
-} v6_addr_s;
+} addr6_s;
 
-typedef union eth_addr_s {
+typedef union mac_s {
     u8  addr[6];
     u16 addr16[3];
     struct {
@@ -96,12 +96,12 @@ typedef union eth_addr_s {
         u16 host;
         u16 port;
     };
-} __COMPACT eth_addr_s;
+} __COMPACT mac_s;
 
 typedef struct pkt_s {
     u16 _align[3];
-    eth_addr_s src;
-    eth_addr_s dst;
+    mac_s src;
+    mac_s dst;
     u16 type;
     union {
         struct {
@@ -111,8 +111,8 @@ typedef struct pkt_s {
             u8 _y[2];
             union { u64 addrs;
                 struct {
-                    v4_addr_s src;
-                    v4_addr_s dst;
+                    addr4_s src;
+                    addr4_s dst;
                 };
             } __COMPACT;
             u32 ports;
@@ -126,8 +126,8 @@ typedef struct pkt_s {
             u8 _z[1];
             union { u64 addrs[4];
                 struct {
-                    v6_addr_s src;
-                    v6_addr_s dst;
+                    addr6_s src;
+                    addr6_s dst;
                 };
             } __COMPACT;
             u32 ports;
@@ -369,9 +369,9 @@ static int xlan_enslave (net_device_s* dev, net_device_s* phys, struct netlink_e
 
     const u8* const mac = dev->dev_addr;
 
-    const uint vendor = BE16(((const eth_addr_s*)mac)->vendor);
-    const uint host   = BE16(((const eth_addr_s*)mac)->host);
-    const uint port   = BE16(((const eth_addr_s*)mac)->port);
+    const uint vendor = BE16(((const mac_s*)mac)->vendor);
+    const uint host   = BE16(((const mac_s*)mac)->host);
+    const uint port   = BE16(((const mac_s*)mac)->port);
 
     printk("XLAN: %s: ENSLAVE ITFC %s: VENDOR 0x%04X HOST %u PORT %u MAC %02X:%02X:%02X:%02X:%02X:%02X\n",
         dev->name, phys->name, vendor, host, port,
@@ -427,7 +427,7 @@ static int xlan_unslave (net_device_s* dev, net_device_s* phys) {
 
     xlan_s* const xlan = netdev_priv(dev);
 
-    const uint port = BE16(((const eth_addr_s*)dev->dev_addr)->port);
+    const uint port = BE16(((const mac_s*)dev->dev_addr)->port);
     
     printk("XLAN: %s: UNSLAVE ITFC %s: PORT %u\n",
         dev->name, phys->name, port);
@@ -551,9 +551,9 @@ static int __init xlan_init (void) {
     // MAKE IT VISIBLE IN THE SYSTEM
     printk("XLAN: INIT\n");
 
-    BUILD_BUG_ON( sizeof(eth_addr_s) != ETH_ALEN );
-    BUILD_BUG_ON( sizeof(v4_addr_s) != 4 );
-    BUILD_BUG_ON( sizeof(v6_addr_s) != 16 );
+    BUILD_BUG_ON( sizeof(mac_s) != ETH_ALEN );
+    BUILD_BUG_ON( sizeof(addr4_s) != 4 );
+    BUILD_BUG_ON( sizeof(addr6_s) != 16 );
     BUILD_BUG_ON( sizeof(pkt_s) != PKT_SIZE );
     BUILD_BUG_ON( offsetof(xlan_info_s, _pad) != XLAN_INFO_LEN );
 
