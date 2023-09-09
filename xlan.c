@@ -153,8 +153,6 @@ typedef struct xlan_path_s {
 typedef struct xlan_s {
     u16 vendor;
     u16 host;
-    u16 host0;
-    u16 hostL;
     u16 gw;
     u16 prefix4;
     u16 prefix6;
@@ -175,13 +173,11 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
     const pkt_s* const pkt = SKB_MAC(skb) - offsetof(pkt_s, dst);
 
     const uint lvendor = BE16(pkt->dst.vendor);
-    const uint lhost   = BE16(pkt->dst.host);
+    const uint lhost   = BE16(pkt->dst.host) % HOSTS_N;
     const uint lport   = BE16(pkt->dst.port);
     const uint rvendor = BE16(pkt->src.vendor);
-    const uint rhost   = BE16(pkt->src.host);
+    const uint rhost   = BE16(pkt->src.host) % HOSTS_N;
     const uint rport   = BE16(pkt->src.port);
-
-    const uint rhostID = rhost - xlan->host0;
 
     // SO INTERCEPTA O QUE FOR
     if (lvendor != xlan->vendor
@@ -189,12 +185,8 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
         return RX_HANDLER_PASS;
     
     // DROP CASES
-    if (lhost >  xlan->hostL        // INVALID L HOST
-     || lhost <  xlan->host0        // INVALID L HOST
-     || lhost != xlan->host         // NOT TO ME
-     || rhost >  xlan->hostL        // INVALID R HOST
-     || rhost <  xlan->host0        // INVALID R HOST
-     || rhost == lhost              // SAME HOST
+    if (lhost != xlan->host         // NOT TO ME
+     || rhost == xlan->host         // FROM ME
      || lport >= xlan->portsN       // INVALID L PORT
      || rport >= xlan->portsN       // INVALID R PORT
      || phys  != xlan->physs[lport] // SHOULD RECEIVE ON OTHER INTERFACE
@@ -203,7 +195,7 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
         return RX_HANDLER_CONSUMED;
     }
 
-    xlan->seen[rhostID][rport] = jiffies;
+    xlan->seen[rhost][rport] = jiffies;
 
 #if 0 // PULA O ETHERNET HEADER
     // NOTE: skb->network_header JA ESTA CORRETO
