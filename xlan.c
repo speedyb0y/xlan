@@ -65,8 +65,7 @@ typedef struct notifier_block notifier_block_s;
 #define UDP_SIZE  8
 #define TCP_SIZE 20
 
-#define ETH_P_XLAN4 0x2562
-#define ETH_P_XLAN6 0x2563
+#define VENDOR 0x5062
 
 #define HP_ENCODE(hp) (((uint)(hp)) * 0x0101U)
 #define HP_DECODE(hp) (((uint)(hp)) & 0x00FFU)
