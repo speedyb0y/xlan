@@ -145,14 +145,17 @@ typedef struct pkt_s {
     };
 } __COMPACT pkt_s;
 
-typedef struct xlan_path_s {
+typedef struct xlan_stream_s {
     u32 ports;
     u32 last;
-} xlan_path_s;
+} xlan_stream_s;
 
-typedef struct rin_s {
-
-} rin_s;
+typedef struct xlan_rh_s {
+    u16 portsN;
+    u64 rseen[PORTS_N];
+    u64 lseen[PORTS_N][PORTS_N]; // TODO: FIXME: ATOMIC
+    xlan_stream_s paths[64]; // POPCOUNT64()
+} xlan_rh_s;
 
 // NETWORK, HOST
 // NN.NN.HH.HH NNNN:?:HHHH
@@ -163,10 +166,8 @@ typedef struct xlan_s {
     u16 host;   // .HH.HH ::HHHH LHOST
     u16 gw;     // .HH.HH ::HHHH RHOST, WHEN IT DOES NOT BELONG TO THE NET
     u16 lportsN;  // PHYSICAL INTERFACES
-    u16 rportsN[HOSTS_N];
     net_device_s* physs[PORTS_N];
-    xlan_path_s paths[HOSTS_N][64]; // POPCOUNT64()
-    u64 seen[HOSTS_N][PORTS_N][PORTS_N]; // TODO: FIXME: ATOMIC
+    xlan_rh_s hosts[HOSTS_N];
 } xlan_s;
 
 static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
@@ -198,7 +199,7 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
     }
 
     //
-    rh_s* const rh = &xlan->hosts[rhost];
+    xlan_rh_s* const rh = &xlan->hosts[rhost];
     
     rh->lseen[rport][lport] = jiffies;
     rh->rseen[rport]        = jiffies;
@@ -258,7 +259,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
     // SELECT A PATH
     // OK: TCP | UDP | UDPLITE | SCTP | DCCP
     // FAIL: ICMP
-    xlan_path_s* const path = &xlan->paths[rhost][__builtin_popcountll( (u64) ( v4
+    xlan_stream_s* const path = &xlan->paths[rhost][__builtin_popcountll( (u64) ( v4
         ? pkt->v4.protocol      // IP PROTOCOL
         + (pkt->v4.src.w32[0]   // SRC ADDR
          * pkt->v4.dst.w32[0])  // DST ADDR
