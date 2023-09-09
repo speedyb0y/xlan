@@ -326,21 +326,22 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
                 ( r == 4 || ( // NO ULTIMO ROUND FORCA MESMO ASSIM
                     (r*1*HZ)/5 >= (now - path->last) && // SE DEU UMA PAUSA, TROCA DE PORTA
                     (r*2*HZ)/1 >= (now - xlan->seen[rhost][rport][lport]) // KNOWN TO WORK
-                ))) {
-                    path->ports = ports;
-                    path->last  = now;
+            ))) {
+                //
+                path->ports = ports;
+                path->last  = now;
 
-                    // INSERT ETHERNET HEADER
-                    pkt_dst_vendor = BE16(VENDOR);
-                    pkt_dst_host   = HP_ENCODE(rhost);
-                    pkt_dst_port   = HP_ENCODE(rport);
-                    pkt_src_vendor = BE16(VENDOR);
-                    pkt_src_host   = HP_ENCODE(xlan->host);
-                    pkt_src_port   = HP_ENCODE(lport);
-                    pkt_type       = skb->protocol;
+                // INSERT ETHERNET HEADER
+                pkt_dst_vendor = BE16(VENDOR);
+                pkt_dst_host   = HP_ENCODE(rhost);
+                pkt_dst_port   = HP_ENCODE(rport);
+                pkt_src_vendor = BE16(VENDOR);
+                pkt_src_host   = HP_ENCODE(xlan->host);
+                pkt_src_port   = HP_ENCODE(lport);
+                pkt_type       = skb->protocol;
 
-                    // UPDATE SKB
-                    skb->data       = PTR(pkt);
+                // UPDATE SKB
+                skb->data       = PTR(pkt);
 #ifdef NET_SKBUFF_DATA_USES_OFFSET
                 skb->mac_header = PTR(pkt) - SKB_HEAD(skb);
 #else
@@ -348,7 +349,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
 #endif
                 skb->len        = SKB_TAIL(skb) - PTR(pkt);
                 skb->mac_len    = ETH_HLEN;
-                skb->dev = phys;
+                skb->dev        = phys;
 
                 // -- THE FUNCTION CAN BE CALLED FROM AN INTERRUPT
                 // -- WHEN CALLING THIS METHOD, INTERRUPTS MUST BE ENABLED
