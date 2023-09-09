@@ -228,17 +228,17 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
     // OK: TCP | UDP | UDPLITE | SCTP | DCCP
     // FAIL: ICMP
     xlan_stream_s* const path = &xlan->paths[rhost][__builtin_popcountll( (u64) ( v4
-        ?  pkt->v4.protocol     // IP PROTOCOL
-        + (pkt->v4.src.w32[0]   // SRC ADDR
-         * pkt->v4.dst.w32[0])  // DST ADDR
-        +  pkt->v4.ports        // SRC PORT, DST PORT
-        : (pkt->v6.flow         // FLOW
-         * pkt->v6.protocol     // IP PROTOCOL
-         * pkt->v6.ports)       // SRC PORT, DST PORT
-        + (pkt->v6.src.w64[0]   // SRC ADDR
-         ^ pkt->v6.src.w64[1])  // SRC ADDR
-        + (pkt->v6.dst.w64[0]   // DST ADDR
-         ^ pkt->v6.dst.w64[1])  // DST ADDR
+        ? (pkt->v4.protocol *   // IP PROTOCOL
+           pkt->v4.ports)       // SRC PORT, DST PORT
+        + (pkt->v4.src.w32[0] * // SRC ADDR
+           pkt->v4.dst.w32[0])  // DST ADDR
+        : (pkt->v6.flow *       // FLOW
+           pkt->v6.protocol *   // IP PROTOCOL
+           pkt->v6.ports)       // SRC PORT, DST PORT
+        + (pkt->v6.src.w64[0] ^ // SRC ADDR
+           pkt->v6.src.w64[1])  // SRC ADDR
+        + (pkt->v6.dst.w64[0] ^ // DST ADDR
+           pkt->v6.dst.w64[1])  // DST ADDR
     ))];
 
     uint now   = jiffies;
