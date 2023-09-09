@@ -279,7 +279,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
     ))];
 
     const uint lportsN = xlan->portsN;
-    const uint rportsN = xlan->rportsN[rhost];
+    const uint rportsN =   rh->portsN;
 
     uint now   = jiffies;
     uint ports = path->ports;
