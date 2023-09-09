@@ -150,6 +150,10 @@ typedef struct xlan_path_s {
     u32 last;
 } xlan_path_s;
 
+typedef struct rin_s {
+
+} rin_s;
+
 // NETWORK, HOST
 // NN.NN.HH.HH NNNN:?:HHHH
 typedef struct xlan_s {
@@ -194,7 +198,20 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
     }
 
     //
-    xlan->seen[rhost][rport][lport] = jiffies;
+    rh_s* const rh = &xlan->hosts[rhost];
+    
+    rh->lseen[rport][lport] = jiffies;
+    rh->rseen[rport]        = jiffies;
+
+    //
+    if (rh->rseen[rin->rportsN - 1] < (jiffies - 10*HZ)) {
+
+    }
+
+
+    //
+    if (rh->rportsN <= rport)
+        rh->rportsN =  rport + 1;
 
     skb->protocol = pkt->v4.version == 0x45 ?
         BE16(ETH_P_IP) :
