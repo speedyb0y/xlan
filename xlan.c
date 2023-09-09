@@ -158,10 +158,12 @@ typedef struct xlan_s {
     u16 net6;   // NNNN::
     u16 host;   // .HH.HH ::HHHH LHOST
     u16 gw;     // .HH.HH ::HHHH RHOST, WHEN IT DOES NOT BELONG TO THE NET
-    u16 portsN;  // PHYSICAL INTERFACES
+    u16 lportsN;  // PHYSICAL INTERFACES
+    u16 rportsN[HOSTS_N];
     net_device_s* physs[PORTS_N];
     xlan_path_s paths[HOSTS_N][64]; // POPCOUNT64()
-    u64 seen[HOSTS_N][PORTS_N]; // ULTIMA VEZ QUE RECEBEU ALGO COM SRC HOST:PORT; DAI TODA VEZ QUE TENTAR mandar pra ele, se ja faz tempo que nao o ve, muda
+    u32 lseen[PORTS_N]; // ULTIMA VEZ QUE RECEBEU ALGO COM SRC HOST:PORT; DAI TODA VEZ QUE TENTAR mandar pra ele, se ja faz tempo que nao o ve, muda
+    u32 rseen[HOSTS_N][PORTS_N];
 } xlan_s;
 
 static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
@@ -179,19 +181,22 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
 
     // ASSERT: pkt->src.host != xlan->host NOT FROM ME
 
+    const uint lhost = BE16(pkt->dst.host) % HOSTS_N;
+    const uint lport = BE16(pkt->dst.port) % PORTS_N;
+    const uint rhost = BE16(pkt->src.host) % HOSTS_N;
+    const uint rport = BE16(pkt->src.port) % PORTS_N;
+
     // DROP CASES
-    if (pkt->dst.host != xlan->host // NOT TO ME (POIS PODE TER RECEBIDO DEVIDO AO MODO PROMISCUO)
-     || phys != xlan->physs[BE16(pkt->dst.port) % PORTS_N] // WRONG INTERFACE
+    if (xlan->host != lhost // NOT TO ME (POIS PODE TER RECEBIDO DEVIDO AO MODO PROMISCUO)
+     || xlan->physs[lport] != phys // WRONG INTERFACE
      || virt->flags == 0) { // ->flags & UP
         kfree_skb(skb);
         return RX_HANDLER_CONSUMED;
     }
 
     //
-    xlan->seen
-        [BE16(pkt->src.host) % HOSTS_N]
-        [BE16(pkt->src.port) % PORTS_N]
-            = jiffies;
+    xlan->lseen[lport]        = jiffies;
+    xlan->rseen[rhost][rport] = jiffies;
 
     skb->protocol = pkt->v4.version == 0x45 ? BE16(ETH_P_IP) : BE16(ETH_P_IPV6);
     skb->dev = virt;
@@ -284,7 +289,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
         if (phys && (phys->flags & IFF_UP) == IFF_UP) // IFF_RUNNING // IFF_LOWER_UP
             if (   ((now - path->last) <= (r*HZ)/5 || r == 4) // SE DEU UMA PAUSA, TROCA DE PORTA
                 && ((now - xlan->rseen[rhost][rport]) <= (r*1*HZ)/1 || r == 4) // KNOWN TO WORK
-                && ((now - xlan->lseen[lhost][lport]) <= (r*1*HZ)/1 || r == 4) // KNOWN TO WORK
+                && ((now - xlan->lseen[lport]) <= (r*1*HZ)/1 || r == 4) // KNOWN TO WORK
             ) break;
 
         ports++;
