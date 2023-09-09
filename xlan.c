@@ -99,7 +99,7 @@ typedef union eth_addr_s {
 } __COMPACT eth_addr_s;
 
 typedef struct pkt_s {
-    u16 _align[3];
+   // u16 _align[3];
     eth_addr_s src;
     eth_addr_s dst;
     u16 type;
@@ -116,14 +116,14 @@ typedef struct pkt_s {
                 };
             } __COMPACT;
             u32 ports;
-            u16 _pad[10];
+            u16 _z[10];
         } __COMPACT v4;
         struct {
-            u8 _z[2];
-            u16 flow;
             u8 _x[2];
+            u16 flow;
+            u8 _y[2];
             u8 protocol;
-            u8 _y[1];
+            u8 _z[1];
             union { u64 addrs[4];
                 struct {
                     v6_addr_s src;
