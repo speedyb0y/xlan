@@ -61,8 +61,8 @@ typedef struct notifier_block notifier_block_s;
 
 // FROM CONFIG
 #define VENDOR  CONFIG_XLAN_VENDOR
-#define PREFIX4 CONFIG_XLAN_PREFIX4
-#define PREFIX6 CONFIG_XLAN_PREFIX6
+#define NET4 CONFIG_XLAN_PREFIX4
+#define NET6 CONFIG_XLAN_PREFIX6
 #define HOSTS_N CONFIG_XLAN_HOSTS_N
 #define PORTS_N CONFIG_XLAN_PORTS_N // MMC DAS QUANTIDADES DE PORTAS DOS HOSTS DA REDE
 #define MTU     CONFIG_XLAN_MTU
@@ -158,8 +158,7 @@ typedef struct xlan_s {
     u16 net6;   // NNNN::
     u16 host;   // .HH.HH ::HHHH LHOST
     u16 gw;     // .HH.HH ::HHHH RHOST, WHEN IT DOES NOT BELONG TO THE NET
-    u16 portsN; // NA REDE
-    u16 physN;  // PHYSICAL INTERFACES
+    u16 portsN;  // PHYSICAL INTERFACES
     net_device_s* physs[PORTS_N];
     xlan_path_s paths[HOSTS_N][64]; // POPCOUNT64()
     u64 seen[HOSTS_N][PORTS_N]; // ULTIMA VEZ QUE RECEBEU ALGO COM SRC HOST:PORT; DAI TODA VEZ QUE TENTAR mandar pra ele, se ja faz tempo que nao o ve, muda
@@ -410,6 +409,15 @@ static int xlan_unslave (net_device_s* dev, net_device_s* phys) {
     // UNREGISTER IT
     physs[lport] = NULL;
 
+    // TODO:
+    uint last = PORTS_N;
+
+    foreach (i, PORTS_N)
+        if (physs[i])
+            last = i;
+
+    xlan->portLast = last;    
+
     return 0;
 }
 
@@ -460,13 +468,12 @@ static void xlan_setup (net_device_s* const dev) {
 
     memset(xlan, 0, sizeof(*xlan));
 
-    xlan->vendor  = BE16(VENDOR);
-    xlan->net4 = BE16(PREFIX4);
-    xlan->net6 = BE16(PREFIX6);
+    xlan->vendor  = BE16(VENDOR); // TODO: ip link set dev xlan addr 50:62:N4:N4:N6:N6
+    xlan->net4    = BE16(NET4);
+    xlan->net6    = BE16(NET6);
     xlan->host    = BE16(20);
     xlan->gw      = BE16(50);
-    xlan->portsN  = PORTS_N;
-    xlan->physN   = 0;
+    xlan->portsN  = 0;
 }
 
 static int __init xlan_init (void) {
