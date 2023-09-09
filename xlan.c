@@ -146,20 +146,20 @@ typedef struct pkt_s {
 } __COMPACT pkt_s;
 
 typedef struct xlan_path_s {
-    u64 ports;
-    u64 last;
+    u32 ports;
+    u32 last;
 } xlan_path_s;
 
 // NETWORK, HOST
 // NN.NN.HH.HH NNNN:?:HHHH
 typedef struct xlan_s {
     u16 vendor;
-    u16 net4; // NN.NN.
-    u16 net6; // NNNN::
-    u16 host; // .HH.HH ::HHHH LHOST
-    u16 gw;   // .HH.HH ::HHHH RHOST, WHEN IT DOES NOT BELONG TO THE NET
-    u16 physN; // PHYSICAL INTERFACES
+    u16 net4;   // NN.NN.
+    u16 net6;   // NNNN::
+    u16 host;   // .HH.HH ::HHHH LHOST
+    u16 gw;     // .HH.HH ::HHHH RHOST, WHEN IT DOES NOT BELONG TO THE NET
     u16 portsN; // NA REDE
+    u16 physN;  // PHYSICAL INTERFACES
     net_device_s* physs[PORTS_N];
     xlan_path_s paths[HOSTS_N][64];
     u64 seen[HOSTS_N][PORTS_N]; // ULTIMA VEZ QUE RECEBEU ALGO COM SRC HOST:PORT; DAI TODA VEZ QUE TENTAR mandar pra ele, se ja faz tempo que nao o ve, muda
@@ -261,8 +261,8 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
 
     const uint portsN = xlan->portsN;
 
-    u64 now   = jiffies;
-    u64 last  = path->last;
+    uint now   = jiffies;
+    uint last  = path->last;
     uint ports = path->ports;
 
     ports += (now - last) > HZ/5 // SE DEU UMA PAUSA, TROCA DE PORTA
