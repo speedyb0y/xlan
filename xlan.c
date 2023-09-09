@@ -228,11 +228,6 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
 
 static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
 
-    BUILD_BUG_ON( sizeof(eth_addr_s) != ETH_ALEN );
-    BUILD_BUG_ON( sizeof(v4_addr_s) != 4 );
-    BUILD_BUG_ON( sizeof(v6_addr_s) != 16 );
-    BUILD_BUG_ON( sizeof(pkt_s) != PKT_SIZE );
-
     xlan_s* const xlan = netdev_priv(dev);
 
     // ONLY LINEAR
@@ -440,6 +435,7 @@ static int xlan_unslave (net_device_s* dev, net_device_s* phys) {
 }
 
 // ip link set dev xlan addr 50:62:N4:N4:N6:N6:HH:HH:GG:GG
+#define XLAN_INFO_LEN 12
 typedef struct xlan_info_s {
     u16 vendor;
     u16 net4;
@@ -447,6 +443,7 @@ typedef struct xlan_info_s {
     u16 host;
     u16 gw;    
     u16 portsN;
+    u16 _pad[2];
 } xlan_info_s;
 
 static int xlan_setup (net_device_s* const dev, void* const addr) {
@@ -481,7 +478,7 @@ static void xlan_setup (net_device_s* const dev) {
     dev->netdev_ops      = &xlanDevOps;
     dev->header_ops      = NULL;
     dev->type            = ARPHRD_NONE;
-    dev->addr_len        = sizeof(xlan_info_s);
+    dev->addr_len        = XLAN_INFO_LEN;
     dev->hard_header_len = ETH_HLEN;
     dev->min_header_len  = ETH_HLEN;
     //dev->needed_headroom = ;
@@ -525,6 +522,12 @@ static int __init xlan_init (void) {
     // CREATE THE VIRTUAL INTERFACE
     // MAKE IT VISIBLE IN THE SYSTEM
     printk("XLAN: INIT\n");
+
+    BUILD_BUG_ON( sizeof(eth_addr_s) != ETH_ALEN );
+    BUILD_BUG_ON( sizeof(v4_addr_s) != 4 );
+    BUILD_BUG_ON( sizeof(v6_addr_s) != 16 );
+    BUILD_BUG_ON( sizeof(pkt_s) != PKT_SIZE );
+    BUILD_BUG_ON( offsetof(xlan_info_s, _pad) != XLAN_INFO_LEN );
 
     register_netdev(alloc_netdev(sizeof(xlan_s), "xlan", NET_NAME_USER, xlan_setup));
 
