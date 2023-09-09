@@ -377,6 +377,10 @@ static int xlan_enslave (net_device_s* dev, net_device_s* phys, struct netlink_e
         dev_hold(phys);
         // REGISTER IT
         xlan->physs[lport] = phys;
+        //
+        if (xlan->portLast == PORTS_N
+         || xlan->portLast < lport)
+            xlan->portLast = lport;
         // SUCCESS
         ret = 0;
     }
@@ -409,7 +413,7 @@ static int xlan_unslave (net_device_s* dev, net_device_s* phys) {
     // UNREGISTER IT
     physs[lport] = NULL;
 
-    // TODO:
+    // RESET
     uint last = PORTS_N;
 
     foreach (i, PORTS_N)
