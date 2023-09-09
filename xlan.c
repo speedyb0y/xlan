@@ -78,11 +78,8 @@ typedef struct notifier_block notifier_block_s;
 #define __COMPACT __attribute__((packed))
 
 typedef union v4_addr_s {
-    u32 w32;
-    struct {
-        u16 net;
-        u16 host;
-    };
+    u16 net;
+    u16 host;
 } v4_addr_s;
 
 typedef union v6_addr_s {
@@ -118,8 +115,12 @@ typedef struct pkt_s {
             u8 _x[8];
             u8  protocol;
             u8 _y[2];
-            v4_addr_s src;
-            v4_addr_s dst;
+            union { u64 addrs;
+                struct {
+                    v4_addr_s src;
+                    v4_addr_s dst;
+                };
+            } __COMPACT;
             u32 ports;
             u16 _pad[10];
         } __COMPACT v4;
@@ -228,8 +229,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
     xlan_stream_s* const path = &xlan->paths[rhost][__builtin_popcountll( (u64) ( v4
         ? (pkt->v4.protocol *   // IP PROTOCOL
            pkt->v4.ports)       // SRC PORT, DST PORT
-        + (pkt->v4.src.w32 *    // SRC ADDR
-           pkt->v4.dst.w32)     // DST ADDR
+        +  pkt->v4.addrs        // SRC ADDR, DST ADDR
         : (pkt->v6.flow *       // FLOW
            pkt->v6.protocol *   // IP PROTOCOL
            pkt->v6.ports)       // SRC PORT, DST PORT
