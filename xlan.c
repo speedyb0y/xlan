@@ -153,29 +153,29 @@ typedef void pkt_s;
 #if XCONF_XLAN_STRUCT
 #define PKT_OFFSET_ETH offsetof(pkt_s, dst)
 #define PKT_OFFSET_IP  offsetof(pkt_s, ip)
-#define from_vendor     pkt->src.vendor
-#define from_host       pkt->src.host
-#define from_port       pkt->src.port
-#define to_vendor       pkt->dst.vendor
-#define to_host         pkt->dst.host
-#define to_port         pkt->dst.port
-#define pkt_eth       (&pkt->dst)
-#define pkt_type        pkt->type
+#define pkt_eth    (&pkt->dst)
+#define from_vendor pkt->src.vendor
+#define from_host   pkt->src.host
+#define from_port   pkt->src.port
+#define to_vendor   pkt->dst.vendor
+#define to_host     pkt->dst.host
+#define to_port     pkt->dst.port
+#define pkt_type    pkt->type
 #define flow6       pkt->ip.v6.flow
-#define proto4       pkt->ip.v4.protocol
-#define proto6       pkt->ip.v6.protocol
+#define proto4      pkt->ip.v4.protocol
+#define proto6      pkt->ip.v6.protocol
 #define addrs4      pkt->ip.v4.addrs
 #define addrs6      pkt->ip.v6.addrs
 #define ports4      pkt->ip.v4.ports
 #define ports6      pkt->ip.v6.ports
-#define from_net4    pkt->ip.v4.src.net
-#define from_net6    pkt->ip.v6.src.net
-#define to_net4    pkt->ip.v4.dst.net
-#define to_net6    pkt->ip.v6.dst.net
-#define from_host4   pkt->ip.v4.src.host
-#define from_host6   pkt->ip.v6.src.host
-#define to_host4   pkt->ip.v4.dst.host
-#define to_host6   pkt->ip.v6.dst.host
+#define from_net4   pkt->ip.v4.src.net
+#define from_net6   pkt->ip.v6.src.net
+#define to_net4     pkt->ip.v4.dst.net
+#define to_net6     pkt->ip.v6.dst.net
+#define from_host4  pkt->ip.v4.src.host
+#define from_host6  pkt->ip.v6.src.host
+#define to_host4    pkt->ip.v4.dst.host
+#define to_host6    pkt->ip.v6.dst.host
 #else
 #define PKT_OFFSET_ETH 0
 #define PKT_OFFSET_IP  14
