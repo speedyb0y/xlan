@@ -460,6 +460,9 @@ typedef struct xlan_info_s {
 
 static int xlan_cfg (net_device_s* const dev, void* const addr) {
 
+	if(netif_running(dev))
+		return -EBUSY;
+
     const xlan_info_s* const info = addr;
 
     // READ
