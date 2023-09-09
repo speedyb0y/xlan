@@ -68,11 +68,8 @@ typedef struct notifier_block notifier_block_s;
 #define ETH_P_XLAN4 0x2562
 #define ETH_P_XLAN6 0x2563
 
-#define PORT_ENCODE(p) (((uint)(p)) * 0x0101U) // ALWAYS 0xXYXY
-#define PORT_DECODE(p) (((uint)(p)) % PORTS_N) // ALWAYS < PORTS_N
-
-#define HOST_ENCODE(h) (((uint)(h)) * 0x0101U)
-#define HOST_DECODE(h) (((uint)(h)) % HOSTS_N)
+#define HP_ENCODE(hp) (((uint)(hp)) * 0x0101U)
+#define HP_DECODE(hp) (((uint)(hp)) & 0x00FFU)
 
 #define __COMPACT __attribute__((packed))
 
@@ -164,16 +161,20 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
         return RX_HANDLER_PASS;
 
     // ASSERT: skb->type PKT_HOST
-    const uint lhost = HOST_DECODE(pkt->dst.host);
-    const uint lport = PORT_DECODE(pkt->dst.port);
-    const uint rhost = HOST_DECODE(pkt->src.host);
-    const uint rport = PORT_DECODE(pkt->src.port);
+    const uint lhost = HP_DECODE(pkt->dst.host);
+    const uint lport = HP_DECODE(pkt->dst.port);
+    const uint rhost = HP_DECODE(pkt->src.host);
+    const uint rport = HP_DECODE(pkt->src.port);
 
     // DISCARD THOSE
     if (pkt->src.vendor != xlan->vendor
      || pkt->dst.vendor != xlan->vendor
-     || xlan->host != lhost // NOT TO ME (POIS PODE TER RECEBIDO DEVIDO AO MODO PROMISCUO)
-     || xlan->host == rhost
+     || lhost != xlan->host // NOT TO ME (POIS PODE TER RECEBIDO DEVIDO AO MODO PROMISCUO)
+     || rhost == xlan->host
+     || lhost >= HOSTS_N
+     || rhost >= HOSTS_N
+     || lport >= PORTS_N
+     || rport >= PORTS_N
      || xlan->ports[lport] != phys // WRONG INTERFACE
      || virt->flags == 0) { // ->flags & UP
         kfree_skb(skb);
