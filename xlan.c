@@ -371,9 +371,9 @@ static int xlan_enslave (net_device_s* dev, net_device_s* phys, struct netlink_e
 
     const u8* const mac = dev->dev_addr;
 
-    const uint vendor = BE16(((eth_addr_s*)mac)->vendor);
-    const uint host   = BE16(((eth_addr_s*)mac)->host);
-    const uint port   = BE16(((eth_addr_s*)mac)->port); // TODO: FROM MAC ADDRESS
+    const uint vendor = BE16(((const eth_addr_s*)mac)->vendor);
+    const uint host   = BE16(((const eth_addr_s*)mac)->host);
+    const uint port   = BE16(((const eth_addr_s*)mac)->port);
 
     print("XLAN: %s: TRYING TO ENSLAVE ITFC %s VENDOR 0x%04X HOST %u PORT %u MAC %02X:%02X:%02X:%02X:%02X:%02X\n",
         dev->name, phys->name, vendor, host, port,
@@ -401,8 +401,8 @@ static int xlan_enslave (net_device_s* dev, net_device_s* phys, struct netlink_e
     elif (port >= PORTS_N)
         // INVALID
         ret = -EINVAL;
-    elif (mac[0] !=      xlan->vendor
-       || mac[1] != BE16(xlan->host))
+    elif (vendor != BE16(xlan->vendor)
+       || host   !=      xlan->host)
         // WRONG MAC
         ret = -EINVAL;
     elif (port >= xlan->portsN)
