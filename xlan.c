@@ -77,7 +77,7 @@ typedef struct notifier_block notifier_block_s;
 
 #define __COMPACT __attribute__((packed))
 
-typedef union v4_addr_s {
+typedef struct v4_addr_s {
     u16 net;
     u16 host;
 } v4_addr_s;
