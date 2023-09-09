@@ -97,20 +97,8 @@ typedef struct mac_s {
     u16 port;
 } __packed mac_s;
 
-typedef struct addr4_s {
-    u16 net;
-    u16 host;
-} addr4_s;
-
-typedef struct addr6_s {
-    u16 net;
-    u16 _[6];
-    u16 host;
-} addr6_s;
-
 #if XCONF_XLAN_STRUCT
 #define PKT_SIZE 64
-
 typedef struct pkt_s {
     u8 _align[6];
     mac_s src;
@@ -121,11 +109,9 @@ typedef struct pkt_s {
             u8 _x[9];
             u8 protocol;
             u8 _y[2];
-            union { u64 addrs;
-                struct {
-                    addr4_s src;
-                    addr4_s dst;
-                };
+            union { 
+                u64 addrs64;
+                u16 addrs16[4];
             } __packed;
             u32 ports;
             u8 _z[20];
@@ -136,11 +122,9 @@ typedef struct pkt_s {
             u8 _y[2];
             u8 protocol;
             u8 _z[1];
-            union { u64 addrs[4];
-                struct {
-                    addr6_s src;
-                    addr6_s dst;
-                };
+            union {
+                u64 addrs64[4];
+                u16 addrs16[16];
             } __packed;
             u32 ports;
         } __packed v6;
@@ -168,14 +152,14 @@ typedef void pkt_s;
 #define addrs6      pkt->ip.v6.addrs
 #define ports4      pkt->ip.v4.ports
 #define ports6      pkt->ip.v6.ports
-#define from_net4   pkt->ip.v4.src.net
-#define from_net6   pkt->ip.v6.src.net
-#define to_net4     pkt->ip.v4.dst.net
-#define to_net6     pkt->ip.v6.dst.net
-#define from_host4  pkt->ip.v4.src.host
-#define from_host6  pkt->ip.v6.src.host
-#define to_host4    pkt->ip.v4.dst.host
-#define to_host6    pkt->ip.v6.dst.host
+#define from_net4   pkt->ip.v4.addrs16[0]
+#define from_host4  pkt->ip.v4.addrs16[1]
+#define to_net4     pkt->ip.v4.addrs16[2]
+#define to_host4    pkt->ip.v4.addrs16[3]
+#define from_net6   pkt->ip.v6.addrs16[0]
+#define from_host6  pkt->ip.v6.addrs16[7]
+#define to_net6     pkt->ip.v6.addrs16[8]
+#define to_host6    pkt->ip.v6.addrs16[15]
 #else
 #define PKT_OFFSET_ETH 0
 #define PKT_OFFSET_IP  14
