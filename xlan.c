@@ -369,7 +369,12 @@ static int xlan_enslave (net_device_s* dev, net_device_s* phys, struct netlink_e
 
     xlan_s* const xlan = netdev_priv(dev);
 
-    const uint lport = 0; // TODO: FROM MAC ADDRESS
+    const u16* const mac = dev->address;
+
+    const uint lport = BE16(mac[2]); // TODO: FROM MAC ADDRESS
+
+    print("XLAN: %s: TRYING TO ENSLAVE ITFC %s AS PORT %u MAC %02X:%02X:%02X\n",
+        dev->name, phys->name, lport, mac[0], mac[1], mac[2]);
 
     if (phys == dev) 
         // ITSELF
@@ -391,6 +396,10 @@ static int xlan_enslave (net_device_s* dev, net_device_s* phys, struct netlink_e
         ret = -EINVAL;
     elif (lport >= PORTS_N)
         // INVALID
+        ret = -EINVAL;
+    elif (mac[0] !=      xlan->vendor
+       || mac[1] != BE16(xlan->host))
+        // WRONG MAC
         ret = -EINVAL;
     elif (lport >= xlan->portsN)
         // NOT CONFIGURED FOR IT
