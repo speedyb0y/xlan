@@ -69,15 +69,16 @@ typedef struct notifier_block notifier_block_s;
 #define ETH_P_XLAN6 0x2563
 
 #if     PORTS_N == 32
-#define PORTS_MASK 0b11111
+#define PORTS_MASK 0b0000000000011111
 #elif   PORTS_N == 16
-#define PORTS_MASK 0b01111
+#define PORTS_MASK 0b0000000000001111
 #elif   PORTS_N == 8
-#define PORTS_MASK 0b00111
+#define PORTS_MASK 0b0000000000000111
 #elif   PORTS_N == 4
-#define PORTS_MASK 0b00011
+#define PORTS_MASK 0b0000000000000011
 #elif   PORTS_N == 2
-#define PORTS_MASK 0b00001
+#define PORTS_MASK 0b0000000000000001
+#define PORTS_MULT 
 #else
 #error
 #endif
