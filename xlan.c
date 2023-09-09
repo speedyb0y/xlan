@@ -68,6 +68,9 @@ typedef struct notifier_block notifier_block_s;
 #define ETH_P_XLAN4 0x2562
 #define ETH_P_XLAN6 0x2563
 
+#define PORT_ENCODE(port) (0xAAAA + 0x1111*port)
+#define PORT_DECODE(port) (((port) & 0xF) - 0xA)
+
 #define __COMPACT __attribute__((packed))
 
 typedef struct mac_s {
@@ -266,15 +269,13 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
     path->last  = now;
 
     // INSERT ETHERNET HEADER
-    pkt->dst.vendor =      xlan->vendor;
-    pkt->dst.host   = BE16(rhost);
-    pkt->dst.port   = BE16(rport);
-    pkt->src.vendor =      xlan->vendor;
-    pkt->src.host   = BE16(xlan->host);
-    pkt->src.port   = BE16(0xAAAA + 0x1111*lport);
-    pkt->type       = v4 ?
-                      BE16(ETH_P_XLAN4) :
-                      BE16(ETH_P_XLAN6);
+    pkt->src.vendor =             xlan->vendor;
+    pkt->dst.vendor =             xlan->vendor;
+    pkt->src.host   =        BE16(xlan->host);
+    pkt->dst.host   =        BE16(rhost);
+    pkt->src.port   = PORT_ENCODE(lport);
+    pkt->dst.port   = PORT_ENCODE(rport);
+    pkt->type       = BE16(ETH_P_XLAN6-v4);
 
     // UPDATE SKB
     skb->data       = PTR(pkt);
@@ -364,9 +365,9 @@ static int xlan_enslave (net_device_s* dev, net_device_s* phys, struct netlink_e
 
     const mac_s* const mac = (const void*)dev->dev_addr;
 
-    const uint vendor =  BE16(mac->vendor);
-    const uint host   =  BE16(mac->host);
-    const uint port   = (BE16(mac->port) & 0xF) - 0xA;
+    const uint vendor =        BE16(mac->vendor);
+    const uint host   =        BE16(mac->host);
+    const uint port   = PORT_DECODE(mac->port);
 
     uint ret;
 
@@ -394,7 +395,7 @@ static int xlan_enslave (net_device_s* dev, net_device_s* phys, struct netlink_e
     elif (host != xlan->host)
         // WRONG HOST
         ret = _ENSL_HOST_WRONG;
-    elif ((0xAAAA + 0x1111*port) != BE16(mac->port))
+    elif (PORT_ENCODE(port) != mac->port)
         // BAD PORT - MISMATCH
         ret = _ENSL_PORT_INVALID;
     elif (port >= PORTS_N)
