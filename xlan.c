@@ -132,13 +132,14 @@ typedef void pkt_s;
 #endif
 
 #if 1
-#define pkt_dst_vendor pkt->dst.vendor
-#define pkt_dst_host   pkt->dst.host
-#define pkt_dst_port   pkt->dst.port
-#define pkt_src_vendor pkt->src.vendor
-#define pkt_src_host   pkt->src.host
-#define pkt_src_port   pkt->src.port
-#define pkt_type       pkt->type
+#define pkt_eth       (&pkt->dst)
+#define pkt_dst_vendor  pkt->dst.vendor
+#define pkt_dst_host    pkt->dst.host
+#define pkt_dst_port    pkt->dst.port
+#define pkt_src_vendor  pkt->src.vendor
+#define pkt_src_host    pkt->src.host
+#define pkt_src_port    pkt->src.port
+#define pkt_type        pkt->type
 #define pkt_v4_protocol pkt->v4.protocol
 #define pkt_v4_addrs    pkt->v4.addrs
 #define pkt_v4_ports    pkt->v4.ports
@@ -146,7 +147,16 @@ typedef void pkt_s;
 #define pkt_v6_protocol pkt->v6.protocol
 #define pkt_v6_addrs    pkt->v6.addrs
 #define pkt_v6_ports    pkt->v6.ports
+#define pkt_v4_src_net  pkt->v4.src.net
+#define pkt_v4_src_host pkt->v4.src.host
+#define pkt_v4_dst_net  pkt->v4.dst.net
+#define pkt_v4_dst_host pkt->v4.dst.host
+#define pkt_v6_src_net  pkt->v6.src.net
+#define pkt_v6_src_host pkt->v6.src.host
+#define pkt_v6_dst_net  pkt->v6.dst.net
+#define pkt_v6_dst_host pkt->v6.dst.host
 #else
+#define pkt_eth                pkt
 #define pkt_dst_vendor  ((u16*)pkt)[0]
 #define pkt_dst_host    ((u16*)pkt)[1]
 #define pkt_dst_port    ((u16*)pkt)[2]
@@ -161,6 +171,15 @@ typedef void pkt_s;
 #define pkt_v6_protocol (*(u8* )(pkt + 14 +  6))
 #define pkt_v6_addrs    ( (u64*)(pkt + 14 +  8))
 #define pkt_v6_ports    (*(u32*)(pkt + 14 + 40))
+
+#define pkt_v4_src_net  (((u16*)pkt)[13])
+#define pkt_v4_src_host (((u16*)pkt)[14])
+#define pkt_v4_dst_net  (((u16*)pkt)[15])
+#define pkt_v4_dst_host (((u16*)pkt)[16])
+#define pkt_v6_src_net  (((u16*)pkt)[11])
+#define pkt_v6_src_host (((u16*)pkt)[18])
+#define pkt_v6_dst_net  (((u16*)pkt)[19])
+#define pkt_v6_dst_host (((u16*)pkt)[26])
 #endif
 
 typedef struct xlan_stream_s {
@@ -234,7 +253,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
     pkt_s* const pkt = SKB_NETWORK(skb) - offsetof(pkt_s, v4);
 
     // CONFIRMA ESPACO
-    if (PTR(&pkt_dst) < SKB_HEAD(skb))
+    if (PTR(pkt_eth) < SKB_HEAD(skb))
         goto drop;
 
     // NOTE: ASSUME QUE NÃO TEM IP OPTIONS
@@ -242,8 +261,8 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
 
     // IDENTIFY DESTINATION
     const uint rhost = v4 ?
-        ( pkt->v4.dst.net == xlan->net4 ? BE16(pkt->v4.dst.host) : xlan->gw ):
-        ( pkt->v6.dst.net == xlan->net6 ? BE16(pkt->v6.dst.host) : xlan->gw );
+        ( pkt_v4_dst_net == xlan->net4 ? BE16(pkt_v4_dst_host) : xlan->gw ):
+        ( pkt_v6_dst_net == xlan->net6 ? BE16(pkt_v6_dst_host) : xlan->gw );
 
     if (rhost >= HOSTS_N
      || rhost == xlan->host)
