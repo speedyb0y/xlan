@@ -579,7 +579,7 @@ static const net_device_ops_s xlanDevOps = {
     // TODO: SET MTU - NAO EH PARA SETAR AQUI E SIM NO ROUTE
 };
 
-static void xlan_setup (net_device_s* const dev) __f_cold {
+static void __f_cold xlan_setup (net_device_s* const dev) {
 
     dev->netdev_ops      = &xlanDevOps;
     dev->header_ops      = NULL;
