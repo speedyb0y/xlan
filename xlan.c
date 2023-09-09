@@ -608,7 +608,9 @@ static int __init xlan_init (void) {
     BUILD_BUG_ON( sizeof(mac_s) != ETH_ALEN );
     BUILD_BUG_ON( sizeof(addr4_s) != 4 );
     BUILD_BUG_ON( sizeof(addr6_s) != 16 );
+#if XCONF_XLAN_STRUCT
     BUILD_BUG_ON( sizeof(pkt_s) != PKT_SIZE );
+#endif
     BUILD_BUG_ON( offsetof(xlan_info_s, _pad) != XLAN_INFO_LEN );
 
     register_netdev(alloc_netdev(sizeof(xlan_s), "xlan", NET_NAME_USER, xlan_setup));
