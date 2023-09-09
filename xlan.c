@@ -413,51 +413,27 @@ static int xlan_enslave (net_device_s* dev, net_device_s* phys, struct netlink_e
 
 static int xlan_unslave (net_device_s* dev, net_device_s* phys) {
 
-    enum {
-        _UNSL_SUCCESS,
-        _UNSL_NOT_ON_SLOT,
-        __N,
-    };
-
-    static const u16 codes [__N] ={
-        [_UNSL_SUCCESS      ] = 0,
-        [_UNSL_NOT_ON_SLOT  ] = ENOTCONN,
-    };
-
-    static const char* strs [__N] = {
-        [_UNSL_SUCCESS       ] = "SUCCESS",
-        [_UNSL_NOT_ON_SLOT   ] = "FAILED: ITFC IS NOT ON PORT",
-    };
+    printk("XLAN: %s: UNSLAVE ITFC %s\n",
+        dev->name, phys->name, port);
 
     xlan_s* const xlan = netdev_priv(dev);
 
-    const uint port = BE16(((const mac_s*)dev->dev_addr)->port);
-    
-    uint ret;
-
-    // MATCHES?
-    if (xlan->ports[port] != phys)
-        ret = _UNSL_NOT_ON_SLOT;
-    else {
-        // UNHOOK (IF ITS STILL HOOKED)
-        if (rtnl_dereference(phys->rx_handler) == xlan_in) {
-                            phys->rx_handler_data = NULL;        
-            netdev_rx_handler_unregister(phys);
+    foreach (port, PORTS_N) {        
+        if (xlan->ports[port] == phys) {
+            // UNHOOK (IF ITS STILL HOOKED)
+            if (rtnl_dereference(phys->rx_handler) == xlan_in) {
+                                 phys->rx_handler_data = NULL;        
+                netdev_rx_handler_unregister(phys);
+            }
+            // DROP IT
+            dev_put(phys);
+            // UNREGISTER IT
+            xlan->ports[port] = NULL;
+            return 0;
         }
-
-        // DROP IT
-        dev_put(phys);
-
-        // UNREGISTER IT
-        xlan->ports[port] = NULL;
-
-        ret = _UNSL_SUCCESS;
     }
 
-    printk("XLAN: %s: UNSLAVE ITFC %s: PORT %u\n",
-        dev->name, phys->name, port, strs[ret]);
-
-    return -(int)codes[ret];
+    return -ENOTCONN;
 }
 
 // ip link set dev xlan addr 50:62:N4:N4:N6:N6:HH:HH:GG:GG
