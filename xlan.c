@@ -477,7 +477,7 @@ static void xlan_setup (net_device_s* const dev) {
     xlan->net6    = BE16(NET6);
     xlan->host    = BE16(20);
     xlan->gw      = BE16(50);
-    xlan->portsN  = 0;
+    xlan->lportsN = 1;
 }
 
 static int __init xlan_init (void) {
