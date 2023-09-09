@@ -310,30 +310,23 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
     uint now   = jiffies;
     uint ports = path->ports;
 
-    uint rport;
-    uint lport;
-
-    net_device_s* phys;
-
     foreach (r, ROUNDS) {
 
+        // NOTE: MUDA A PORTA LOCAL COM MAIS FREQUENCIA, PARA QUE O SWITCH A DESCUBRA
+        // for PORTS_N in range(7): assert len(set((_ // PORTS_N, _ % PORTS_N) for _ in range(PORTS_N*PORTS_N))) == PORTS_N*PORTS_N
         foreach (c, (PORTS_N * PORTS_N)) {
-
-            // NOTE: MUDA A PORTA LOCAL COM MAIS FREQUENCIA, PARA QUE O SWITCH A DESCUBRA
-            // for PORTS_N in range(7): assert len(set((_ // PORTS_N, _ % PORTS_N) for _ in range(PORTS_N*PORTS_N))) == PORTS_N*PORTS_N
             ports %= PORTS_N * PORTS_N;
 
-            rport = ports / PORTS_N;
-            lport = ports % PORTS_N;
+            const uint rport = ports / PORTS_N;
+            const uint lport = ports % PORTS_N;
 
-            phys = xlan->ports[lport];
+            net_device_s* const phys = xlan->ports[lport];
 
             if (phys && (phys->flags & IFF_UP) == IFF_UP && // IFF_RUNNING // IFF_LOWER_UP
                 ( r == 4 || ( // NO ULTIMO ROUND FORCA MESMO ASSIM
                     (r*1*HZ)/5 >= (now - path->last) && // SE DEU UMA PAUSA, TROCA DE PORTA
                     (r*2*HZ)/1 >= (now - xlan->seen[rhost][rport][lport]) // KNOWN TO WORK
                 ))) {
-
                     path->ports = ports;
                     path->last  = now;
 
