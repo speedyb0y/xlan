@@ -79,7 +79,7 @@ typedef struct notifier_block notifier_block_s;
 
 typedef union v4_addr_s {
     u8  addr[4];
-    u16	addr16[2];
+    u16 addr16[2];
     u32 addr32;
     struct {
         u16 prefix;
@@ -88,9 +88,9 @@ typedef union v4_addr_s {
 } v4_addr_s;
 
 typedef union v6_addr_s {
-    u8	addr[16];
-    u16	addr16[8];
-    u32	addr32[4];
+    u8  addr[16];
+    u16 addr16[8];
+    u32 addr32[4];
     u64 addr64[2];
     struct {
         u16 prefix;
@@ -117,13 +117,13 @@ typedef struct pkt_s {
     union {
         struct {
             u8  version;
-            u8	tos;
-            u16	size;
-            u16	id;
-            u16	frag;
-            u8	ttl;
-            u8	protocol;
-            u16	cksum;
+            u8  tos;
+            u16 size;
+            u16 id;
+            u16 frag;
+            u8  ttl;
+            u8  protocol;
+            u16 cksum;
             v4_addr_s src;
             v4_addr_s dst;
             u16 sport;
@@ -131,14 +131,14 @@ typedef struct pkt_s {
             u16 _pad[10];
         } __COMPACT v4;
         struct {
-	        u8 version;
-	        u8 _flow;
+            u8 version;
+            u8 _flow;
             u16 flow;
-	        u16 psize;
-	        u8 protocol;
-	        u8 ttl;
+            u16 psize;
+            u8 protocol;
+            u8 ttl;
             v6_addr_s src;
-            v6_addr_s dst;            
+            v6_addr_s dst;
             u16 sport;
             u16 dport;
         } __COMPACT v6;
@@ -230,7 +230,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
 
     // IDENTIFY DESTINATION
     const uint rHost = v4 ?
-        ( pkt->v4.dst.prefix  == xlan->prefix4 ? 
+        ( pkt->v4.dst.prefix  == xlan->prefix4 ?
           pkt->v4.dst.host    :  xlan->gw ) :
         ( pkt->v6.dst.prefix  == xlan->prefix6 ?
           pkt->v6.dst.host    :  xlan->gw ) ;
