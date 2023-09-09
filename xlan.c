@@ -172,23 +172,19 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
 
     const pkt_s* const pkt = SKB_MAC(skb) - offsetof(pkt_s, dst);
 
-    const uint lvendor = BE16(pkt->dst.vendor);
-    const uint lhost   = BE16(pkt->dst.host) % HOSTS_N;
-    const uint lport   = BE16(pkt->dst.port);
-    const uint rvendor = BE16(pkt->src.vendor);
-    const uint rhost   = BE16(pkt->src.host) % HOSTS_N;
-    const uint rport   = BE16(pkt->src.port);
-
     // SO INTERCEPTA O QUE FOR
-    if (lvendor != xlan->vendor
-     || rvendor != xlan->vendor)
+    if (pkt->dst.vendor != xlan->vendor
+     || pkt->src.vendor != xlan->vendor)
         return RX_HANDLER_PASS;
-    
+
+    const uint lhost = BE16(pkt->dst.host) % HOSTS_N; // IP -> ID
+    const uint lport = BE16(pkt->dst.port) % PORTS_N;
+    const uint rhost = BE16(pkt->src.host) % HOSTS_N;
+    const uint rport = BE16(pkt->src.port) % PORTS_N;
+
     // DROP CASES
     if (lhost != xlan->host         // NOT TO ME
      || rhost == xlan->host         // FROM ME
-     || lport >= xlan->portsN       // INVALID L PORT
-     || rport >= xlan->portsN       // INVALID R PORT
      || phys  != xlan->physs[lport] // SHOULD RECEIVE ON OTHER INTERFACE
      || virt->flags == 0) { // ->flags & UP
         kfree_skb(skb);
@@ -234,10 +230,10 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
 
     // IDENTIFY DESTINATION
     const uint rHost = v4 ?
-        ( BE16(pkt->v4.dst.prefix) == xlan->prefix4 ? 
-          BE16(pkt->v4.dst.host  ) :  xlan->gw ) :
-        ( BE16(pkt->v6.dst.prefix) == xlan->prefix6 ?
-          BE16(pkt->v6.dst.host  ) :  xlan->gw ) ;
+        ( pkt->v4.dst.prefix  == xlan->prefix4 ? 
+          pkt->v4.dst.host    :  xlan->gw ) :
+        ( pkt->v6.dst.prefix  == xlan->prefix6 ?
+          pkt->v6.dst.host    :  xlan->gw ) ;
 
     if (rHost >= HOSTS_N)
         goto drop;
@@ -521,13 +517,13 @@ static void xlan_setup (net_device_s* const dev) {
 
     memset(xlan, 0, sizeof(*xlan));
 
-    xlan->vendor  = VENDOR;
-    xlan->prefix4 = PREFIX4;
-    xlan->prefix6 = PREFIX6;
+    xlan->vendor  = BE16(VENDOR);
+    xlan->prefix4 = BE16(PREFIX4);
+    xlan->prefix6 = BE16(PREFIX6);
     xlan->physN   = 0;
     xlan->portsN  = PORTS_N;
     xlan->host    = 20;
-    xlan->gw      = 50;
+    xlan->gw      = BE16(50);
 }
 
 static int __init xlan_init (void) {
