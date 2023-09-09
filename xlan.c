@@ -165,7 +165,7 @@ typedef struct xlan_s {
     u16 net6;   // NNNN::
     u16 host;   // .HH.HH ::HHHH LHOST
     u16 gw;     // .HH.HH ::HHHH RHOST, WHEN IT DOES NOT BELONG TO THE NET
-    u16 lportsN;  // PHYSICAL INTERFACES
+    u16 portsN;  // PHYSICAL INTERFACES
     net_device_s* physs[PORTS_N];
     xlan_rh_s hosts[HOSTS_N];
 } xlan_s;
