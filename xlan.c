@@ -122,8 +122,7 @@ typedef struct pkt_s {
             u8 _y[2];
             v4_addr_s src;
             v4_addr_s dst;
-            u16 sport;
-            u16 dport;
+            u32 ports;
             u16 _pad[10];
         } __COMPACT v4;
         struct {
@@ -135,8 +134,7 @@ typedef struct pkt_s {
             u8 _y[1];
             v6_addr_s src;
             v6_addr_s dst;
-            u16 sport;
-            u16 dport;
+            u32 ports;
         } __COMPACT v6;
     };
 } __COMPACT pkt_s;
@@ -234,8 +232,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
         ?  pkt->v4.protocol     // IP PROTOCOL
         + (pkt->v4.src.w32[0]   // SRC ADDR
          * pkt->v4.dst.w32[0])  // DST ADDR
-        + (pkt->v4.sport        // SRC PORT
-         * pkt->v4.dport)       // DST PORT
+        +  pkt->v4.ports        // SRC PORT, DST PORT
         : (pkt->v6.protocol     // IP PROTOCOL
          * pkt->v6.flow8        // FLOW
          * pkt->v6.flow16)      // FLOW
@@ -243,8 +240,8 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
          ^ pkt->v6.src.w64[1])  // SRC ADDR
         + (pkt->v6.dst.w64[0]   // DST ADDR
          ^ pkt->v6.dst.w64[1])  // DST ADDR
-        + (pkt->v6.sport        // SRC PORT
-         * pkt->v6.dport)       // DST PORT
+        + (pkt->v6.ports        // SRC PORT
+         )       // DST PORT
     ))];
 
     uint now   = jiffies;
