@@ -204,10 +204,9 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
     rh->lseen[rport][lport] = jiffies;
     rh->rseen[rport]        = jiffies;
 
-    //
+    // KEEP REMOTE PORTS NUMBER FRESH
     const u64 expired = jiffies - 30*HZ;
 
-    // KEEP REMOTE PORTS NUMBER FRESH
     if (rh->rseen[rh->portsN - 1] < expired) {
         uint last = 0;
         foreach (i, PORTS_N) {
