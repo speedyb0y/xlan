@@ -4,18 +4,6 @@ config XLAN
 	help
 	  example
 
-config XLAN_VENDOR
-	hex "VENDOR"
-	default 0x5062
-
-config XLAN_PREFIX4
-	hex "PREFIX IPv4"
-	default 0x6464
-
-config XLAN_PREFIX6
-	hex "PREFIX IPv6"
-	default 0xfc00
-
 config XLAN_MTU
 	int "MTU"
 	default 1500
