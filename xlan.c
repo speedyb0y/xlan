@@ -165,13 +165,13 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
     const uint rport = HP_DECODE(pkt->src.port);
 
     // DISCARD THOSE
-    if (lhost != xlan->host // NOT TO ME (POIS PODE TER RECEBIDO DEVIDO AO MODO PROMISCUO)
-     || rhost == xlan->host
-     || lhost >= HOSTS_N
+    if (lhost >= HOSTS_N
      || rhost >= HOSTS_N
      || lport >= PORTS_N
      || rport >= PORTS_N
-     || xlan->ports[lport] != phys // WRONG INTERFACE
+     || rhost == xlan->host
+     || lhost != xlan->host // NOT TO ME (POIS PODE TER RECEBIDO DEVIDO AO MODO PROMISCUO)
+     || phys  != xlan->ports[lport] // WRONG INTERFACE
      || virt->flags == 0) { // ->flags & UP
         kfree_skb(skb);
         return RX_HANDLER_CONSUMED;
