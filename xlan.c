@@ -375,7 +375,7 @@ static int xlan_enslave (net_device_s* dev, net_device_s* phys, struct netlink_e
     const uint host   = BE16(((const eth_addr_s*)mac)->host);
     const uint port   = BE16(((const eth_addr_s*)mac)->port);
 
-    print("XLAN: %s: TRYING TO ENSLAVE ITFC %s VENDOR 0x%04X HOST %u PORT %u MAC %02X:%02X:%02X:%02X:%02X:%02X\n",
+    printk("XLAN: %s: TRYING TO ENSLAVE ITFC %s VENDOR 0x%04X HOST %u PORT %u MAC %02X:%02X:%02X:%02X:%02X:%02X\n",
         dev->name, phys->name, vendor, host, port,
         mac[0], mac[1], mac[2],
         mac[3], mac[4], mac[5]);
