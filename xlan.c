@@ -175,13 +175,13 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
     const pkt_s* const pkt = SKB_MAC(skb) - offsetof(pkt_s, dst);
 
     // SO HANDLE O QUE FOR
-    if (pkt->dst.vendor != xlan->vendor
-     || pkt->src.vendor != xlan->vendor)
+    if (pkt->type != BE16(0x2562))
         return RX_HANDLER_PASS;
 
+    // ASSERT: pkt->src.host != xlan->host NOT FROM ME
+
     // DROP CASES
-    if (pkt->dst.host != xlan->host // NOT TO ME
-     || pkt->src.host == xlan->host // FROM ME
+    if (pkt->dst.host != xlan->host // NOT TO ME (POIS PODE TER RECEBIDO DEVIDO AO MODO PROMISCUO)
      || phys != xlan->physs[BE16(pkt->dst.port) % PORTS_N] // WRONG INTERFACE
      || virt->flags == 0) { // ->flags & UP
         kfree_skb(skb);
@@ -194,15 +194,8 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
         [BE16(pkt->src.port) % PORTS_N]
             = jiffies;
 
-#if 0 // PULA O ETHERNET HEADER
-    // NOTE: skb->network_header JA ESTA CORRETO
-    skb->data       = SKB_NETWORK(ip);
-    skb->len        = SKB_TAIL(skb) - SKB_NETWORK(ip);
-    skb->mac_header = skb->network_header;
-    skb->mac_len    = 0;
-#endif
-    skb->pkt_type   = PACKET_HOST;
-    skb->dev        = virt;
+    skb->protocol = pkt->v4.version == 0x45 ? BE16(ETH_P_IP) : BE16(ETH_P_IPV6);
+    skb->dev = virt;
 
     return RX_HANDLER_ANOTHER;
 }
@@ -305,7 +298,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
     pkt->src.vendor =      xlan->vendor;
     pkt->src.host   =      xlan->host;
     pkt->src.port   = BE16(lport);
-    pkt->type       = skb->protocol;
+    pkt->type       = BE16(0x2562);
 
     // UPDATE SKB
     skb->data       = PTR(pkt);
@@ -334,54 +327,14 @@ drop:
 
 static int xlan_up (net_device_s* const dev) {
 
-    xlan_s* const xlan = netdev_priv(dev);
-    net_device_s** const physs = xlan->physs;
-    // TODO: XLAN MUST BE DOWN
-    const uint physN  = xlan->physN;
-    const uint portsN = xlan->portsN;
-
-    if (physN) {
-
-        // FILL UP THE REMAINING
-        for (uint i = physN; i != portsN; i++)
-            physs[i] =
-            physs[i % physN];
-
-        printk("XLAN: %s: UP WITH MTU %d VENDOR %04X V4 %04X V6 %04X PORTS %u INTERFACES %u\n",
-            dev->name,
-            dev->mtu,
-            BE16(xlan->vendor),
-            BE16(xlan->net4),
-            BE16(xlan->net6),
-                 xlan->portsN,
-                 xlan->physN
-        );
-
-        foreach (i, portsN)
-            printk("XLAN: %s: PORT %u PHYS %s\n", dev->name, i, physs[i]->name);
-
-        foreach (i, physN)
-            dev_set_promiscuity(physs[i], 1);
-
-    } else
-        printk("XLAN: %s: UP WITHOUT INTERFACES\n", dev->name);
+    printk("XLAN: %s: UP\n", dev->name);
 
     return 0;
 }
 
 static int xlan_down (net_device_s* const dev) {
 
-    xlan_s* const xlan = netdev_priv(dev);
-
     printk("XLAN: %s: DOWN\n", dev->name);
-
-    // TODO: XLAN MUST BE UP
-    const uint physN = xlan->physN;
-
-    net_device_s* const* const physs = xlan->physs;
-
-    foreach (i, physN)
-        dev_set_promiscuity(physs[i], -1);
 
     return 0;
 }
@@ -390,56 +343,39 @@ static int xlan_enslave (net_device_s* dev, net_device_s* phys, struct netlink_e
 
     (void)extack;
 
+    int ret;
+
     // TODO: XLAN MUST BE DOWN
     xlan_s* const xlan = netdev_priv(dev);
+    
+    if (phys == dev) 
+        // ITSELF
+        ret = -ELOOP;
+    elif (rtnl_dereference(phys->rx_handler) == xlan_in)
+        // ALREADY
+        ret = -EISCONN;    
+    elif (phys->flags & IFF_LOOPBACK)
+        // LOOPBACK
+        ret = -EINVAL;    
+    elif (phys->addr_len != ETH_ALEN)
+        // NOT ETHERNET
+        ret = -EINVAL;
+    elif (xlan->portsN == PORTS_N)
+        // ALL SLOTS USED
+        ret = -ENOSPC;
+    elif (netdev_rx_handler_register(phys, xlan_in, dev) != 0)
+        // FAILED TO ATTACH
+        ret = -EBUSY;
+    else { // ATTACHED
 
-    //
-    if (rtnl_dereference(phys->rx_handler) == xlan_in) {
-        printk("XLAN: ALREADY ATTACHED\n");
-        return -EISCONN;
+        phys->rx_handler_data = dev;
+
+        dev_hold((xlan->physs[xlan->portsN++] = phys));
+
+        ret = 0;
     }
 
-    //
-    if (xlan->physN
-     == xlan->portsN) {
-        printk("XLAN: TOO MANY\n");
-        return -ENOSPC;
-    }
-
-    // NEGA ELA MESMA
-    if (phys == dev) {
-        printk("XLAN: SAME\n");
-        return -ELOOP;
-    }
-
-    // NEGA LOOPBACK
-    if (phys->flags & IFF_LOOPBACK) {
-        printk("XLAN: LOOPBACK\n");
-        return -EINVAL;
-    }
-
-    // SOMENTE ETHERNET
-    if (phys->addr_len != ETH_ALEN) {
-        printk("XLAN: NOT ETHERNET\n");
-        return -EINVAL;
-    }
-
-    //
-    if (netdev_rx_handler_register(phys, xlan_in, dev) != 0) {
-        printk("XLAN: ATTACH FAILED\n");
-        return -EBUSY;
-    }
-
-    phys->rx_handler_data = dev;
-
-    dev_hold(phys);
-
-    //
-    xlan->physs [
-    xlan->physN++
-        ] = phys;
-
-    return 0;
+    return ret;
 }
 
 static int xlan_unslave (net_device_s* dev, net_device_s* phys) {
