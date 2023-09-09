@@ -92,7 +92,7 @@ typedef struct addr6_s {
 #define PKT_SIZE 64
 
 typedef struct pkt_s {
-    u16 _align[3];
+    u8 _align[6];
     mac_s src;
     mac_s dst;
     u16 type;
@@ -108,7 +108,7 @@ typedef struct pkt_s {
                 };
             } __COMPACT;
             u32 ports;
-            u16 _z[10];
+            u8 _z[20];
         } __COMPACT v4;
         struct {
             u8 _x[2];
