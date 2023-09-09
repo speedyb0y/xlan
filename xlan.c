@@ -369,7 +369,7 @@ static int xlan_enslave (net_device_s* dev, net_device_s* phys, struct netlink_e
 
     xlan_s* const xlan = netdev_priv(dev);
 
-    const u16* const mac = dev->address;
+    const u16* const mac = dev->dev_addr;
 
     const uint lport = BE16(mac[2]); // TODO: FROM MAC ADDRESS
 
