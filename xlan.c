@@ -371,32 +371,38 @@ static int xlan_enslave (net_device_s* dev, net_device_s* phys, struct netlink_e
         __X_NOT_ETHERNET,
         __X_WRONG_MAC,
         __X_INVALID_PORT,
+        __X_ANOTHER_XLAN,
+        __X_PORT_HIGHER,
         __N,
     };
 
-    static const codes[__N] ={
+    static const u16 codes[__N] ={
         [__X_SUCCESS] = 0,
         [__X_NOT_ETHERNET] = -EINVAL,
         [__X_ITSELF] = -ELOOP,
         [__X_ALREADY] = -1,
         [__X_WRONG_MAC] = -EINVAL,
-        [__X_INVALID_PORT] = -EINVAL,
+        [__X_INVALID_PORT]  = -EINVAL,
         [__X_ATTACH_FAILED] = -EBUSY,
+        [__X_ANOTHER_XLAN] = -EINVAL,
+        [__X_PORT_HIGHER] = -ENOSPC,
     };
 
-    static const strs[__N] = {
+    static const char* strs[__N] = {
         [__X_SUCCESS] = "SUCCESS",
         [__X_NOT_ETHERNET] = "FAILED: NOT ETHERNET",
-        [__X_ALREADY] = "",
-        [__X_ITSELF] = "",
-        [__X_WRONG_MAC] = "WRONG MAC",
+        [__X_ALREADY] = "FAILED: ALREADY",
+        [__X_ITSELF] = "FAILED: ITSELF",
+        [__X_WRONG_MAC] = "FAILED: WRONG MAC",
         [__X_ATTACH_FAILED] = "FAILED: COULD NOT ATTACH",
         [__X_INVALID_PORT] = "FAILED: INVALID PORT",
+        [__X_ANOTHER_XLAN] = "",
+        [__X_PORT_HIGHER] = "__X_PORT_HIGHER",
     };
 
     (void)extack;
 
-    int ret;
+    uint ret;
 
     xlan_s* const xlan = netdev_priv(dev);
 
@@ -416,16 +422,16 @@ static int xlan_enslave (net_device_s* dev, net_device_s* phys, struct netlink_e
         ret = __X_ITSELF;
     elif (0)
         // TODO: CANNOT BE OF XLAN TYPE
-        ret = -EINVAL;
+        ret = __X_ANOTHER_XLAN;
     elif (rtnl_dereference(phys->rx_handler) == xlan_in)
         // ALREADY
-        ret = -EISCONN;    
+        ret = __X_ALREADY;    
     elif (xlan->ports[port])
         // ALREADY
-        ret = -EISCONN;    
+        ret = __X_ALREADY;    
     elif (phys->flags & IFF_LOOPBACK)
         // LOOPBACK
-        ret = -EINVAL;    
+        ret = __X_NOT_ETHERNET;    
     elif (phys->addr_len != ETH_ALEN)
         // NOT ETHERNET
         ret = __X_NOT_ETHERNET;
@@ -438,7 +444,7 @@ static int xlan_enslave (net_device_s* dev, net_device_s* phys, struct netlink_e
         ret = __X_WRONG_MAC;
     elif (port >= xlan->portsN)
         // NOT CONFIGURED FOR IT
-        ret = -ENOSPC;
+        ret = __X_PORT_HIGHER;
     elif (netdev_rx_handler_register(phys, xlan_in, dev) != 0)
         // FAILED TO ATTACH
         ret = __X_ATTACH_FAILED;
@@ -454,7 +460,7 @@ static int xlan_enslave (net_device_s* dev, net_device_s* phys, struct netlink_e
     }
 
     printk("XLAN: %s\n", strs[ret]);
-    return codes[ret];
+    return -(int)codes[ret];
 }
 
 static int xlan_unslave (net_device_s* dev, net_device_s* phys) {
