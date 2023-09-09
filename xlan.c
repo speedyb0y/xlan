@@ -377,27 +377,27 @@ static int xlan_enslave (net_device_s* dev, net_device_s* phys, struct netlink_e
     };
 
     static const u16 codes[__N] ={
-        [__X_SUCCESS] = 0,
-        [__X_NOT_ETHERNET] = -EINVAL,
-        [__X_ITSELF] = -ELOOP,
-        [__X_ALREADY] = -1,
-        [__X_WRONG_MAC] = -EINVAL,
-        [__X_INVALID_PORT]  = -EINVAL,
-        [__X_ATTACH_FAILED] = -EBUSY,
-        [__X_ANOTHER_XLAN] = -EINVAL,
-        [__X_PORT_HIGHER] = -ENOSPC,
+        [__X_SUCCESS       ] = 0,
+        [__X_NOT_ETHERNET  ] = -EINVAL,
+        [__X_ITSELF        ] = -ELOOP,
+        [__X_ALREADY       ] = -1,
+        [__X_WRONG_MAC     ] = -EINVAL,
+        [__X_INVALID_PORT  ] = -EINVAL,
+        [__X_ATTACH_FAILED ] = -EBUSY,
+        [__X_ANOTHER_XLAN  ] = -EINVAL,
+        [__X_PORT_HIGHER   ] = -ENOSPC,
     };
 
     static const char* strs[__N] = {
-        [__X_SUCCESS] = "SUCCESS",
-        [__X_NOT_ETHERNET] = "FAILED: NOT ETHERNET",
-        [__X_ALREADY] = "FAILED: ALREADY",
-        [__X_ITSELF] = "FAILED: ITSELF",
-        [__X_WRONG_MAC] = "FAILED: WRONG MAC",
-        [__X_ATTACH_FAILED] = "FAILED: COULD NOT ATTACH",
-        [__X_INVALID_PORT] = "FAILED: INVALID PORT",
-        [__X_ANOTHER_XLAN] = "",
-        [__X_PORT_HIGHER] = "__X_PORT_HIGHER",
+        [__X_SUCCESS       ] = "SUCCESS",
+        [__X_NOT_ETHERNET  ] = "FAILED: NOT ETHERNET",
+        [__X_ALREADY       ] = "FAILED: ALREADY",
+        [__X_ITSELF        ] = "FAILED: ITSELF",
+        [__X_WRONG_MAC     ] = "FAILED: WRONG MAC",
+        [__X_ATTACH_FAILED ] = "FAILED: COULD NOT ATTACH",
+        [__X_INVALID_PORT  ] = "FAILED: INVALID PORT",
+        [__X_ANOTHER_XLAN  ] = "FAILED: ANOTHER XLAN AS PHYSICAL",
+        [__X_PORT_HIGHER   ] = "FAILED: PORT NOT HOLD BY CONFIG",
     };
 
     (void)extack;
