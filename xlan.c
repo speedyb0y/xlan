@@ -15,6 +15,10 @@
 #include <net/addrconf.h>
 #include <linux/module.h>
 
+#define __hot __attribute__((hot))
+#define __cold __attribute__((cold))
+#define __packed __attribute__((packed))
+
 typedef __u8  u8;
 typedef __u16 u16;
 typedef __u32 u32;
@@ -84,13 +88,11 @@ typedef struct notifier_block notifier_block_s;
 #define HP_ENCODE(hp) (((uint)(hp)) * 0x0101U)
 #define HP_DECODE(hp) (((uint)(hp)) & 0x00FFU)
 
-#define __COMPACT __attribute__((packed))
-
 typedef struct mac_s {
     u16 vendor;
     u16 host;
     u16 port;
-} __COMPACT mac_s;
+} __packed mac_s;
 
 typedef struct addr4_s {
     u16 net;
@@ -121,10 +123,10 @@ typedef struct pkt_s {
                     addr4_s src;
                     addr4_s dst;
                 };
-            } __COMPACT;
+            } __packed;
             u32 ports;
             u8 _z[20];
-        } __COMPACT v4;
+        } __packed v4;
         struct pkt_ip_v6_s {
             u8 _x[2];
             u16 flow;
@@ -136,11 +138,11 @@ typedef struct pkt_s {
                     addr6_s src;
                     addr6_s dst;
                 };
-            } __COMPACT;
+            } __packed;
             u32 ports;
-        } __COMPACT v6;
+        } __packed v6;
     } ip;
-} __COMPACT pkt_s;
+} __packed pkt_s;
 #else
 typedef void pkt_s;
 #endif
