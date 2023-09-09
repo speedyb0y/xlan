@@ -82,7 +82,7 @@ typedef union v4_addr_s {
     u16 w16[2];
     u32 w32[1];
     struct {
-        u16 prefix;
+        u16 net;
         u16 host;
     };
 } v4_addr_s;
@@ -93,7 +93,7 @@ typedef union v6_addr_s {
     u32 w32[4];
     u64 w64[2];
     struct {
-        u16 prefix;
+        u16 net;
         u16 _addr[6];
         u16 host;
     };
@@ -250,10 +250,8 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
 
     // IDENTIFY DESTINATION
     const uint rhost = v4 ?
-        ( BE16(pkt->v4.dst.prefix) == xlan->net4 ?
-          BE16(pkt->v4.dst.host)   :  xlan->gw ) :
-        ( BE16(pkt->v6.dst.prefix) == xlan->net6 ?
-          BE16(pkt->v6.dst.host)   :  xlan->gw ) ;
+        ( BE16(pkt->v4.dst.net) == xlan->net4 ? BE16(pkt->v4.dst.host) : xlan->gw ) :
+        ( BE16(pkt->v6.dst.net) == xlan->net6 ? BE16(pkt->v6.dst.host) : xlan->gw ) ;
 
     if (rhost >= HOSTS_N)
         goto drop;
