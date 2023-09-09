@@ -448,14 +448,14 @@ static int xlan_unslave (net_device_s* dev, net_device_s* phys) {
     return -ENOTCONN;
 }
 
-// ip link set dev xlan addr 50:62:N4:N4:N6:N6:HH:HH:GG:GG
-#define XLAN_INFO_LEN 8
+// ip link set dev xlan addr N4:N4:N6:N6:HH:GG
+#define XLAN_INFO_LEN 6
 typedef struct xlan_info_s {
     u16 net4;
     u16 net6;
-    u16 host;
-    u16 gw;
-    u16 _pad[3];
+    u8 host;
+    u8 gw;
+    u16 _pad;
 } xlan_info_s;
 
 static int xlan_cfg (net_device_s* const dev, void* const addr) {
@@ -468,8 +468,8 @@ static int xlan_cfg (net_device_s* const dev, void* const addr) {
     // READ
     const uint net4   = BE16(info->net4);
     const uint net6   = BE16(info->net6);
-    const uint host   = BE16(info->host);
-    const uint gw     = BE16(info->gw);
+    const uint host   =      info->host;
+    const uint gw     =      info->gw;
 
     printk("XLAN: %s: CONFIGURING: HOST %u GW %u NET4 0x%04X NET6 0x%04X\n",
         dev->name, host, gw, net4, net6);
