@@ -252,21 +252,32 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
          * pkt->v6.dport)       // DST PORT
     ))];
 
-    const uint portsN = xlan->portsN;
+    const uint lportsN = xlan->lportLast + 1;
+    const uint rportsN = xlan->rportLast[rhost] + 1;
 
     uint now   = jiffies;
-    uint rport = path->rport;
-    uint lport = path->lport;
+    uint ports = path->ports;
 
-    net_device_s* phys = xlan->physs[lport];
+    uint rport;
+    uint lport;
 
-    uint c = PORTS_N * PORTS_N + 1;
+    net_device_s* phys;
 
-    while (1) {
+    uint c = 5 * (portsN * rportsN) + 1; // TODO: FIXME: TRY A SECOND ATTEMPT BUT RELAXED
+
+    foreach (i, 5) {
 
         if (c-- == 0)
             // NO PHYS FOUND
             goto drop;
+
+        // NOTE: MUDA A PORTA LOCAL COM MAIS FREQUENCIA, PARA QUE O SWITCH A DESCUBRA
+        // for PORTS_N in range(7): assert len(set((_ // PORTS_N, _ % PORTS_N) for _ in range(PORTS_N*PORTS_N))) == PORTS_N*PORTS_N
+        ports %= portsN * portsN;
+        rport = ports / portsN;
+        lport = ports % portsN;
+
+        phys = xlan->physs[lport];
 
         if (   (now - path->last) <= HZ/5 // SE DEU UMA PAUSA, TROCA DE PORTA
             && (now - xlan->rseen[rhost][rport]) <= 3*HZ
@@ -275,12 +286,6 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
 
             break;
         }
-
-        // NOTE: MUDA A PORTA LOCAL COM MAIS FREQUENCIA, PARA QUE O SWITCH A DESCUBRA
-        // for PORTS_N in range(7): assert len(set((_ // PORTS_N, _ % PORTS_N) for _ in range(PORTS_N*PORTS_N))) == PORTS_N*PORTS_N
-        ports %= portsN * portsN;
-        rport = ports / portsN;
-        lport = ports % portsN;
 
         // SOMENTE SE ELA ESTIVER ATIVA E OK
         if ((phys = xlan->physs[lport])) // IFF_RUNNING // IFF_LOWER_UP
