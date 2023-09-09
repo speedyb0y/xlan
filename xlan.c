@@ -297,10 +297,10 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
     path->last  = now;
 
     // INSERT ETHERNET HEADER
-    pkt->dst.vendor = BE16(xlan->vendor);
+    pkt->dst.vendor =      xlan->vendor;
     pkt->dst.host   = BE16(rHost);
     pkt->dst.port   = BE16(rPort);
-    pkt->src.vendor = BE16(xlan->vendor);
+    pkt->src.vendor =      xlan->vendor;
     pkt->src.host   = BE16(xlan->host);
     pkt->src.port   = BE16(lPort);
     pkt->type       = skb->protocol;
