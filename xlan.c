@@ -55,14 +55,9 @@ typedef struct notifier_block notifier_block_s;
 #define BE64(x) ((u64)__builtin_bswap64((u64)(x)))
 #endif
 
-#ifndef CONFIG_XLAN
-#include "config.h"
-#endif
-
-// FROM CONFIG
-#define HOSTS_N CONFIG_XLAN_HOSTS_N
-#define PORTS_N CONFIG_XLAN_PORTS_N // MMC DAS QUANTIDADES DE PORTAS DOS HOSTS DA REDE
-#define MTU     CONFIG_XLAN_MTU
+#define HOSTS_N 65536
+#define PORTS_N 4
+#define MTU     7600 // TODO: FIXME:
 
 #define ETH_SIZE 14
 #define IP4_SIZE 20
@@ -174,7 +169,7 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
         return RX_HANDLER_CONSUMED;
     }
 
-    //    
+    //
     xlan->seen[rhost][rport][lport] = jiffies;
 
     skb->protocol = pkt->v4.version == 0x45 ?
@@ -364,7 +359,7 @@ static int xlan_enslave (net_device_s* dev, net_device_s* phys, struct netlink_e
     const uint host   = BE16(mac->host);
     const uint port   = BE16(mac->port);
 
-    if (phys == dev) 
+    if (phys == dev)
         // ITSELF
         ret = _ENSL_ITSELF;
     elif (0)
@@ -372,13 +367,13 @@ static int xlan_enslave (net_device_s* dev, net_device_s* phys, struct netlink_e
         ret = _ENSL_ANOTHER_XLAN;
     elif (rtnl_dereference(phys->rx_handler) == xlan_in)
         // ALREADY
-        ret = _ENSL_ALREADY;    
+        ret = _ENSL_ALREADY;
     elif (xlan->ports[port])
         // ALREADY
-        ret = _ENSL_ALREADY;    
+        ret = _ENSL_ALREADY;
     elif (phys->flags & IFF_LOOPBACK)
         // LOOPBACK
-        ret = _ENSL_NOT_ETHERNET;    
+        ret = _ENSL_NOT_ETHERNET;
     elif (phys->addr_len != ETH_ALEN)
         // NOT ETHERNET
         ret = _ENSL_NOT_ETHERNET;
@@ -415,11 +410,11 @@ static int xlan_unslave (net_device_s* dev, net_device_s* phys) {
 
     xlan_s* const xlan = netdev_priv(dev);
 
-    foreach (port, PORTS_N) {        
+    foreach (port, PORTS_N) {
         if (xlan->ports[port] == phys) {
             // UNHOOK (IF ITS STILL HOOKED)
             if (rtnl_dereference(phys->rx_handler) == xlan_in) {
-                                 phys->rx_handler_data = NULL;        
+                                 phys->rx_handler_data = NULL;
                 netdev_rx_handler_unregister(phys);
             }
             // DROP IT
@@ -445,14 +440,14 @@ typedef struct xlan_info_s {
     u16 net4;
     u16 net6;
     u16 host;
-    u16 gw;    
+    u16 gw;
     u16 _pad[3];
 } xlan_info_s;
 
 static int xlan_cfg (net_device_s* const dev, void* const addr) {
 
-	if(netif_running(dev))
-		return -EBUSY;
+    if(netif_running(dev))
+        return -EBUSY;
 
     const xlan_info_s* const info = addr;
 
