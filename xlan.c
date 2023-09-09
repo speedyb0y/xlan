@@ -413,9 +413,6 @@ static int xlan_enslave (net_device_s* dev, net_device_s* phys, struct netlink_e
 
 static int xlan_unslave (net_device_s* dev, net_device_s* phys) {
 
-    printk("XLAN: %s: UNSLAVE ITFC %s\n",
-        dev->name, phys->name, port);
-
     xlan_s* const xlan = netdev_priv(dev);
 
     foreach (port, PORTS_N) {        
@@ -429,9 +426,14 @@ static int xlan_unslave (net_device_s* dev, net_device_s* phys) {
             dev_put(phys);
             // UNREGISTER IT
             xlan->ports[port] = NULL;
+            printk("XLAN: %s: DETACHED ITFC %s FROM PORT %u\n",
+                dev->name, phys->name, port);
             return 0;
         }
     }
+
+    printk("XLAN: %s: CANNOT DETACHED ITFC %s FROM ANY PORT\n",
+        dev->name, phys->name);
 
     return -ENOTCONN;
 }
