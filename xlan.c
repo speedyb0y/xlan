@@ -146,8 +146,7 @@ typedef struct pkt_s {
 } __COMPACT pkt_s;
 
 typedef struct xlan_path_s {
-    u16 lport;
-    u16 rport;
+    u32 ports;
     u32 last;
 } xlan_path_s;
 
@@ -252,7 +251,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
          * pkt->v6.dport)       // DST PORT
     ))];
 
-    const uint lportsN = xlan->lportLast + 1;
+    const uint lportsN = xlan->lportLast        + 1;
     const uint rportsN = xlan->rportLast[rhost] + 1;
 
     uint now   = jiffies;
@@ -262,41 +261,33 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
     uint lport;
 
     net_device_s* phys;
+#define ROUNDS 5
+    uint c = 1 + ROUNDS * (lportsN * rportsN);
 
-    uint c = 5 * (portsN * rportsN) + 1; // TODO: FIXME: TRY A SECOND ATTEMPT BUT RELAXED
+    foreach (r, ROUNDS) {
 
-    foreach (i, 5) {
-
+        // LIMIT
         if (c-- == 0)
-            // NO PHYS FOUND
             goto drop;
 
         // NOTE: MUDA A PORTA LOCAL COM MAIS FREQUENCIA, PARA QUE O SWITCH A DESCUBRA
         // for PORTS_N in range(7): assert len(set((_ // PORTS_N, _ % PORTS_N) for _ in range(PORTS_N*PORTS_N))) == PORTS_N*PORTS_N
-        ports %= portsN * portsN;
+        ports %= lportsN * rportsN;
+
         rport = ports / portsN;
         lport = ports % portsN;
-
         phys = xlan->physs[lport];
 
-        if (   (now - path->last) <= HZ/5 // SE DEU UMA PAUSA, TROCA DE PORTA
-            && (now - xlan->rseen[rhost][rport]) <= 3*HZ
-            && (now - xlan->lseen[lhost][lport]) <= 3*HZ
-            && phys && (phys->flags & IFF_UP) == IFF_UP) {
-
+        if (   (now - path->last) <= (r*HZ)/5 // SE DEU UMA PAUSA, TROCA DE PORTA
+            && (now - xlan->rseen[rhost][rport]) <= r*2*HZ // KNOWN TO WORK
+            && (now - xlan->lseen[lhost][lport]) <= r*2*HZ // KNOWN TO WORK
+            && phys && (phys->flags & IFF_UP) == IFF_UP) // IFF_RUNNING // IFF_LOWER_UP
             break;
-        }
-
-        // SOMENTE SE ELA ESTIVER ATIVA E OK
-        if ((phys = xlan->physs[lport])) // IFF_RUNNING // IFF_LOWER_UP
-            if (()
-                break;
 
         ports++;
     }
 
-    path->lport = lport;
-    path->rport = rport;
+    path->ports = ports;
     path->last  = now;
 
     // INSERT ETHERNET HEADER
