@@ -355,10 +355,13 @@ static int xlan_enslave (net_device_s* dev, net_device_s* phys, struct netlink_e
     xlan_s* const xlan = netdev_priv(dev);
 
     const uint lport = 0; // TODO: FROM MAC ADDRESS
-    
+
     if (phys == dev) 
         // ITSELF
         ret = -ELOOP;
+    elif (0)
+        // TODO: CANNOT BE OF XLAN TYPE
+        ret = -EINVAL;
     elif (rtnl_dereference(phys->rx_handler) == xlan_in)
         // ALREADY
         ret = -EISCONN;    
