@@ -369,7 +369,8 @@ static int xlan_enslave (net_device_s* dev, net_device_s* phys, struct netlink_e
         __X_ALREADY,
         __X_ATTACH_FAILED,
         __X_NOT_ETHERNET,
-        __X_WRONG_MAC,
+        __X_WRONG_VENDOR,
+        __X_WRONG_HOST,
         __X_INVALID_PORT,
         __X_ANOTHER_XLAN,
         __X_PORT_HIGHER,
@@ -381,7 +382,8 @@ static int xlan_enslave (net_device_s* dev, net_device_s* phys, struct netlink_e
         [__X_NOT_ETHERNET  ] = -EINVAL,
         [__X_ITSELF        ] = -ELOOP,
         [__X_ALREADY       ] = -1,
-        [__X_WRONG_MAC     ] = -EINVAL,
+        [__X_WRONG_VENDOR  ] = -EINVAL,
+        [__X_WRONG_HOST    ] = -EINVAL,
         [__X_INVALID_PORT  ] = -EINVAL,
         [__X_ATTACH_FAILED ] = -EBUSY,
         [__X_ANOTHER_XLAN  ] = -EINVAL,
@@ -393,7 +395,8 @@ static int xlan_enslave (net_device_s* dev, net_device_s* phys, struct netlink_e
         [__X_NOT_ETHERNET  ] = "FAILED: NOT ETHERNET",
         [__X_ALREADY       ] = "FAILED: ALREADY",
         [__X_ITSELF        ] = "FAILED: ITSELF",
-        [__X_WRONG_MAC     ] = "FAILED: WRONG MAC",
+        [__X_WRONG_VENDOR  ] = "FAILED: WRONG VENDOR",
+        [__X_WRONG_HOST    ] = "FAILED: WRONG HOST",
         [__X_ATTACH_FAILED ] = "FAILED: COULD NOT ATTACH",
         [__X_INVALID_PORT  ] = "FAILED: INVALID PORT",
         [__X_ANOTHER_XLAN  ] = "FAILED: ANOTHER XLAN AS PHYSICAL",
@@ -438,10 +441,12 @@ static int xlan_enslave (net_device_s* dev, net_device_s* phys, struct netlink_e
     elif (port >= PORTS_N)
         // INVALID
         ret = __X_INVALID_PORT;
-    elif (vendor != BE16(xlan->vendor)
-       || host   !=      xlan->host)
-        // WRONG MAC
-        ret = __X_WRONG_MAC;
+    elif (vendor != BE16(xlan->vendor))
+        // WRONG VENDOR
+        ret = __X_WRONG_VENDOR;
+    elif (host != xlan->host)
+        // WRONG HOST
+        ret = __X_WRONG_HOST;
     elif (port >= xlan->portsN)
         // NOT CONFIGURED FOR IT
         ret = __X_PORT_HIGHER;
