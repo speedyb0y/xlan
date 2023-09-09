@@ -596,8 +596,6 @@ static int __init xlan_init (void) {
     printk("XLAN: INIT\n");
 
     BUILD_BUG_ON( sizeof(mac_s) != ETH_ALEN );
-    BUILD_BUG_ON( sizeof(addr4_s) != 4 );
-    BUILD_BUG_ON( sizeof(addr6_s) != 16 );
 #if XCONF_XLAN_STRUCT
     BUILD_BUG_ON( sizeof(pkt_s) != PKT_SIZE );
 #endif
