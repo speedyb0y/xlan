@@ -257,7 +257,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
     // OK: TCP | UDP | UDPLITE | SCTP | DCCP
     // FAIL: ICMP
     xlan_stream_s* const path = &rh->paths[__builtin_popcountll( (u64) ( v4
-        ? pkt->v4.protocol      // IP PROTOCOL
+        ?  pkt->v4.protocol     // IP PROTOCOL
         + (pkt->v4.src.w32[0]   // SRC ADDR
          * pkt->v4.dst.w32[0])  // DST ADDR
         + (pkt->v4.sport        // SRC PORT
