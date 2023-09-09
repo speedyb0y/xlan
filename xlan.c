@@ -179,29 +179,29 @@ typedef void pkt_s;
 #else
 #define PKT_OFFSET_ETH 0
 #define PKT_OFFSET_IP  14
-#define pkt_eth           pkt
-#define to_vendor  ((u16*)pkt)[0]
-#define to_host    ((u16*)pkt)[1]
-#define to_port    ((u16*)pkt)[2]
-#define from_vendor((u16*)pkt)[3]
-#define from_host  ((u16*)pkt)[4]
-#define from_port  ((u16*)pkt)[5]
-#define pkt_type   ((u16*)pkt)[6]
-#define proto4     ((u8* )pkt)[23]
-#define addrs4     (*(u64*)(pkt + 26))
-#define ports4     (*(u32*)(pkt + 34))
-#define flow6      ((u16*)pkt)[8]
-#define proto6     ((u8* )pkt)[20]
-#define addrs6     ( (u64*)(pkt + 22))
-#define ports6     (*(u32*)(pkt + 54))
-#define from_net4  ((u16*)pkt)[13]
-#define from_host4 ((u16*)pkt)[14]
-#define to_net4    ((u16*)pkt)[15]
-#define to_host4   ((u16*)pkt)[16]
-#define from_net6  ((u16*)pkt)[11]
-#define from_host6 ((u16*)pkt)[18]
-#define to_net6    ((u16*)pkt)[19]
-#define to_host6   ((u16*)pkt)[26]
+#define pkt_eth            pkt
+#define to_vendor   ((u16*)pkt)[0]
+#define to_host     ((u16*)pkt)[1]
+#define to_port     ((u16*)pkt)[2]
+#define from_vendor ((u16*)pkt)[3]
+#define from_host   ((u16*)pkt)[4]
+#define from_port   ((u16*)pkt)[5]
+#define pkt_type    ((u16*)pkt)[6]
+#define proto4      ((u8* )pkt)[23]
+#define addrs4      (*(u64*)(pkt + 26))
+#define ports4      (*(u32*)(pkt + 34))
+#define flow6       ((u16*)pkt)[8]
+#define proto6      ((u8* )pkt)[20]
+#define addrs6      ( (u64*)(pkt + 22))
+#define ports6      (*(u32*)(pkt + 54))
+#define from_net4   ((u16*)pkt)[13]
+#define from_host4  ((u16*)pkt)[14]
+#define to_net4     ((u16*)pkt)[15]
+#define to_host4    ((u16*)pkt)[16]
+#define from_net6   ((u16*)pkt)[11]
+#define from_host6  ((u16*)pkt)[18]
+#define to_net6     ((u16*)pkt)[19]
+#define to_host6    ((u16*)pkt)[26]
 #endif
 
 typedef struct xlan_stream_s {
