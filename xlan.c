@@ -226,7 +226,9 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
         ( pkt->v4.dst.net == xlan->net4 ? BE16(pkt->v4.dst.host) : xlan->gw ):
         ( pkt->v6.dst.net == xlan->net6 ? BE16(pkt->v6.dst.host) : xlan->gw );
 
-    if (rhost >= HOSTS_N)
+    if (rhost >= HOSTS_N
+     || rhost == xlan->host)
+        // É INVALIDO / ERA EXTERNO E NAO TEMOS GATEWAY / PARA SI MESMO
         goto drop;
 
     // SELECT A PATH
