@@ -422,13 +422,11 @@ static int xlan_unslave (net_device_s* dev, net_device_s* phys) {
 
     xlan_s* const xlan = netdev_priv(dev);
 
-    net_device_s** const physs = xlan->physs;
-
     // TODO: XLAN MUST BE DOWN
     const uint lport = 0; // TODO: FROM MAC ADDRESS
 
     // MATCHES?
-    if (physs[lport] != phys)
+    if (xlan->physs[lport] != phys)
         return -ENOTCONN;
 
     // UNHOOK (IF ITS STILL HOOKED)
@@ -441,16 +439,7 @@ static int xlan_unslave (net_device_s* dev, net_device_s* phys) {
     dev_put(phys);
 
     // UNREGISTER IT
-    physs[lport] = NULL;
-
-    // RESET
-    uint last = 0;
-
-    foreach (i, PORTS_N)
-        if (physs[i])
-            last = i;
-
-    xlan->portsN = last + 1; 
+    xlan->physs[lport] = NULL;
 
     return 0;
 }
