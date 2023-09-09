@@ -152,8 +152,8 @@ typedef struct xlan_stream_s {
 
 typedef struct xlan_rh_s {
     u16 portsN;
-    u64 rseen[PORTS_N];
-    u64 lseen[PORTS_N][PORTS_N]; // TODO: FIXME: ATOMIC
+    u32 rseen[PORTS_N];
+    u32 lseen[PORTS_N][PORTS_N]; // TODO: FIXME: ATOMIC
     xlan_stream_s paths[64]; // POPCOUNT64()
 } xlan_rh_s;
 
