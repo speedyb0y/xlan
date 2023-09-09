@@ -147,19 +147,19 @@ typedef void pkt_s;
 #define pkt_v6_addrs    pkt->v6.addrs
 #define pkt_v6_ports    pkt->v6.ports
 #else
-#define pkt_dst_vendor ((u16*)pkt)[0]
-#define pkt_dst_host   ((u16*)pkt)[1]
-#define pkt_dst_port   ((u16*)pkt)[2]
-#define pkt_src_vendor ((u16*)pkt)[3]
-#define pkt_src_host   ((u16*)pkt)[4]
-#define pkt_src_port   ((u16*)pkt)[5]
-#define pkt_type       ((u16*)pkt)[6]
-#define pkt_v4_protocol 
+#define pkt_dst_vendor  ((u16*)pkt)[0]
+#define pkt_dst_host    ((u16*)pkt)[1]
+#define pkt_dst_port    ((u16*)pkt)[2]
+#define pkt_src_vendor  ((u16*)pkt)[3]
+#define pkt_src_host    ((u16*)pkt)[4]
+#define pkt_src_port    ((u16*)pkt)[5]
+#define pkt_type        ((u16*)pkt)[6]
+#define pkt_v4_protocol (*(u8* )(pkt + 14 +  9))
 #define pkt_v4_addrs    (*(u64*)(pkt + 14 + 12))
 #define pkt_v4_ports    (*(u32*)(pkt + 14 + 20))
-#define pkt_v6_flow     (*(u16* )(pkt + 14 + ))
-#define pkt_v6_protocol (*(u8* )(pkt + 14 + ))
-#define pkt_v6_addrs    ( (u64*)(pkt + 14 + 8))
+#define pkt_v6_flow     (*(u16*)(pkt + 14 +  2))
+#define pkt_v6_protocol (*(u8* )(pkt + 14 +  6))
+#define pkt_v6_addrs    ( (u64*)(pkt + 14 +  8))
 #define pkt_v6_ports    (*(u32*)(pkt + 14 + 40))
 #endif
 
