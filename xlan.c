@@ -503,7 +503,7 @@ static void xlan_setup (net_device_s* const dev) {
     memset(xlan, 0, sizeof(*xlan));
 
     xlan->vendor = BE16(VENDOR); // TODO: ip link set dev xlan addr 50:62:N4:N4:N6:N6
-    xlan->net4   = NET4
+    xlan->net4   = NET4;
     xlan->net6   = NET6;
     xlan->host   = 20;
     xlan->gw     = 50;
