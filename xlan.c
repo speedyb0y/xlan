@@ -326,7 +326,7 @@ static int xlan_enslave (net_device_s* dev, net_device_s* phys, struct netlink_e
         __N,
     };
 
-    static const u16 codes [__N] ={
+    static const u16 codes [__N] = {
         [_ENSL_SUCCESS       ] = 0,
         [_ENSL_NOT_ETHERNET  ] = EINVAL,
         [_ENSL_ITSELF        ] = ELOOP,
