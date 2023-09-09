@@ -56,7 +56,7 @@ typedef struct notifier_block notifier_block_s;
 #endif
 
 #define HOSTS_N 256
-#define PORTS_N 4
+#define PORTS_N 8
 #define MTU     7600 // TODO: FIXME:
 
 #define ETH_SIZE 14
@@ -68,7 +68,21 @@ typedef struct notifier_block notifier_block_s;
 #define ETH_P_XLAN4 0x2562
 #define ETH_P_XLAN6 0x2563
 
-#define PORT_ENCODE(port) (0xAAAA + 0x1111*port)
+#if     PORTS_N == 32
+#define PORTS_MASK 0b11111
+#elif   PORTS_N == 16
+#define PORTS_MASK 0b01111
+#elif   PORTS_N == 8
+#define PORTS_MASK 0b00111
+#elif   PORTS_N == 4
+#define PORTS_MASK 0b00011
+#elif   PORTS_N == 2
+#define PORTS_MASK 0b00001
+#else
+#error
+#endif
+
+#define PORT_ENCODE(port) ((port) * 0x1111)
 #define PORT_DECODE(port) (((port) & 0xF) - 0xA)
 
 #define __COMPACT __attribute__((packed))
@@ -161,10 +175,10 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
         return RX_HANDLER_PASS;
 
     // ASSERT: skb->type PKT_HOST
-    const uint lhost =        BE16(pkt->dst.host) % HOSTS_N;
-    const uint rhost =        BE16(pkt->src.host) % HOSTS_N;
-    const uint lport = PORT_DECODE(pkt->dst.port) % PORTS_N;
-    const uint rport = PORT_DECODE(pkt->src.port) % PORTS_N;
+    const uint lhost = HOST_DECODE(pkt->dst.host);
+    const uint lport = PORT_DECODE(pkt->dst.port);
+    const uint rhost = HOST_DECODE(pkt->src.host);
+    const uint rport = PORT_DECODE(pkt->src.port);
 
     // DISCARD THOSE
     if (pkt->src.vendor != xlan->vendor
