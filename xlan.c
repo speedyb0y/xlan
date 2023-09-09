@@ -363,6 +363,8 @@ static int xlan_down (net_device_s* const dev) {
 
 static int xlan_enslave (net_device_s* dev, net_device_s* phys, struct netlink_ext_ack* extack) {
 
+    (void)extack;
+
     enum {
         __X_SUCCESS,
         __X_ITSELF,
@@ -402,8 +404,6 @@ static int xlan_enslave (net_device_s* dev, net_device_s* phys, struct netlink_e
         [__X_ANOTHER_XLAN  ] = "FAILED: ANOTHER XLAN AS PHYSICAL",
         [__X_PORT_HIGHER   ] = "FAILED: PORT NOT HOLD BY CONFIG",
     };
-
-    (void)extack;
 
     uint ret;
 
