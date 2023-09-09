@@ -146,7 +146,8 @@ typedef struct pkt_s {
 } __COMPACT pkt_s;
 
 typedef struct xlan_path_s {
-    u32 ports;
+    u16 lport;
+    u16 rport;
     u32 last;
 } xlan_path_s;
 
@@ -254,24 +255,26 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
     const uint portsN = xlan->portsN;
 
     uint now   = jiffies;
-    uint last  = path->last;
-    uint ports = path->ports;
+    uint rport = path->rport;
+    uint lport = path->lport;
 
-    ports += (now - last) > HZ/5 // SE DEU UMA PAUSA, TROCA DE PORTA
-        || (now - xlan->seen[rhost][ports/portsN]) > 2*HZ;
+    net_device_s* phys = xlan->physs[lport];
 
-    uint rport;
-    uint lport;
-
-    net_device_s* phys;
-
-    uint c = portsN * portsN + 1;
+    uint c = PORTS_N * PORTS_N + 1;
 
     while (1) {
 
         if (c-- == 0)
             // NO PHYS FOUND
             goto drop;
+
+        if (   (now - path->last) <= HZ/5 // SE DEU UMA PAUSA, TROCA DE PORTA
+            && (now - xlan->rseen[rhost][rport]) <= 3*HZ
+            && (now - xlan->lseen[lhost][lport]) <= 3*HZ
+            && phys && (phys->flags & IFF_UP) == IFF_UP) {
+
+            break;
+        }
 
         // NOTE: MUDA A PORTA LOCAL COM MAIS FREQUENCIA, PARA QUE O SWITCH A DESCUBRA
         // for PORTS_N in range(7): assert len(set((_ // PORTS_N, _ % PORTS_N) for _ in range(PORTS_N*PORTS_N))) == PORTS_N*PORTS_N
@@ -281,13 +284,14 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
 
         // SOMENTE SE ELA ESTIVER ATIVA E OK
         if ((phys = xlan->physs[lport])) // IFF_RUNNING // IFF_LOWER_UP
-            if ((phys->flags & IFF_UP) == IFF_UP)
+            if (()
                 break;
 
         ports++;
     }
 
-    path->ports = ports;
+    path->lport = lport;
+    path->rport = rport;
     path->last  = now;
 
     // INSERT ETHERNET HEADER
