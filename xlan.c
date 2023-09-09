@@ -455,12 +455,34 @@ static int xlan_unslave (net_device_s* dev, net_device_s* phys) {
     return 0;
 }
 
+// TODO: ip link set dev xlan addr 50:62:N4:N4:N6:N6:HH:GG
+static int xlan_setup (net_device_s* const dev, void* const addr) {
+
+    xlan_s* const xlan = netdev_priv(dev);
+
+    struct {
+        u16 vendor;
+        u16 net4;
+        u16 net6;
+        u16 host;
+        u16 gw;    
+    }* const info = addr;
+
+    xlan->vendor = info->vendor;
+    xlan->net4   = info->net4;
+    xlan->net6   = info->net6;
+    xlan->host   = BE16(info->host);
+    xlan->gw     = BE16(info->host);
+
+    return 0;
+}
+
 static const net_device_ops_s xlanDevOps = {
     .ndo_init             = NULL,
     .ndo_open             = xlan_up,
     .ndo_stop             = xlan_down,
     .ndo_start_xmit       = xlan_out,
-    .ndo_set_mac_address  = NULL,
+    .ndo_set_mac_address  = xlan_setup,
     .ndo_add_slave        = xlan_enslave,
     .ndo_del_slave        = xlan_unslave,
     // TODO: SET MTU - NAO EH PARA SETAR AQUI E SIM NO ROUTE
@@ -502,11 +524,11 @@ static void xlan_setup (net_device_s* const dev) {
 
     memset(xlan, 0, sizeof(*xlan));
 
-    xlan->vendor = BE16(VENDOR); // TODO: ip link set dev xlan addr 50:62:N4:N4:N6:N6
-    xlan->net4   = NET4;
-    xlan->net6   = NET6;
-    xlan->host   = 20;
-    xlan->gw     = 50;
+    xlan->vendor = 0;
+    xlan->net4   = 0;
+    xlan->net6   = 0;
+    xlan->host   = 0;
+    xlan->gw     = 0;
     xlan->portsN = 1;
 }
 
