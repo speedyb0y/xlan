@@ -179,6 +179,7 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
     if (pkt->type != BE16(0x2562))
         return RX_HANDLER_PASS;
 
+    // ASSERT: skb->type PKT_HOST
     // ASSERT: pkt->src.host != xlan->host NOT FROM ME
 
     const uint lhost = BE16(pkt->dst.host) % HOSTS_N;
@@ -198,7 +199,9 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
     xlan->lseen[lport]        = jiffies;
     xlan->rseen[rhost][rport] = jiffies;
 
-    skb->protocol = pkt->v4.version == 0x45 ? BE16(ETH_P_IP) : BE16(ETH_P_IPV6);
+    skb->protocol = pkt->v4.version == 0x45 ?
+        BE16(ETH_P_IP) :
+        BE16(ETH_P_IPV6);
     skb->dev = virt;
 
     return RX_HANDLER_ANOTHER;
