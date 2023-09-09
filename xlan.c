@@ -216,7 +216,7 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
 
     // SO HANDLE O QUE FOR
     if (to_vendor != BE16(VENDOR)
-     || from_vendor != BE16(VENDOR))
+   || from_vendor != BE16(VENDOR))
         return RX_HANDLER_PASS;
 
     // ASSERT: skb->type PKT_HOST
