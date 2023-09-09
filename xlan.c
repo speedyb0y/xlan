@@ -105,9 +105,9 @@ typedef struct pkt_s {
     u16 type;
     union {
         struct {
-            u8  version;
+            u8 version;
             u8 _x[8];
-            u8  protocol;
+            u8 protocol;
             u8 _y[2];
             union { u64 addrs;
                 struct {
