@@ -245,8 +245,8 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
 
     // IDENTIFY DESTINATION
     const uint rhost = v4 ?
-        ( BE16(pkt->v4.dst.net) == xlan->net4 ? BE16(pkt->v4.dst.host) : xlan->gw ):
-        ( BE16(pkt->v6.dst.net) == xlan->net6 ? BE16(pkt->v6.dst.host) : xlan->gw );
+        ( pkt->v4.dst.net == xlan->net4 ? BE16(pkt->v4.dst.host) : xlan->gw ):
+        ( pkt->v6.dst.net == xlan->net6 ? BE16(pkt->v6.dst.host) : xlan->gw );
 
     if (rhost >= HOSTS_N)
         goto drop;
@@ -453,26 +453,26 @@ static int xlan_setup (net_device_s* const dev, void* const addr) {
     const xlan_info_s* const info = addr;
 
     // READ
-    const uint vendor = info->vendor;
-    const uint net4   = info->net4;
-    const uint net6   = info->net6;
+    const uint vendor = BE16(info->vendor);
+    const uint net4   = BE16(info->net4);
+    const uint net6   = BE16(info->net6);
     const uint host   = BE16(info->host);
     const uint gw     = BE16(info->gw);
     const uint portsN = BE16(info->portsN);
 
     // VERIFY
-    if (vendor
-     && vendor & 0b11U == 0
+    if ((vendor & 0x0300) == 0
+     && vendor != 0
      && portsN >= 1
-     && net4
-     && net6
+     && net4 != 0
+     && net6 != 0
      && gw != host
      && portsN <= PORTS_N) {
 
         // COMMIT
-        xlan->vendor = vendor;
-        xlan->net4   = net4;
-        xlan->net6   = net6;
+        xlan->vendor = BE16(vendor);
+        xlan->net4   = BE16(net4);
+        xlan->net6   = BE16(net6);
         xlan->host   = host;
         xlan->gw     = gw;
         xlan->portsN = portsN;
