@@ -414,19 +414,19 @@ static int xlan_enslave (net_device_s* dev, net_device_s* phys, struct netlink_e
 static int xlan_unslave (net_device_s* dev, net_device_s* phys) {
 
     enum {
-        _ENSL_SUCCESS,
-        _ENSL_NOT_ON_SLOT,
+        _UNSL_SUCCESS,
+        _UNSL_NOT_ON_SLOT,
         __N,
     };
 
     static const u16 codes [__N] ={
-        [_ENSL_SUCCESS      ] = 0,
-        [_ENSL_NOT_ON_SLOT  ] = ENOTCONN,
+        [_UNSL_SUCCESS      ] = 0,
+        [_UNSL_NOT_ON_SLOT  ] = ENOTCONN,
     };
 
     static const char* strs [__N] = {
-        [_ENSL_SUCCESS       ] = "SUCCESS",
-        [_ENSL_NOT_ON_SLOT   ] = "FAILED: ITFC IS NOT PORT",
+        [_UNSL_SUCCESS       ] = "SUCCESS",
+        [_UNSL_NOT_ON_SLOT   ] = "FAILED: ITFC IS NOT ON PORT",
     };
 
     xlan_s* const xlan = netdev_priv(dev);
@@ -437,9 +437,8 @@ static int xlan_unslave (net_device_s* dev, net_device_s* phys) {
 
     // MATCHES?
     if (xlan->ports[port] != phys)
-        ret = _ENSL_NOT_ON_SLOT;
+        ret = _UNSL_NOT_ON_SLOT;
     else {
-
         // UNHOOK (IF ITS STILL HOOKED)
         if (rtnl_dereference(phys->rx_handler) == xlan_in) {
                             phys->rx_handler_data = NULL;        
@@ -451,10 +450,12 @@ static int xlan_unslave (net_device_s* dev, net_device_s* phys) {
 
         // UNREGISTER IT
         xlan->ports[port] = NULL;
+
+        ret = _UNSL_SUCCESS;
     }
 
     printk("XLAN: %s: UNSLAVE ITFC %s: PORT %u\n",
-        dev->name, phys->name, port);
+        dev->name, phys->name, port, strs[ret]);
 
     return -(int)codes[ret];
 }
