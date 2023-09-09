@@ -366,9 +366,6 @@ static int xlan_enslave (net_device_s* dev, net_device_s* phys, struct netlink_e
     const uint host   = BE16(mac->host);
     const uint port   = BE16(mac->port);
 
-    printk("XLAN: %s: ENSLAVE ITFC %s: VENDOR 0x%04X HOST %u PORT %u\n",
-        dev->name, phys->name, vendor, host, port);
-
     if (phys == dev) 
         // ITSELF
         ret = __X_ITSELF;
@@ -410,7 +407,9 @@ static int xlan_enslave (net_device_s* dev, net_device_s* phys, struct netlink_e
         ret = __X_SUCCESS;
     }
 
-    printk("XLAN: %s\n", strs[ret]);
+    printk("XLAN: %s: ENSLAVE ITFC %s: VENDOR 0x%04X HOST %u PORT %u: %s\n",
+        dev->name, phys->name, vendor, host, port, strs[ret]);
+
     return -(int)codes[ret];
 }
 
