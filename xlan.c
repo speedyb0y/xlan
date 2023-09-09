@@ -71,7 +71,7 @@ typedef struct notifier_block notifier_block_s;
 #define HOSTS_N XCONF_XLAN_HOSTS_N
 #define PORTS_N XCONF_XLAN_PORTS_N
 
-#if !(VENDOR == 0 || VENDOR & 0x0100)
+#if !(VENDOR && !(VENDOR & 0x0100))
 #error "BAD VENDOR"
 #endif
 
