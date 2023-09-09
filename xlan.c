@@ -155,8 +155,8 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
     const pkt_s* const pkt = SKB_MAC(skb) - offsetof(pkt_s, dst);
 
     // SO HANDLE O QUE FOR
-    if (pkt->type != BE16(ETH_P_XLAN4)
-     && pkt->type != BE16(ETH_P_XLAN6))
+    if (pkt->src.vendor != BE16(VENDOR)
+     || pkt->dst.vendor != BE16(VENDOR))
         return RX_HANDLER_PASS;
 
     // ASSERT: skb->type PKT_HOST
@@ -166,9 +166,7 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
     const uint rport = HP_DECODE(pkt->src.port);
 
     // DISCARD THOSE
-    if (pkt->src.vendor != BE16(VENDOR)
-     || pkt->dst.vendor != BE16(VENDOR)
-     || lhost != xlan->host // NOT TO ME (POIS PODE TER RECEBIDO DEVIDO AO MODO PROMISCUO)
+    if (lhost != xlan->host // NOT TO ME (POIS PODE TER RECEBIDO DEVIDO AO MODO PROMISCUO)
      || rhost == xlan->host
      || lhost >= HOSTS_N
      || rhost >= HOSTS_N
@@ -183,10 +181,6 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
     //
     xlan->seen[rhost][rport][lport] = jiffies;
 
-    skb->protocol =
-        pkt->type == BE16(ETH_P_XLAN4) ?
-                     BE16(ETH_P_IP) :
-                     BE16(ETH_P_IPV6);
     skb->dev = virt;
 
     return RX_HANDLER_ANOTHER;
