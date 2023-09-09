@@ -183,12 +183,16 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
     if (lvendor != xlan->vendor
      || rvendor != xlan->vendor)
         return RX_HANDLER_PASS;
+    
+    const uint rhostID = rhost - xlan->host0;
 
     // DROP CASES
-    if (lhost >= HOSTS_N            // INVALID L HOST
-     || rhost >= HOSTS_N            // INVALID R HOST
-     || rhost == lhost              // SAME HOST
+    if (lhost >= xlan->hostL        // INVALID L HOST
+     || lhost <  xlan->host0        // INVALID L HOST
      || lhost != xlan->host         // NOT TO ME
+     || rhost >  xlan->hostL        // INVALID R HOST
+     || rhost <  xlan->host0        // INVALID R HOST
+     || rhost == lhost              // SAME HOST
      || lport >= xlan->portsN       // INVALID L PORT
      || rport >= xlan->portsN       // INVALID R PORT
      || phys  != xlan->physs[lport] // SHOULD RECEIVE ON OTHER INTERFACE
