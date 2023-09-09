@@ -179,13 +179,13 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
     const uint rhost   = BE16(pkt->src.host);
     const uint rport   = BE16(pkt->src.port);
 
+    const uint rhostID = rhost - xlan->host0;
+
     // SO INTERCEPTA O QUE FOR
     if (lvendor != xlan->vendor
      || rvendor != xlan->vendor)
         return RX_HANDLER_PASS;
     
-    const uint rhostID = rhost - xlan->host0;
-
     // DROP CASES
     if (lhost >= xlan->hostL        // INVALID L HOST
      || lhost <  xlan->host0        // INVALID L HOST
@@ -201,7 +201,7 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
         return RX_HANDLER_CONSUMED;
     }
 
-    xlan->seen[rhost][rport] = jiffies;
+    xlan->seen[rhostID][rport] = jiffies;
 
 #if 0 // PULA O ETHERNET HEADER
     // NOTE: skb->network_header JA ESTA CORRETO
