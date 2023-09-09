@@ -70,6 +70,12 @@ typedef struct notifier_block notifier_block_s;
 #define HP_ENCODE(hp) (((uint)(hp)) * 0x0101U)
 #define HP_DECODE(hp) (((uint)(hp)) & 0x00FFU)
 
+#ifdef CONFIG_XLAN_STRUCT
+#define XCONF_XLAN_STRUCT 1
+#else
+#define XCONF_XLAN_STRUCT 0
+#endif
+
 #define __COMPACT __attribute__((packed))
 
 typedef struct mac_s {
@@ -89,7 +95,7 @@ typedef struct addr6_s {
     u16 host;
 } addr6_s;
 
-#if 1
+#if XCONF_XLAN_STRUCT
 #define PKT_SIZE 64
 
 typedef struct pkt_s {
@@ -131,7 +137,7 @@ typedef struct pkt_s {
 typedef void pkt_s;
 #endif
 
-#if 1
+#if XCONF_XLAN_STRUCT
 #define PKT_OFFSET_ETH offsetof(pkt_s, dst)
 #define PKT_OFFSET_IP  offsetof(pkt_s, ip)
 #define pkt_eth       (&pkt->dst)
