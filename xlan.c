@@ -274,8 +274,9 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
         // for PORTS_N in range(7): assert len(set((_ // PORTS_N, _ % PORTS_N) for _ in range(PORTS_N*PORTS_N))) == PORTS_N*PORTS_N
         ports %= lportsN * rportsN;
 
-        rport = ports / portsN;
-        lport = ports % portsN;
+        rport = ports / rportsN;
+        lport = ports % lportsN;
+
         phys = xlan->physs[lport];
 
         if (   (now - path->last) <= (r*HZ)/5 // SE DEU UMA PAUSA, TROCA DE PORTA
@@ -378,9 +379,8 @@ static int xlan_enslave (net_device_s* dev, net_device_s* phys, struct netlink_e
         // REGISTER IT
         xlan->physs[lport] = phys;
         //
-        if (xlan->portLast == PORTS_N
-         || xlan->portLast < lport)
-            xlan->portLast = lport;
+        if (xlan->lportsN <= lport)
+            xlan->lportsN =  lport + 1;
         // SUCCESS
         ret = 0;
     }
@@ -414,13 +414,13 @@ static int xlan_unslave (net_device_s* dev, net_device_s* phys) {
     physs[lport] = NULL;
 
     // RESET
-    uint last = PORTS_N;
+    uint last = 0;
 
     foreach (i, PORTS_N)
         if (physs[i])
             last = i;
 
-    xlan->portLast = last;    
+    xlan->lportsN = last + 1; 
 
     return 0;
 }
