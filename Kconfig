@@ -4,6 +4,10 @@ config XLAN
     help
       example
 
+config XLAN_STRUCT
+    bool "XLAN_STRUCT"
+    default y
+
 config XLAN_VENDOR
     hex "XLAN_VENDOR"
     default 0x5062
