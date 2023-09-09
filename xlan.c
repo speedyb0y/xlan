@@ -55,8 +55,6 @@ typedef struct notifier_block notifier_block_s;
 #define BE64(x) ((u64)__builtin_bswap64((u64)(x)))
 #endif
 
-#define HOSTS_N 256
-#define PORTS_N 8
 #define MTU     7600 // TODO: FIXME:
 
 #define ETH_SIZE 14
