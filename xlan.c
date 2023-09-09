@@ -211,7 +211,7 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
     if (rh->rseen[rh->portsN - 1] < expired) {
         uint last = 0;
         foreach (i, PORTS_N)
-            if (rh->rseen[i])
+            if (rh->rseen[i] >= expired)
                 last = i;
         rh->portsN = last + 1;
     } elif (rh->portsN <= rport) // OVERWRITE
