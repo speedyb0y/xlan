@@ -439,6 +439,7 @@ static int xlan_unslave (net_device_s* dev, net_device_s* phys) {
     return 0;
 }
 
+// ip link set dev xlan addr 50:62:N4:N4:N6:N6:HH:HH:GG:GG
 typedef struct xlan_info_s {
     u16 vendor;
     u16 net4;
@@ -448,7 +449,6 @@ typedef struct xlan_info_s {
     u16 portsN;
 } xlan_info_s;
 
-// TODO: ip link set dev xlan addr 50:62:N4:N4:N6:N6:HH:GG
 static int xlan_setup (net_device_s* const dev, void* const addr) {
 
     xlan_s* const xlan = netdev_priv(dev);
