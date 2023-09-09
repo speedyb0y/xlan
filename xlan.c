@@ -520,10 +520,10 @@ static void xlan_setup (net_device_s* const dev) {
     xlan->vendor  = BE16(VENDOR);
     xlan->prefix4 = BE16(PREFIX4);
     xlan->prefix6 = BE16(PREFIX6);
-    xlan->physN   = 0;
-    xlan->portsN  = PORTS_N;
     xlan->host    = BE16(20);
     xlan->gw      = BE16(50);
+    xlan->portsN  = PORTS_N;
+    xlan->physN   = 0;
 }
 
 static int __init xlan_init (void) {
