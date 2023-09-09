@@ -67,9 +67,9 @@ typedef struct notifier_block notifier_block_s;
 
 #include "xconf.h"
 
-#define XLAN_VENDOR  XLAN_VENDOR
-#define XLAN_HOSTS_N XLAN_HOSTS_N
-#define XLAN_PORTS_N XLAN_PORTS_N
+#define XLAN_VENDOR  XCONF_XLAN_VENDOR
+#define XLAN_HOSTS_N XCONF_XLAN_HOSTS_N
+#define XLAN_PORTS_N XCONF_XLAN_PORTS_N
 
 #define HP_ENCODE(hp) (((uint)(hp)) * 0x0101U)
 #define HP_DECODE(hp) (((uint)(hp)) & 0x00FFU)
