@@ -89,6 +89,7 @@ typedef struct addr6_s {
     u16 host;
 } addr6_s;
 
+#if 1
 #define PKT_SIZE 64
 
 typedef struct pkt_s {
@@ -126,6 +127,27 @@ typedef struct pkt_s {
         } __COMPACT v6;
     };
 } __COMPACT pkt_s;
+#else
+typedef void pkt_s;
+#endif
+
+#if 1
+#define pkt_dst_vendor pkt->dst.vendor
+#define pkt_dst_host   pkt->dst.host
+#define pkt_dst_port   pkt->dst.port
+#define pkt_src_vendor pkt->src.vendor
+#define pkt_src_host   pkt->src.host
+#define pkt_src_port   pkt->src.port
+#define pkt_type       pkt->type
+#else
+#define pkt_dst_vendor ((u16*)pkt)[0]
+#define pkt_dst_host   ((u16*)pkt)[1]
+#define pkt_dst_port   ((u16*)pkt)[2]
+#define pkt_src_vendor ((u16*)pkt)[3]
+#define pkt_src_host   ((u16*)pkt)[4]
+#define pkt_src_port   ((u16*)pkt)[5]
+#define pkt_type       ((u16*)pkt)[6]
+#endif
 
 typedef struct xlan_stream_s {
     u32 ports;
@@ -154,15 +176,15 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
     const pkt_s* const pkt = SKB_MAC(skb) - offsetof(pkt_s, dst);
 
     // SO HANDLE O QUE FOR
-    if (pkt->src.vendor != BE16(VENDOR)
-     || pkt->dst.vendor != BE16(VENDOR))
+    if (pkt_dst_vendor != BE16(VENDOR)
+     || pkt_src_vendor != BE16(VENDOR))
         return RX_HANDLER_PASS;
 
     // ASSERT: skb->type PKT_HOST
-    const uint lhost = HP_DECODE(pkt->dst.host);
-    const uint lport = HP_DECODE(pkt->dst.port);
-    const uint rhost = HP_DECODE(pkt->src.host);
-    const uint rport = HP_DECODE(pkt->src.port);
+    const uint lhost = HP_DECODE(pkt_dst_host);
+    const uint lport = HP_DECODE(pkt_dst_port);
+    const uint rhost = HP_DECODE(pkt_src_host);
+    const uint rport = HP_DECODE(pkt_src_port);
 
     // DISCARD THOSE
     if (lhost >= HOSTS_N
@@ -274,7 +296,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
     pkt->src.vendor = BE16(VENDOR);
     pkt->src.host   = HP_ENCODE(xlan->host);
     pkt->src.port   = HP_ENCODE(lport);
-    pkt->type       = skb->protocol;
+    pkt_type        = skb->protocol;
 
     // UPDATE SKB
     skb->data       = PTR(pkt);
