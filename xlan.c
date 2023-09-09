@@ -375,7 +375,7 @@ static int xlan_enslave (net_device_s* dev, net_device_s* phys, struct netlink_e
     const uint host   = BE16(((const eth_addr_s*)mac)->host);
     const uint port   = BE16(((const eth_addr_s*)mac)->port);
 
-    printk("XLAN: %s: ENSLAVE ITFC %s VENDOR 0x%04X HOST %u PORT %u MAC %02X:%02X:%02X:%02X:%02X:%02X\n",
+    printk("XLAN: %s: ENSLAVE ITFC %s: VENDOR 0x%04X HOST %u PORT %u MAC %02X:%02X:%02X:%02X:%02X:%02X\n",
         dev->name, phys->name, vendor, host, port,
         mac[0], mac[1], mac[2],
         mac[3], mac[4], mac[5]);
@@ -429,7 +429,10 @@ static int xlan_unslave (net_device_s* dev, net_device_s* phys) {
 
     xlan_s* const xlan = netdev_priv(dev);
 
-    const uint port = 0; // TODO: FROM MAC ADDRESS
+    const uint port = BE16(((const eth_addr_s*)dev->dev_addr)->port);
+    
+    printk("XLAN: %s: UNSLAVE ITFC %s: PORT %u\n",
+        dev->name, phys->name, port);
 
     // MATCHES?
     if (xlan->ports[port] != phys)
@@ -477,8 +480,8 @@ static int xlan_cfg (net_device_s* const dev, void* const addr) {
     const uint gw     = BE16(info->gw);
     const uint portsN = BE16(info->portsN);
 
-    printk("XLAN: %s: CONFIGURING VENDOR 0x%04X HOST %u GW %u PORT %u NET4 0x%04X NET6 0x%04X\n",
-        dev->name, vendor, host, gw, port, net4, net6);
+    printk("XLAN: %s: CONFIGURING: VENDOR 0x%04X HOST %u GW %u PORTS %u NET4 0x%04X NET6 0x%04X\n",
+        dev->name, vendor, host, gw, ports, net4, net6);
 
     // VERIFY
     if ((vendor & 0x0100) == 0
