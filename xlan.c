@@ -68,23 +68,11 @@ typedef struct notifier_block notifier_block_s;
 #define ETH_P_XLAN4 0x2562
 #define ETH_P_XLAN6 0x2563
 
-#if     PORTS_N == 32
-#define PORTS_MASK 0b0000000000011111
-#elif   PORTS_N == 16
-#define PORTS_MASK 0b0000000000001111
-#elif   PORTS_N == 8
-#define PORTS_MASK 0b0000000000000111
-#elif   PORTS_N == 4
-#define PORTS_MASK 0b0000000000000011
-#elif   PORTS_N == 2
-#define PORTS_MASK 0b0000000000000001
-#define PORTS_MULT 
-#else
-#error
-#endif
+#define PORT_ENCODE(p) (((uint)(p)) * 0x0101U) // ALWAYS 0xXYXY
+#define PORT_DECODE(p) (((uint)(p)) % PORTS_N) // ALWAYS < PORTS_N
 
-#define PORT_ENCODE(port) ((port) * 0x1111)
-#define PORT_DECODE(port) (((port) & 0xF) - 0xA)
+#define HOST_ENCODE(h) (((uint)(h)) * 0x0101U)
+#define HOST_DECODE(h) (((uint)(h)) % HOSTS_N)
 
 #define __COMPACT __attribute__((packed))
 
