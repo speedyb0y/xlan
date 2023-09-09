@@ -78,9 +78,9 @@ typedef struct notifier_block notifier_block_s;
 #define __COMPACT __attribute__((packed))
 
 typedef union v4_addr_s {
-    u8  addr[4];
-    u16 addr16[2];
-    u32 addr32;
+    u8  w8[4];
+    u16 w16[2];
+    u32 w32[1];
     struct {
         u16 prefix;
         u16 host;
@@ -88,10 +88,10 @@ typedef union v4_addr_s {
 } v4_addr_s;
 
 typedef union v6_addr_s {
-    struct {
-        u64 a;
-        u64 b;
-    };
+    u8  w8[16];
+    u16 w16[8];
+    u32 w32[4];
+    u64 w64[2];
     struct {
         u16 prefix;
         u16 _addr[6];
@@ -132,8 +132,8 @@ typedef struct pkt_s {
         } __COMPACT v4;
         struct {
             u8 version;
-            u8 _flow;
-            u16 flow;
+            u8 flow8;
+            u16 flow16;
             u16 psize;
             u8 protocol;
             u8 ttl;
@@ -242,16 +242,17 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
     // FAIL: ICMP
     xlan_path_s* const path = &xlan->paths[rhost][__builtin_popcountll( (u64) ( v4
         ? pkt->v4.protocol      // IP PROTOCOL
-        + pkt->v4.src.addr32    // SRC ADDR
-        * pkt->v4.dst.addr32    // DST ADDR
+        + pkt->v4.src.w32[0]    // SRC ADDR
+        * pkt->v4.dst.w32[0]    // DST ADDR
         + pkt->v4.sport         // SRC PORT
         * pkt->v4.dport         // DST PORT
         : pkt->v6.protocol      // IP PROTOCOL
-        + pkt->v6.flow          // FLOW
-        + pkt->v6.src.a // SRC ADDR
-        + pkt->v6.src.b // SRC ADDR
-        + pkt->v6.dst.a // DST ADDR
-        + pkt->v6.dst.b // DST ADDR
+        + pkt->v6.flow8         // FLOW
+        + pkt->v6.flow16        // FLOW
+        + pkt->v6.src.w64[0]    // SRC ADDR
+        + pkt->v6.src.w64[1]    // SRC ADDR
+        + pkt->v6.dst.w64[0]    // DST ADDR
+        + pkt->v6.dst.w64[1]    // DST ADDR
         + pkt->v6.sport         // SRC PORT
         * pkt->v6.dport         // DST PORT
     ))];
