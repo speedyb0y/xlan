@@ -184,9 +184,8 @@ static xlan_stream_s paths[HOSTS_N][64]; // POPCOUNT64()
 static u32 seen[HOSTS_N][PORTS_N][PORTS_N]; // TODO: FIXME: ATOMIC
 static bucket_s buckets[PORTS_N];
 
-#define BUCKET_SIZE 40000
+#define BUCKETS_PER_SECOND 30000
 #define BUCKETS_BURST 200
-#define BUCKETS_PER_SECOND 20000
 
 static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
 
