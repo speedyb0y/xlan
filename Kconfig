@@ -10,7 +10,7 @@ config XLAN_STRUCT
 
 config XLAN_VENDOR
     hex "XLAN_VENDOR"
-    default 0x5062
+    default 0x50622562
 
 config XLAN_HOSTS_N
     int "XLAN_HOSTS_N"

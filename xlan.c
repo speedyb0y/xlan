@@ -93,7 +93,7 @@ typedef struct notifier_block notifier_block_s;
 #define HOSTS_N XCONF_XLAN_HOSTS_N
 #define PORTS_N XCONF_XLAN_PORTS_N
 
-#if !(VENDOR && !(VENDOR & 0x0100))
+#if !(VENDOR && VENDOR <= 0xFFFFFFFF && !(VENDOR & 0x01000000))
 #error "BAD VENDOR"
 #endif
 
@@ -105,13 +105,10 @@ typedef struct notifier_block notifier_block_s;
 #error "BAD PORTS N"
 #endif
 
-#define HP_ENCODE(hp) (((uint)(hp)) * 0x0101U)
-#define HP_DECODE(hp) (((uint)(hp)) & 0x00FFU)
-
 typedef struct mac_s {
-    u16 vendor;
-    u16 host;
-    u16 port;
+    u32 vendor;
+    u8 host;
+    u8 port;
 } __packed mac_s;
 
 #if XCONF_XLAN_STRUCT
@@ -456,13 +453,13 @@ static int __f_cold xlan_enslave (net_device_s* dev, net_device_s* phys, struct 
     elif (phys->addr_len != ETH_ALEN)
         // NOT ETHERNET
         ret = _ENSL_NOT_ETHERNET;
-    elif (mac->vendor != BE16(VENDOR))
+    elif (mac->vendor != BE32(VENDOR))
         // WRONG VENDOR
         ret = _ENSL_VENDOR_WRONG;
-    elif (mac->host != HP_ENCODE(xlan->host))
+    elif (mac->host != xlan->host)
         // WRONG HOST
         ret = _ENSL_HOST_WRONG;
-    elif (mac->port != HP_ENCODE(port))
+    elif (mac->port != port)
         // BAD PORT - MISMATCH
         ret = _ENSL_PORT_INVALID;
     elif (port >= PORTS_N)
@@ -519,13 +516,13 @@ static int __f_cold xlan_unslave (net_device_s* dev, net_device_s* phys) {
 }
 
 // ip link set dev xlan addr N4:N4:N6:N6:HH:GG
-#define XLAN_INFO_LEN 6
+#define XLAN_INFO_LEN 14
 typedef struct xlan_info_s {
-    u16 net4;
-    u16 net6;
+    u8 _align[2];
     u8 host;
     u8 gw;
-    u16 _pad;
+    u32 net4;
+    u64 net6;
 } xlan_info_s;
 
 static int __f_cold xlan_cfg (net_device_s* const dev, void* const addr) {
@@ -535,12 +532,14 @@ static int __f_cold xlan_cfg (net_device_s* const dev, void* const addr) {
 
     const xlan_info_s* const info = addr;
 
+    BUILD_BUG_ON( sizeof(*info) != (sizeof(info->_align) + XLAN_INFO_LEN) );
+
     // READ
-    const uint net4   = BE16(info->net4);
-    const uint net6   = BE16(info->net6);
     const uint host   =      info->host;
     const uint gw     =      info->gw;
-
+    const uint net4   = BE32(info->net4);
+    const uint net6   = BE64(info->net6);
+    
     printk("XLAN: %s: CONFIGURING: HOST %u GW %u NET4 0x%04X NET6 0x%04X\n",
         dev->name, host, gw, net4, net6);
 
@@ -617,7 +616,6 @@ static int __init xlan_init (void) {
 #if XCONF_XLAN_STRUCT
     BUILD_BUG_ON( sizeof(pkt_s) != PKT_SIZE );
 #endif
-    BUILD_BUG_ON( offsetof(xlan_info_s, _pad) != XLAN_INFO_LEN );
 
     register_netdev(alloc_netdev(sizeof(xlan_s), "xlan", NET_NAME_USER, xlan_setup));
 
