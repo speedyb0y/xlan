@@ -330,17 +330,19 @@ static int __f_cold xlan_enslave (net_device_s* dev, net_device_s* phys, struct 
 
     const u8* const mac = PTR(dev->dev_addr);
 
-    const uint port = MAC_PORT(mac);
+    const uint vendor = MAC_VENDOR(mac);
+    const uint host   = MAC_HOST(mac);
+    const uint port   = MAC_PORT(mac);
 
-    printk("XLAN: %s: ENSLAVE PHYS %s: PORT %u MAC %02X:%02X:%02X:%02X:%02X:%02X\n",
-        dev->name, phys->name, port,
+    printk("XLAN: %s: ENSLAVE PHYS %s: VENDOR 0x%04X HOST %u PORT %u MAC %02X:%02X:%02X:%02X:%02X:%02X\n",
+        dev->name, phys->name, vendor, host, port,
         mac[0], mac[1], mac[2],
         mac[3], mac[4], mac[5]);
 
-    if (MAC_VENDOR(mac) != BE32(VENDOR))
+    if (vendor != VENDOR)
         printk("XLAN: WARNING: WRONG VENDOR\n");
 
-    if (MAC_HOST(mac) != xlan->host)
+    if (mac != HOST)
         printk("XLAN: WARNING: WRONG HOST\n");
 
     if (port >= PORTS_N) {
@@ -348,38 +350,43 @@ static int __f_cold xlan_enslave (net_device_s* dev, net_device_s* phys, struct 
         return -EINVAL;
     }
 
-    elif (xlan->ports[port] == dev)
-        // ALREADY
-        ret = _ENSL_ALREADY;
-    elif (xlan->ports[port])
-        // SOMETHING ELSE IS ON THAT SLOT
-        ret = _ENSL_OCCUPIED;
+    if (xlan->ports[port] == dev) {
+        printk("XLAN: FAILED: PHYS ALREADY ATTACHED AS THIS PORT\n");
+        return -EISCONN;
+    }
+
+    if (xlan->ports[port]) {
+        printk("XLAN: FAILED: OTHER PHYS ATTACHED AS THIS PORT\n");
+        return -EEXIST;
+    }
     
     if (phys == dev
      || phys->flags & IFF_LOOPBACK
      || phys->addr_len != ETH_ALEN) {
-        // ITSELF / LOOPBACK / NOT ETHERNET
-        printk("XLAN: FAILED: BAD PHYS\n");
+        printk("XLAN: FAILED: BAD PHYS (ITSELF / LOOPBACK / NOT ETHERNET)\n");
         return -EINVAL;
     }
 
-    elif ()
-        ret = _ENSL_NOT_ETHERNET;
-    elif (netdev_rx_handler_register(phys, xlan_in, dev) != 0)
-        // FAILED TO ATTACH
-        ret = _ENSL_ATTACH_FAILED;
-    else {
-        // HOOKED
-        phys->rx_handler_data = dev;
-        // HOLD IT
-        dev_hold(phys);
-        // REGISTER IT
-        xlan->ports[port] = phys;
-        // SUCCESS
-        ret = _ENSL_SUCCESS;
+    if (phys->rx_handler) {
+        printk("XLAN: FAILED: PHYS ALREADY HAS A HANDLER\n");
+        return -EBUSY;
     }
 
-    return -(int)codes[ret];
+    if (netdev_rx_handler_register(phys, xlan_in, dev) != 0) {
+        printk("XLAN: FAILED: FAILED TO ATTACH HANDLER\n");
+        return -1;
+    }
+
+    // HOOKED
+    phys->rx_handler_data = dev;
+    // HOLD IT
+    dev_hold(phys);
+    // REGISTER IT
+    xlan->ports[port] = phys;
+    // SUCCESS
+    ret = _ENSL_SUCCESS;
+
+    return 0;
 }
 
 static int __f_cold xlan_unslave (net_device_s* dev, net_device_s* phys) {
