@@ -105,8 +105,6 @@ typedef struct notifier_block notifier_block_s;
 #define GW HOST
 #endif
 
-#define MTU     7600 // TODO: FIXME:
-
 #define ETH_O_DST      0
 #define ETH_O_DST_V    0
 #define ETH_O_DST_H    4
@@ -431,7 +429,7 @@ static void __f_cold xlan_setup (net_device_s* const dev) {
     //dev->needed_tailroom = ;
     dev->min_mtu         = ETH_MIN_MTU;
     dev->max_mtu         = ETH_MAX_MTU;
-    dev->mtu             = MTU; // NOTE: TEM QUE SER O DA MENOR INTERFACE
+    dev->mtu             = ETH_DATA_LEN;
     dev->tx_queue_len    = 0; // DEFAULT_TX_QUEUE_LEN
     dev->flags           = IFF_POINTOPOINT
                          | IFF_NOARP; // IFF_BROADCAST | IFF_MULTICAST
