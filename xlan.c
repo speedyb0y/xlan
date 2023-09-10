@@ -123,7 +123,7 @@ typedef struct pkt_s {
             u8 _x[9];
             u8 protocol;
             u8 _y[2];
-            union { 
+            union {
                 u64 w64;
                 u32 w32[2];
                 u8 w8[8];
@@ -287,7 +287,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
 
     // É INVALIDO / ERA EXTERNO E NAO TEMOS GATEWAY / PARA SI MESMO
     if (rhost >= HOSTS_N
-     || rhost == xlan->host)        
+     || rhost == xlan->host)
         goto drop;
 
     // SELECT A PATH
@@ -603,7 +603,8 @@ static int __init xlan_init (void) {
     BUILD_BUG_ON( sizeof(mac_s) != ETH_ALEN );
 #if XCONF_XLAN_STRUCT
     BUILD_BUG_ON( sizeof(pkt_s) != PKT_SIZE );
-    BUILD_BUG_ON( sizeof(pkt_ip_v4_s) != sizeof(pkt_ip_v6_s) );
+    BUILD_BUG_ON( sizeof(struct pkt_ip_v4_s)
+               != sizeof(struct pkt_ip_v6_s) );
 #endif
 
     register_netdev(alloc_netdev(sizeof(xlan_s), "xlan", NET_NAME_USER, xlan_setup));
