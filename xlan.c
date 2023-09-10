@@ -211,7 +211,7 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
      || lport >= PORTS_N
      || rport >= PORTS_N
      || xlan->flags == 0) { // ->flags & UP
-        printk("XLAN: DROP IN: skb->dev %s %u [%u] -> %u [%u] SIZE %d DOWN %d\n",
+        printk("XLAN: IN: DROP: skb->dev %s %u [%u] -> %u [%u] SIZE %d DOWN %d\n",
             skb->dev->name, rhost, rport, lhost, lport, skb->len, xlan->flags == 0);
         kfree_skb(skb);
         return RX_HANDLER_CONSUMED;
@@ -220,6 +220,8 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
     //
     if (physs[lport] == skb->dev)
         seen[rhost][rport][lport] = jiffies;
+    else printk("XLAN: IN: WRONG PHYS skb->dev %s %u [%u] -> %u [%u] SIZE %d DOWN %d\n",
+        skb->dev->name, rhost, rport, lhost, lport, skb->len, xlan->flags == 0);
 
     skb->dev = xlan;
 
@@ -268,11 +270,11 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xlan) {
     // FORCA A MUDANCA DA PORTA ATUAL SE...
     if ((now - last) >= HZ/5) {
         // O ULTIMO ENVIADO JA DEU TEMPO DE SER PROCESSADO
-        printk("XLAN: ESTE PATH NAO ESTA RECEBENDO! PORTS %u\n", ports);
+        printk("XLAN: OUT: ESTE PATH NAO ESTA RECEBENDO! PORTS %u\n", ports);
         ports++;
     } elif (path->saw && (now - *path->saw) > 5*HZ) {
         // ESTE PATH NAO ESTA RECEBENDO
-        printk("XLAN: ESTE PATH NAO ESTA RECEBENDO! PORTS %u SAW %u NOW %u\n",
+        printk("XLAN: OUT: ESTE PATH NAO ESTA RECEBENDO! PORTS %u SAW %u NOW %u\n",
             ports, *path->saw, now);
         ports++;
     } elif (0) {
@@ -301,7 +303,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xlan) {
                     // SE CHEGAMOS AO SEGUNDO ROUND, É PORQUE ELE ESTA ZERADO
                     // SE ESTA CHEIO E NAO TEM OUTRO JEITO, LIBERA UM PEQUENO BURST
                     bcan = BUCKETS_BURST;
-                    printk("XLAN: BURSTING! LPORT %u RHOST %u RPORT %u BCAN %u\n",
+                    printk("XLAN: OUT: BURSTING! LPORT %u RHOST %u RPORT %u BCAN %u\n",
                         lport, rhost, rport, bcan);
                 } elif (now >= bucket->last) {
                     const uint elapsed =
@@ -310,10 +312,10 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xlan) {
                         bcan += (elapsed * BUCKETS_PER_SECOND)/HZ;
                     if (bcan > BUCKETS_PER_SECOND)
                         bcan = BUCKETS_PER_SECOND;
-                    printk("XLAN: BUCKET! LPORT %u RHOST %u RPORT %u BCAN %u ELAPSED %u\n",
+                    printk("XLAN: OUT: BUCKET! LPORT %u RHOST %u RPORT %u BCAN %u ELAPSED %u\n",
                         lport, rhost, rport, bcan, elapsed);
                 } else { // SE DEU OVERFLOW NO JIFFIES CONSIDERA COMO 1 SEGUNDO
-                    printk("XLAN: BUCKET TIME OVERFLOW\n");
+                    printk("XLAN: OUT: BUCKET TIME OVERFLOW\n");
                     bcan = BUCKETS_PER_SECOND;
                 }
             }
@@ -359,7 +361,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xlan) {
     }
 
 drop:
-    printk("XLAN: DROP OUT: PROTOCOL 0x%04X SIZE %d\n",
+    printk("XLAN: OUT: DROP: PROTOCOL 0x%04X SIZE %d\n",
         skb->len, BE16(skb->protocol));
 
     dev_kfree_skb(skb);
