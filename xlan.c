@@ -216,19 +216,20 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
 
         const void* const pkt = SKB_MAC(skb);
 
-        const uint shost = src_host;
-        const uint sport = src_port;
-        const uint dhost = dst_host;
-        const uint dport = dst_port;        
+        if (src_vendor == BE32(VENDOR)) {
 
-        if (src_vendor == BE32(VENDOR)
-         && shost < HOSTS_N
-         && dhost < HOSTS_N
-         && sport < PORTS_N
-         && dport < PORTS_N
-         ) { // VALIDO
+            const uint shost = src_host;
+            const uint sport = src_port;
+            const uint dhost = dst_host;
+            const uint dport = dst_port;        
+
+            //&& shost < HOSTS_N
+            //&& dhost < HOSTS_N
+            //         && sport < PORTS_N
+                //        && dport < PORTS_N
+         )  // VALIDO
             if (dhost == HOST) {
-                // PARA MIM
+                if (skb->dev->handler_data == )
                 skb->dev = xlan;
                 return RX_HANDLER_ANOTHER;
             }
