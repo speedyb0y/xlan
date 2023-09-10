@@ -397,7 +397,7 @@ static int __f_cold xlan_enslave (net_device_s* dev, net_device_s* phys, struct 
     elif (MAC_VENDOR(mac) != BE32(VENDOR))
         // WRONG VENDOR
         ret = _ENSL_BAD_VENDOR;
-    elif (MAC_HOST(host) != xlan->host)
+    elif (MAC_HOST(mac) != xlan->host)
         // WRONG HOST
         ret = _ENSL_BAD_HOST;
     elif (port >= PORTS_N)
