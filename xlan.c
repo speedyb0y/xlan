@@ -261,6 +261,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xlan) {
      || 0 // TODO: OU SE O PACOTE É UM TCP-SYN, RST RETRANSMISSION ETC
     ;    
 #define BUCKET_SIZE 40000
+#define BUCKETS_BURST 200
 #define BUCKETS_PER_SECOND 20000
 #define REBUCKET_INTERVAL 10
     // NOTE: MUDA A PORTA LOCAL COM MAIS FREQUENCIA, PARA QUE O SWITCH A DESCUBRA
@@ -282,14 +283,15 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xlan) {
                 now -  bucket->last : HZ 
             ;
 
-            if (elapsed >= REBUCKET_INTERVAL) {
-                    bucket->last = now;
-                    bucket->can += (elapsed * BUCKETS_PER_SECOND)/HZ;
+            // SE ESTA CHEIO E NAO TEM OUTRO JEITO, LIBERA UM PEQUENO BURST
+            const uint colocar = (c >= PORTS_N*PORTS_N) ?
+                BUCKETS_BURST : (elapsed >= REBUCKET_INTERVAL);
+
+            if (colocar) {                    
+                    bucket->can += colocar + (elapsed * BUCKETS_PER_SECOND)/HZ;
                 if (bucket->can >= BUCKET_SIZE)
                     bucket->can =  BUCKET_SIZE;
-            } elif (bucket->can == 0 && c >= PORTS_N*PORTS_N) { // SE ESTA CHEIO E NAO TEM OUTRO JEITO,
-                    bucket->last += elapsed;
-                    bucket->can += 200; // LIBERA UM PEQUENO BURST
+                bucket->last = now;
             }
 
             //
