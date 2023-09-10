@@ -171,7 +171,6 @@ typedef struct notifier_block notifier_block_s;
 typedef struct xlan_stream_s {
     u32 ports;
     u32 last;
-    const u32* saw;
 } xlan_stream_s;
 
 typedef struct bucket_s {
@@ -185,69 +184,41 @@ static xlan_stream_s paths[HOSTS_N][64]; // POPCOUNT64()
 static u32 seen[HOSTS_N][PORTS_N][PORTS_N]; // TODO: FIXME: ATOMIC
 static bucket_s buckets[PORTS_N];
 
+// enviar broadcast:
+//   BROADCAST port_mac port_id RECEBENDO SIM/NAO
+// dai vai receber de volta em outra interface
+//    ao receber um pacote de SI MESMO isso em outra interface
+//              marca a interface como RECEBENDO
+//      manda o proximo controle com ela marcada como recebendo
+//          
+
+// ao receber um pacote de uma porta, a qual afirma que ela mesma esta recebendo,
+//     marca ela como ativa aqui
+// ao receber um pacote de controle, vindo de qualquer porta,
+//          pega todas as portas que ele diz estarem NAO RECEBENDO,
+//              e desmarca
+
 #define BUCKETS_PER_SECOND 30000
 #define BUCKETS_BURST 200
 
 static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
 
+    // SO INTECEPTA COM A XLAN ATIVADA
+    // netif_oper_up()
+    if (xlan->operstate != IF_OPER_UP
+     && xlan->operstate != IF_OPER_UNKNOWN)
+        return RX_HANDLER_PASS;
+
     sk_buff_s* const skb = *pskb;
 
     const void* const pkt = SKB_MAC(skb);
 
-    // SO HANDLE O QUE FOR
-    if (src_vendor != BE32(VENDOR))
-        return RX_HANDLER_PASS;
-
-    // ASSERT: skb->type PKT_HOST
-    const uint lhost = dst_host;
-    const uint lport = dst_port;
-    const uint rhost = src_host;
-    const uint rport = src_port;
-
-    // SANITY CHECK
-    if (lhost >= HOSTS_N
-     || rhost >= HOSTS_N
-     || lport >= PORTS_N
-     || rport >= PORTS_N
-     || lhost == rhost)
-        goto drop;
-
-    if (rhost == HOST) {
-        // EU MESMO ENVIEI ESTE PACOTE
-        // ENTAO O SWITCH NAO SABE O DESTINO DELE E ENVIOU PARA TODO MUNDO
-        goto drop;
+    if (dst_vendor == BE32(VENDOR)
+     && src_vendor == BE32(VENDOR)) {
+        skb->dev = xlan;
+        return RX_HANDLER_ANOTHER;
     }
-
-    if (lhost != HOST) {
-        // NOT TO ME
-        printk("NOT TO ME\n");
-        goto drop;
-    }
-
-    if (xlan->flags == 0) {
-        // XLAN IS NOT UP
-        printk("NOT UP\n");
-        goto drop;
-    }
-
-    //
-    if (physs[lport] == skb->dev)
-        seen[rhost][rport][lport] = jiffies;
-    else {
-        // ESTE PACOTE ERA PARA TER SIDO RECEBIDO EM OUTRA PORTA
-        // TODO: FORCAR A PORTA A ENVIAR ALGO EM 1 SEGUNDO
-            //  E NO TIMER, DESISTIR CASO ELA JA TENHA ENVIADO ALGO
-        printk("XLAN: IN: WRONG PHYS skb->dev %s %u [%u] -> %u [%u] SIZE %d\n",
-            skb->dev->name, rhost, rport, lhost, lport, skb->len);
-    }
-
-    skb->dev = xlan;
-
-    return RX_HANDLER_ANOTHER;
-
-drop:
-    printk("XLAN: IN: DROP: skb->dev %s %u [%u] -> %u [%u] SIZE %d\n",
-        skb->dev->name, rhost, rport, lhost, lport, skb->len);
+    
     kfree_skb(skb);
     return RX_HANDLER_CONSUMED;
 }
@@ -296,11 +267,6 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xlan) {
         // O ULTIMO ENVIADO JA DEU TEMPO DE SER PROCESSADO
         printk("XLAN: OUT: CHANGING FROM PORTS %u BECAUSE BURST IS COMPLETE\n",
             ports);
-        ports++;
-    } elif (path->saw && (now - *path->saw) > 5*HZ) {
-        // ESTE PATH NAO ESTA RECEBENDO
-        printk("XLAN: OUT: CHANGING FROM PORTS %u BECAUSE ESTE PATH NAO ESTA RECEBENDO! PORTS SAW %u NOW %u\n",
-            ports, *path->saw, now);
         ports++;
     } elif (0) {
         // TODO: OU SE O PACOTE É UM TCP-SYN, RST RETRANSMISSION ETC
@@ -353,7 +319,6 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xlan) {
                 bucket->last = now;
                 path->ports = ports;
                 path->last  = now;                
-                path->saw = &seen[rhost][rport][lport];
 
                 // FILL ETHERNET HEADER
                 dst_vendor = BE32(VENDOR);
@@ -542,7 +507,6 @@ static int __init xlan_init (void) {
 
     memset(physs,   0, sizeof(physs));
     memset(paths,   0, sizeof(paths));
-    memset(seen,    0, sizeof(seen));
     memset(buckets, 0, sizeof(buckets));
 
     //
