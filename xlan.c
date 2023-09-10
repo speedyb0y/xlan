@@ -65,20 +65,22 @@ typedef struct notifier_block notifier_block_s;
 #define MTU     7600 // TODO: FIXME:
 
 #define ETH_SIZE 14
-#define IP4_SIZE 20
-#define IP6_SIZE 40
-#define UDP_SIZE  8
-#define TCP_SIZE 20
 
 #define ETH_O_DST      0
+#define ETH_O_DST_V    0
+#define ETH_O_DST_H    4
+#define ETH_O_DST_P    5
 #define ETH_O_SRC      6
+#define ETH_O_SRC_V    6
+#define ETH_O_SRC_H   10
+#define ETH_O_SRC_P   11
 #define ETH_O_TYPE    12
 #define ETH_O_IP      14
 
 #define IP4_O_PROTO   9
 #define IP4_O_SRC     12
 #define IP4_O_DST     16
-#define IP4_O_PORTS 20
+#define IP4_O_PORTS   20
 
 #define IP6_O_VERSION  0
 #define IP6_O_FLOW     2
