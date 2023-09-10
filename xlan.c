@@ -328,12 +328,12 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
                 path->last  = now;
 
                 // FILL ETHERNET HEADER
-                dst_vendor = BE16(VENDOR);
-                dst_host   = HP_ENCODE(rhost);
-                dst_port   = HP_ENCODE(rport);
-                src_vendor = BE16(VENDOR);
-                src_host   = HP_ENCODE(xlan->host);
-                src_port   = HP_ENCODE(lport);
+                dst_vendor = BE32(VENDOR);
+                dst_host   = rhost;
+                dst_port   = rport;
+                src_vendor = BE32(VENDOR);
+                src_host   = xlan->host;
+                src_port   = lport;
                 pkt_type   = skb->protocol;
 
                 // UPDATE SKB
