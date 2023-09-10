@@ -70,6 +70,16 @@ typedef struct notifier_block notifier_block_s;
 #define UDP_SIZE  8
 #define TCP_SIZE 20
 
+#define IP4_O_PROTO   9
+#define IP4_O_SRC     12
+#define IP4_O_DST     16
+#define IP4_O_PAYLOAD 20
+
+#define IP6_O_PROTO   5
+#define IP6_O_SRC     8
+#define IP6_O_DST     24
+#define IP6_O_PAYLOAD 40
+
 #include "xconf.h"
 
 #define VENDOR  XCONF_XLAN_VENDOR
@@ -172,20 +182,20 @@ typedef void pkt_s;
 #define from_port   ((u16*)pkt)[5]
 #define pkt_type    ((u16*)pkt)[6]
 #define proto4      ((u8* )pkt)[23]
-#define addrs4      (*(u64*)(pkt + 26))
 #define ports4      (*(u32*)(pkt + 34))
 #define flow6       ((u16*)pkt)[8]
 #define proto6      ((u8* )pkt)[20]
-#define addrs6      ( (u64*)(pkt + 22))
-#define ports6      (*(u32*)(pkt + 54))
-#define from_net4   ((u16*)pkt)[13]
-#define from_host4  ((u16*)pkt)[14]
-#define to_net4     ((u16*)pkt)[15]
-#define to_host4    ((u16*)pkt)[16]
-#define from_net6   ((u16*)pkt)[11]
-#define from_host6  ((u16*)pkt)[18]
-#define to_net6     ((u16*)pkt)[19]
-#define to_host6    ((u16*)pkt)[26]
+#define addrs4      (*(u64*)(pkt + ETH_SIZE + IP4_O_SRC))
+#define from_net4   (*(u32*)(pkt + ETH_SIZE + IP4_O_SRC))
+#define from_host4  (*(u8 *)(pkt + ETH_SIZE + IP4_O_SRC + 3))
+#define to_net4     (*(u32*)(pkt + ETH_SIZE + IP4_O_DST))
+#define to_host4    (*(u8 *)(pkt + ETH_SIZE + IP4_O_DST + 3))
+#define ports6      (*(u32*)(pkt + ETH_SIZE + IP4_SIZE))
+#define addrs6      ( (u64*)(pkt + ETH_SIZE + IP6_O_SRC))
+#define from_net6   (*(u64*)(pkt + ETH_SIZE + IP6_O_SRC))
+#define from_host6  (*(u8 *)(pkt + ETH_SIZE + IP6_O_SRC + 15))
+#define to_net6     (*(u64*)(pkt + ETH_SIZE + IP6_O_DST))
+#define to_host6    (*(u8 *)(pkt + ETH_SIZE + IP6_O_DST + 15))
 #endif
 
 typedef struct xlan_stream_s {
@@ -196,10 +206,10 @@ typedef struct xlan_stream_s {
 // NETWORK, HOST
 // NN.NN.HH.HH NNNN:?:HHHH
 typedef struct xlan_s {
-    u16 net4;   // NN.NN.
-    u16 net6;   // NNNN::
     u16 host;   // .HH.HH ::HHHH LHOST
     u16 gw;     // .HH.HH ::HHHH RHOST, WHEN IT DOES NOT BELONG TO THE NET
+    u32 net4;   // 0xNNNNNN00   BIG ENDIAN
+    u64 net6;   // 0xNNNNNNNNNNNNNNNN
     net_device_s* ports[PORTS_N];
     xlan_stream_s paths[HOSTS_N][64]; // POPCOUNT64()
     u32 seen[HOSTS_N][PORTS_N][PORTS_N]; // TODO: FIXME: ATOMIC
@@ -267,8 +277,8 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
 
     // IDENTIFY DESTINATION
     const uint rhost = v4 ?
-        ( to_net4 == xlan->net4 ? BE16(to_host4) : xlan->gw ):
-        ( to_net6 == xlan->net6 ? BE16(to_host6) : xlan->gw );
+        ( (to_net4 & BE32(0xFFFFFF00U)) == xlan->net4 ? to_host4 : xlan->gw ):
+        (  to_net6                      == xlan->net6 ? to_host6 : xlan->gw );
 
     // É INVALIDO / ERA EXTERNO E NAO TEMOS GATEWAY / PARA SI MESMO
     if (rhost >= HOSTS_N
