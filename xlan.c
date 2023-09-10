@@ -169,19 +169,24 @@ typedef struct notifier_block notifier_block_s;
 #define ports6      (*(u32*)(pkt + ETH_SIZE + IP6_SIZE))
 
 typedef struct xlan_stream_s {
-    u32 ports;
+    u32 ports; // TODO: FIXME: ATOMIC
     u32 last;
 } xlan_stream_s;
 
 typedef struct bucket_s {
-    u32 can;
+    u32 can; // TODO: FIXME: ATOMIC
     u32 last;
 } bucket_s;
 
 static net_device_s* xlan;
 static net_device_s* physs[PORTS_N];
 static xlan_stream_s paths[HOSTS_N][64]; // POPCOUNT64()
-static u32 seen[HOSTS_N][PORTS_N][PORTS_N]; // TODO: FIXME: ATOMIC
+static atomic_t seen[HOSTS_N];
+ATOMIC_INIT
+atomic_check_mask
+atomic_clear_mask
+atomic_set_mask
+    // mask com as portas deles que estao recebendo
 static bucket_s buckets[PORTS_N];
 
 // enviar broadcast:
@@ -508,6 +513,7 @@ static int __init xlan_init (void) {
     memset(physs,   0, sizeof(physs));
     memset(paths,   0, sizeof(paths));
     memset(buckets, 0, sizeof(buckets));
+    memset(seen,    0, sizeof(seen));
 
     //
     xlan = alloc_netdev(0, "xlan", NET_NAME_USER, xlan_setup);
