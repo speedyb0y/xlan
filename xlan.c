@@ -284,8 +284,8 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xlan) {
             ;
 
             // SE ESTA CHEIO E NAO TEM OUTRO JEITO, LIBERA UM PEQUENO BURST
-            const uint colocar = (c >= PORTS_N*PORTS_N) ?
-                BUCKETS_BURST : (elapsed >= REBUCKET_INTERVAL);
+            const uint colocar = (elapsed >= REBUCKET_INTERVAL)
+                ?: (c >= PORTS_N*PORTS_N) * BUCKETS_BURST;
 
             if (colocar) {                    
                     bucket->can += colocar + (elapsed * BUCKETS_PER_SECOND)/HZ;
