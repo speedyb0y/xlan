@@ -204,28 +204,52 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
     const uint rhost = src_host;
     const uint rport = src_port;
 
-    // DISCARD THOSE
-    if (rhost == HOST
+    // SANITY CHECK
+    if (lhost >= HOSTS_N
      || rhost >= HOSTS_N
-     || lhost != HOST // NOT TO ME (POIS PODE TER RECEBIDO DEVIDO AO MODO PROMISCUO)
      || lport >= PORTS_N
      || rport >= PORTS_N
-     || xlan->flags == 0) { // ->flags & UP
-        printk("XLAN: IN: DROP: skb->dev %s %u [%u] -> %u [%u] SIZE %d DOWN %d\n",
-            skb->dev->name, rhost, rport, lhost, lport, skb->len, xlan->flags == 0);
-        kfree_skb(skb);
-        return RX_HANDLER_CONSUMED;
+     || lhost == rhost)
+        goto drop;
+
+    if (rhost == HOST) {
+        // EU MESMO ENVIEI ESTE PACOTE
+        // ENTAO O SWITCH NAO SABE O DESTINO DELE E ENVIOU PARA TODO MUNDO
+        goto drop;
+    }
+
+    if (lhost != HOST) {
+        // NOT TO ME
+        printk("NOT TO ME\n");
+        goto drop;
+    }
+
+    if (xlan->flags == 0) {
+        // XLAN IS NOT UP
+        printk("NOT UP\n");
+        goto drop;
     }
 
     //
     if (physs[lport] == skb->dev)
         seen[rhost][rport][lport] = jiffies;
-    else printk("XLAN: IN: WRONG PHYS skb->dev %s %u [%u] -> %u [%u] SIZE %d DOWN %d\n",
-        skb->dev->name, rhost, rport, lhost, lport, skb->len, xlan->flags == 0);
+    else {
+        // ESTE PACOTE ERA PARA TER SIDO RECEBIDO EM OUTRA PORTA
+        // TODO: FORCAR A PORTA A ENVIAR ALGO EM 1 SEGUNDO
+            //  E NO TIMER, DESISTIR CASO ELA JA TENHA ENVIADO ALGO
+        printk("XLAN: IN: WRONG PHYS skb->dev %s %u [%u] -> %u [%u] SIZE %d\n",
+            skb->dev->name, rhost, rport, lhost, lport, skb->len);
+    }
 
     skb->dev = xlan;
 
     return RX_HANDLER_ANOTHER;
+
+drop:
+    printk("XLAN: IN: DROP: skb->dev %s %u [%u] -> %u [%u] SIZE %d\n",
+        skb->dev->name, rhost, rport, lhost, lport, skb->len);
+    kfree_skb(skb);
+    return RX_HANDLER_CONSUMED;
 }
 
 static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xlan) {
