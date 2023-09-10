@@ -179,8 +179,8 @@ typedef void pkt_s;
 #define to_host6    pkt->ip.v6.addrs16[15]
 #else
 #define PKT_OFFSET_ETH 0
-#define PKT_OFFSET_IP  14
-#define pkt_eth            pkt
+#define PKT_OFFSET_IP  ETH_SIZE
+#define pkt_eth              pkt
 #define to_vendor   (*(u16*)(pkt + ETH_O_DST))
 #define to_host     (*(u16*)(pkt + ETH_O_DST + 2))
 #define to_port     (*(u16*)(pkt + ETH_O_DST + 4))
@@ -194,7 +194,7 @@ typedef void pkt_s;
 #define from_host4  (*(u8 *)(pkt + ETH_O_PAYLOAD + IP4_O_SRC + 3))
 #define to_net4     (*(u32*)(pkt + ETH_O_PAYLOAD + IP4_O_DST))
 #define to_host4    (*(u8 *)(pkt + ETH_O_PAYLOAD + IP4_O_DST + 3))
-#define ports4      (*(u32*)(pkt + ETH_O_PAYLOAD + IP4_SIZE))
+#define ports4      (*(u32*)(pkt + ETH_O_PAYLOAD + IP4_O_PAYLOAD))
 #define flow6       (*(u16*)(pkt + ETH_O_PAYLOAD + IP6_O_FLOW))
 #define proto6      (*(u8 *)(pkt + ETH_O_PAYLOAD + IP6_O_PROTO))
 #define addrs6      ( (u64*)(pkt + ETH_O_PAYLOAD + IP6_O_SRC))
@@ -202,7 +202,7 @@ typedef void pkt_s;
 #define from_host6  (*(u8 *)(pkt + ETH_O_PAYLOAD + IP6_O_SRC + 15))
 #define to_net6     (*(u64*)(pkt + ETH_O_PAYLOAD + IP6_O_DST))
 #define to_host6    (*(u8 *)(pkt + ETH_O_PAYLOAD + IP6_O_DST + 15))
-#define ports6      (*(u32*)(pkt + ETH_O_PAYLOAD + IP6_SIZE))
+#define ports6      (*(u32*)(pkt + ETH_O_PAYLOAD + IP6_O_PAYLOAD))
 #endif
 
 typedef struct xlan_stream_s {
