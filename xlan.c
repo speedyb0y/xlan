@@ -243,7 +243,7 @@ static void xlan_keeper (struct timer_list* const timer) {
 
     foreach (p, PORTS_N) {
 
-        net_device_s* const phys = &physs[p];
+        net_device_s* const phys = physs[p];
 
         if (phys && phys->flags & IFF_UP) {
 
