@@ -222,8 +222,6 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
 
 static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
 
-    xlan_s* const xlan = netdev_priv(dev);
-
     // ONLY LINEAR
     if (skb_linearize(skb))
         goto drop;
@@ -336,8 +334,6 @@ static int __f_cold xlan_down (net_device_s* const dev) {
 
 static int __f_cold xlan_enslave (net_device_s* dev, net_device_s* phys, struct netlink_ext_ack* extack) {
 
-    xlan_s* const xlan = netdev_priv(dev);
-
     const u8* const mac = PTR(dev->dev_addr);
 
     const uint vendor = MAC_VENDOR(mac);
@@ -377,19 +373,16 @@ static int __f_cold xlan_enslave (net_device_s* dev, net_device_s* phys, struct 
         return -EINVAL;
     }
 
-    if (phys->rx_handler) {
+    if (netdev_is_rx_handler_busy(phys)) {
         printk("XLAN: FAILED: PHYS ALREADY HAS A HANDLER\n");
         return -EBUSY;
     }
 
-    if (netdev_rx_handler_register(phys, xlan_in, dev) != 0) {
+    if (netdev_rx_handler_register(phys, xlan_in, NULL) != 0) {
         printk("XLAN: FAILED: FAILED TO ATTACH HANDLER\n");
         return -1;
     }
 
-    // HOOKED
-    phys->rx_handler_data = dev;
-    
     // HOLD IT
     dev_hold(phys);
     
@@ -401,16 +394,12 @@ static int __f_cold xlan_enslave (net_device_s* dev, net_device_s* phys, struct 
 
 static int __f_cold xlan_unslave (net_device_s* dev, net_device_s* phys) {
 
-    xlan_s* const xlan = netdev_priv(dev);
-
     foreach (p, PORTS_N) {
         if (physs[p] == phys) {            
             physs[p] = NULL; // UNREGISTER IT
             // UNHOOK (IF ITS STILL HOOKED)
-            if (rtnl_dereference(phys->rx_handler) == xlan_in) {
-                                 phys->rx_handler_data = NULL;
+            if (rtnl_dereference(phys->rx_handler) == xlan_in)
                 netdev_rx_handler_unregister(phys);
-            }
             // DROP IT
             dev_put(phys);
             printk("XLAN: %s: DETACHED ITFC %s FROM PORT %u\n",
