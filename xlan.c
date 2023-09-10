@@ -278,25 +278,29 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xlan) {
 
             bucket_s* const bucket = &buckets[lport];
 
-            const u64 elapsed =
-                now >= bucket->last ?
-                now -  bucket->last : HZ 
-            ;
+            uint bcan  = bucket->can;
 
             // SE ESTA CHEIO E NAO TEM OUTRO JEITO, LIBERA UM PEQUENO BURST
-            const uint burst = (elapsed * BUCKETS_PER_SECOND)/HZ
-                + (c >= PORTS_N*PORTS_N) * BUCKETS_BURST;
+            if (c < PORTS_N*PORTS_N) {
+                const u64 blast = bucket->last;
+                const u64 elapsed = now >= blast ? now -  blast : HZ;
+                bcan += (elapsed * BUCKETS_PER_SECOND)/HZ;                
+            } else
+                bcan += BUCKETS_BURST;
 
-            if (BUCKET_BURST_MIN <= burst) {                    
-                    bucket->can +=  burst;
                 if (bucket->can >= BUCKET_SIZE) {
                     bucket->can =  BUCKET_SIZE;
-                }   bucket->last = now;
-            }
+            if (BUCKET_BURST_MIN <= burst)
+                    bucket->can +=  burst;
+
+            // CAP
+            if (bcan > BUCKET_SIZE)
+                bcan = BUCKET_SIZE;
 
             //
-            if (bucket->can) {
-                bucket->can--;
+            if (bcan) {                
+                bucket->can = bcan - 1;
+                bucket->last = now;
 
                 //
                 path->ports = ports;
