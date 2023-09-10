@@ -115,8 +115,8 @@ typedef struct mac_s {
 #define PKT_SIZE 64
 typedef struct pkt_s {
     u8 _align[6];
-    mac_s src;
     mac_s dst;
+    mac_s src;
     u16 type;
     const union pkt_ip_s {
         struct pkt_ip_v4_s {
@@ -606,6 +606,7 @@ static int __init xlan_init (void) {
     BUILD_BUG_ON( sizeof(mac_s) != ETH_ALEN );
 #if XCONF_XLAN_STRUCT
     BUILD_BUG_ON( sizeof(pkt_s) != PKT_SIZE );
+    BUILD_BUG_ON( sizeof(pkt_ip_v4_s) != offsetof(pkt_ip_v6_s) );
 #endif
 
     register_netdev(alloc_netdev(sizeof(xlan_s), "xlan", NET_NAME_USER, xlan_setup));
