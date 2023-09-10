@@ -226,8 +226,9 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
 
                     if (shost == HOST) {
                         // marca esta interface aqui como recebendo
-                        receivers[HOST].mask |= 1U << skb->dev->handler_data;
-                        receivers[HOST].last = jiffies; // UM TIME (E FLAG) PARA CADA
+                        const uint p = skb->dev->handler_data;
+                        lReceiversLast[p] = jiffies; // UM TIME (E FLAG) PARA CADA
+                        lReceiversMask |= 1U << p; // AGORA SIM A OPERACAO ATOMICA
 
                         // a primeira vez que tentar usar
                         if (este->mask & (1U << p)) {
@@ -237,10 +238,10 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
                                 este->mask ^= 1U << p;
                         }
                     } elif (shost < HOSTS_N
-                       && sport < PORTS_N) {
+                         && sport < PORTS_N) {
                         // um pacote de contrle que OUTRA pessoa mandou
-                        receivers[shost].mask = pkt_mask; // UMA MASCARA DE TODOS                      
-                        receivers[shost].last = jiffies; // UM TIME DE TODOS
+                        rReceivers[shost].mask = pkt_mask; // UMA MASCARA DE TODOS                      
+                        rReceivers[shost].last = jiffies; // UM TIME DE TODOS
                     }
                 }
             } elif (dst_vendor == BE32(VENDOR)
