@@ -179,12 +179,12 @@ typedef void pkt_s;
 #define PKT_OFFSET_ETH 0
 #define PKT_OFFSET_IP  ETH_SIZE
 #define pkt_eth              pkt
-#define dst_vendor  (*(u16*)(pkt + ETH_O_DST))
-#define dst_host    (*(u16*)(pkt + ETH_O_DST + 2))
-#define dst_port    (*(u16*)(pkt + ETH_O_DST + 4))
-#define src_vendor  (*(u16*)(pkt + ETH_O_SRC))
-#define src_host    (*(u16*)(pkt + ETH_O_SRC + 2))
-#define src_port    (*(u16*)(pkt + ETH_O_SRC + 4))
+#define dst_vendor  (*(u32*)(pkt + ETH_O_DST))
+#define dst_host    (*(u8 *)(pkt + ETH_O_DST + 2))
+#define dst_port    (*(u8 *)(pkt + ETH_O_DST + 4))
+#define src_vendor  (*(u32*)(pkt + ETH_O_SRC))
+#define src_host    (*(u8 *)(pkt + ETH_O_SRC + 2))
+#define src_port    (*(u8 *)(pkt + ETH_O_SRC + 4))
 #define pkt_type    (*(u16*)(pkt + ETH_O_TYPE))
 #define addrs4      (*(u64*)(pkt + ETH_O_PAYLOAD + IP4_O_SRC))
 #define addrs6      ( (u64*)(pkt + ETH_O_PAYLOAD + IP6_O_SRC))
