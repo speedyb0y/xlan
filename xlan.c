@@ -278,40 +278,47 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xlan) {
 
         net_device_s* const phys = physs[lport];
 
-        if (phys && (phys->flags & IFF_UP) == IFF_UP && // IFF_RUNNING // IFF_LOWER_UP
-            ( c >= PORTS_N || 1) // TODO: SE O DEVICE JA ESTIVER SOBRECARREGADO, MANDA POR OUTRO
-        )) {
+        if (phys && (phys->flags & IFF_UP) == IFF_UP) { // IFF_RUNNING // IFF_LOWER_UP
+            
+            // SE ESTA SOBRECARREGADO, MAS NAO TEM OUTRO JEITO, LIBERA UM PEQUENO BURST
+            if (physCounters[lport] == 0 && c >= PORTS_N)
+                physCounters[lport] += 200;
+
             //
-            path->ports = ports;
-            path->last  = now;
-            //physCounters[lport]++;
+            if (physCounters[lport]) {
+                physCounters[lport]--;
 
-            // FILL ETHERNET HEADER
-            dst_vendor = BE32(VENDOR);
-            dst_host   = rhost;
-            dst_port   = rport;
-            src_vendor = BE32(VENDOR);
-            src_host   = HOST;
-            src_port   = lport;
-            pkt_type   = skb->protocol;
+                //
+                path->ports = ports;
+                path->last  = now;                
 
-            // UPDATE SKB
-            skb->data       = PTR(pkt);
+                // FILL ETHERNET HEADER
+                dst_vendor = BE32(VENDOR);
+                dst_host   = rhost;
+                dst_port   = rport;
+                src_vendor = BE32(VENDOR);
+                src_host   = HOST;
+                src_port   = lport;
+                pkt_type   = skb->protocol;
+
+                // UPDATE SKB
+                skb->data       = PTR(pkt);
 #ifdef NET_SKBUFF_DATA_USES_OFFSET
-            skb->mac_header = PTR(pkt) - SKB_HEAD(skb);
+                skb->mac_header = PTR(pkt) - SKB_HEAD(skb);
 #else
-            skb->mac_header = PTR(pkt);
+                skb->mac_header = PTR(pkt);
 #endif
-            skb->len        = SKB_TAIL(skb) - PTR(pkt);
-            skb->mac_len    = ETH_HLEN;
-            skb->dev        = phys;
+                skb->len        = SKB_TAIL(skb) - PTR(pkt);
+                skb->mac_len    = ETH_HLEN;
+                skb->dev        = phys;
 
-            // -- THE FUNCTION CAN BE CALLED FROM AN INTERRUPT
-            // -- WHEN CALLING THIS METHOD, INTERRUPTS MUST BE ENABLED
-            // -- REGARDLESS OF THE RETURN VALUE, THE SKB IS CONSUMED
-            dev_queue_xmit(skb);
+                // -- THE FUNCTION CAN BE CALLED FROM AN INTERRUPT
+                // -- WHEN CALLING THIS METHOD, INTERRUPTS MUST BE ENABLED
+                // -- REGARDLESS OF THE RETURN VALUE, THE SKB IS CONSUMED
+                dev_queue_xmit(skb);
 
-            return NETDEV_TX_OK;
+                return NETDEV_TX_OK;
+            }
         }
 
         ports++;
