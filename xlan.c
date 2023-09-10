@@ -271,15 +271,12 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xlan) {
             (path->saw && (now - *path->saw) > 5*HZ)
         || // TODO: OU SE O PACOTE É UM TCP-SYN, RST RETRANSMISSION ETC
             0
-    ;
-
-    // NOTE: MUDA A PORTA LOCAL COM MAIS FREQUENCIA, PARA QUE O SWITCH A DESCUBRA
-    // for PORTS_N in range(7): assert len(set((_ // PORTS_N, _ % PORTS_N) for _ in range(PORTS_N*PORTS_N))) == PORTS_N*PORTS_N
+    
     foreach (c, (PORTS_N * PORTS_N * 2 + 1)) {
         ports %= PORTS_N * PORTS_N;
 
         const uint rport = ports / PORTS_N;
-        const uint lport = ports % PORTS_N;
+        const uint lport = ports % PORTS_N; // <- MUDA A PORTA LOCAL COM MAIS FREQUENCIA, PARA QUE O SWITCH A DESCUBRA
 
         net_device_s* const phys = physs[lport];
 
