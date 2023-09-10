@@ -283,13 +283,14 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xlan) {
 
             bucket_s* const bucket = &buckets[lport];
 
-            uint bcan = bucket->can;
+            u64 bcan;
 
             // SE ESTA CHEIO E NAO TEM OUTRO JEITO, LIBERA UM PEQUENO BURST
             if (c < PORTS_N*PORTS_N) {
-                const u64 blast = bucket->last;
-                const u64 elapsed = now >= blast ? now -  blast : HZ;
-                    bcan += (elapsed * BUCKETS_PER_SECOND)/HZ;                
+                    bcan = ((now - bucket->last) * BUCKETS_PER_SECOND)/HZ;
+                if (bcan > BUCKETS_PER_SECOND) // SE DEU OVERFLOW
+                    bcan = BUCKETS_PER_SECOND; // ...CONSIDERA COMO 1 SEGUNDO
+                    bcan += bucket->can;
                 if (bcan > BUCKET_SIZE)
                     bcan = BUCKET_SIZE;
             } else // SE CHEGAMOS AO SEGUNDO ROUND, É PORQUE ELE ESTA ZERADO
