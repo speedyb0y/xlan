@@ -175,7 +175,7 @@ typedef struct xlan_stream_s {
     u32 last;
 } xlan_stream_s;
 
-static net_device_s* virt;
+static net_device_s* xlan;
 static net_device_s* physs[PORTS_N];
 static xlan_stream_s paths[HOSTS_N][64]; // POPCOUNT64()
 static u32 seen[HOSTS_N][PORTS_N][PORTS_N]; // TODO: FIXME: ATOMIC
@@ -183,7 +183,6 @@ static u32 seen[HOSTS_N][PORTS_N][PORTS_N]; // TODO: FIXME: ATOMIC
 static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
 
     sk_buff_s* const skb = *pskb;
-    net_device_s* const phys = skb->dev;
 
     const void* const pkt = SKB_MAC(skb);
 
@@ -204,8 +203,8 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
      || lhost != HOST // NOT TO ME (POIS PODE TER RECEBIDO DEVIDO AO MODO PROMISCUO)
      || lport >= PORTS_N
      || rport >= PORTS_N
-     || phys  != ports[lport] // WRONG INTERFACE
-     || virt->flags == 0) { // ->flags & UP
+     || skb->dev != ports[lport] // WRONG INTERFACE
+     || xlan->flags == 0) { // ->flags & UP
         kfree_skb(skb);
         return RX_HANDLER_CONSUMED;
     }
@@ -213,14 +212,14 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
     //
     seen[rhost][rport][lport] = jiffies;
 
-    skb->dev = virt;
+    skb->dev = xlan;
 
     return RX_HANDLER_ANOTHER;
 }
 
 #define ROUNDS 5
 
-static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
+static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xlan) {
 
     // ONLY LINEAR
     if (skb_linearize(skb))
@@ -318,30 +317,30 @@ drop:
     return NETDEV_TX_OK;
 }
 
-static int __f_cold xlan_up (net_device_s* const dev) {
+static int __f_cold xlan_down (net_device_s* const xlan) {
 
-    printk("XLAN: %s: UP\n", dev->name);
-
-    return 0;
-}
-
-static int __f_cold xlan_down (net_device_s* const dev) {
-
-    printk("XLAN: %s: DOWN\n", dev->name);
+    printk("XLAN: %s DOWN\n", xlan->name);
 
     return 0;
 }
 
-static int __f_cold xlan_enslave (net_device_s* dev, net_device_s* phys, struct netlink_ext_ack* extack) {
+static int __f_cold xlan_up (net_device_s* const xlan) {
 
-    const u8* const mac = PTR(dev->dev_addr);
+    printk("XLAN: %s UP\n", xlan->name);
+
+    return 0;
+}
+
+static int __f_cold xlan_enslave (net_device_s* xlan, net_device_s* phys, struct netlink_ext_ack* extack) {
+
+    const u8* const mac = PTR(phys->dev_addr);
 
     const uint vendor = MAC_VENDOR(mac);
     const uint host   = MAC_HOST(mac);
     const uint port   = MAC_PORT(mac);
 
     printk("XLAN: %s: ENSLAVE PHYS %s: VENDOR 0x%04X HOST %u PORT %u MAC %02X:%02X:%02X:%02X:%02X:%02X\n",
-        dev->name, phys->name, vendor, host, port,
+        xlan->name, phys->name, vendor, host, port,
         mac[0], mac[1], mac[2],
         mac[3], mac[4], mac[5]);
 
@@ -356,7 +355,7 @@ static int __f_cold xlan_enslave (net_device_s* dev, net_device_s* phys, struct 
         return -EINVAL;
     }
 
-    if (physs[port] == dev) {
+    if (physs[port] == phys) {
         printk("XLAN: FAILED: PHYS ALREADY ATTACHED AS THIS PORT\n");
         return -EISCONN;
     }
@@ -366,7 +365,7 @@ static int __f_cold xlan_enslave (net_device_s* dev, net_device_s* phys, struct 
         return -EEXIST;
     }
     
-    if (phys == dev
+    if (phys == xlan
      || phys->flags & IFF_LOOPBACK
      || phys->addr_len != ETH_ALEN) {
         printk("XLAN: FAILED: BAD PHYS (ITSELF / LOOPBACK / NOT ETHERNET)\n");
@@ -392,24 +391,19 @@ static int __f_cold xlan_enslave (net_device_s* dev, net_device_s* phys, struct 
     return 0;
 }
 
-static int __f_cold xlan_unslave (net_device_s* dev, net_device_s* phys) {
+static int __f_cold xlan_unslave (net_device_s* xlan, net_device_s* phys) {
 
     foreach (p, PORTS_N) {
         if (physs[p] == phys) {            
-            physs[p] = NULL; // UNREGISTER IT
-            // UNHOOK (IF ITS STILL HOOKED)
-            if (rtnl_dereference(phys->rx_handler) == xlan_in)
-                netdev_rx_handler_unregister(phys);
-            // DROP IT
-            dev_put(phys);
-            printk("XLAN: %s: DETACHED ITFC %s FROM PORT %u\n",
-                dev->name, phys->name, p);
+            physs[p] = NULL; // UNREGISTER
+            netdev_rx_handler_unregister(phys); // UNHOOK
+            dev_put(phys); // DROP
+            printk("XLAN: DETACHED PHYS %s FROM PORT %u\n", phys->name, p);
             return 0;
         }
     }
 
-    printk("XLAN: %s: CANNOT DETACHED ITFC %s FROM ANY PORT\n",
-        dev->name, phys->name);
+    printk("XLAN: CANNOT DETACH PHYS %s FROM ANY PORT\n", phys->name);
 
     return -ENOTCONN;
 }
@@ -469,9 +463,9 @@ static int __init xlan_init (void) {
     memset(seen,  0, sizeof(seen));
 
     //
-    virt = alloc_netdev(0, "xlan", NET_NAME_USER, xlan_setup);
+    xlan = alloc_netdev(0, "xlan", NET_NAME_USER, xlan_setup);
     //
-    register_netdev(virt);
+    register_netdev(xlan);
 
     return 0;
 }
