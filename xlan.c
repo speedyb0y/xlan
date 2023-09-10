@@ -204,7 +204,7 @@ typedef struct r_receiver_s {
     u32 last;
 } r_receiver_s;
 
-#define PHYS_PORT(phys) ((uint)(uintpntr_t)(phys->rx_handler_data))
+#define PHYS_PORT(phys) ((uint)(uintptr_t)(phys->rx_handler_data))
 
 static u64 boot; // BOOT ID
 static net_device_s* xlan;
