@@ -211,14 +211,14 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
      || lhost != HOST // NOT TO ME (POIS PODE TER RECEBIDO DEVIDO AO MODO PROMISCUO)
      || lport >= PORTS_N
      || rport >= PORTS_N
-     || skb->dev != physs[lport] // WRONG INTERFACE
      || xlan->flags == 0) { // ->flags & UP
         kfree_skb(skb);
         return RX_HANDLER_CONSUMED;
     }
 
     //
-    seen[rhost][rport][lport] = jiffies;
+    if (physs[lport] == skb->dev)
+        seen[rhost][rport][lport] = jiffies;
 
     skb->dev = xlan;
 
