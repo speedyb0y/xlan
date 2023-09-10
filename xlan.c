@@ -219,20 +219,23 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
             // IT IS A PROPER XLAN PACKET
             if (dst_vendor == 0xFFFFFFFFU) {
                 // BROADCAST
-                if (pkt_type == BE16(0x2562) && skb->len == (ETH_SIZE + sizeof(u64))) {
+                if (pkt_type == BE16(0x2562) && skb->len == (ETH_SIZE + sizeof(u8))) {
                     // CONTROLE
-                    const uint now = jiffies;
                     const uint shost = src_host;
                     const uint sport = src_port;
 
                     if (shost == HOST) 
                         // marca esta interface aqui como recebendo
-                        seen[HOST][skb->dev->handler_data] = now;
+                        seen[HOST][skb->dev->handler_data] = jiffies;
                     elif (shost < HOSTS_N
-                       && sport < PORTS_N)
+                       && sport < PORTS_N) {
                         // um pacote de contrle que OUTRA pessoa mandou
-                        foreach (p, PORTS_N)
-                            seen[shost][p] = ((pkt_mask >> p) & 1U) * now;
+                        const uint now = jiffies;
+                        const uint mask = pkt_mask;
+                        foreach (p, HOSTS_N)
+                            if (mask & (1U << p))
+                                seen[shost][p] = now;
+                    }
                 }
             } elif (dst_vendor == BE32(VENDOR)
                  && dst_host == HOST
