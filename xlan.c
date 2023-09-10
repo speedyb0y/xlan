@@ -127,9 +127,10 @@ typedef struct pkt_s {
             u8 protocol;
             u8 _y[2];
             union { 
-                u64 addrs64;
-                u16 addrs16[4];
-            } __packed;
+                u64 w64;
+                u32 w32[2];
+                u8 w8[8];
+            } __packed addrs;
             u32 ports;
             u8 _z[20];
         } __packed v4;
@@ -140,9 +141,9 @@ typedef struct pkt_s {
             u8 protocol;
             u8 _z[1];
             union {
-                u64 addrs64[4];
-                u16 addrs16[16];
-            } __packed;
+                u64 w64[4];
+                u8 w8[32];
+            } __packed addrs;
             u32 ports;
         } __packed v6;
     } ip;
@@ -165,18 +166,18 @@ typedef void pkt_s;
 #define flow6       pkt->ip.v6.flow
 #define proto4      pkt->ip.v4.protocol
 #define proto6      pkt->ip.v6.protocol
-#define addrs4      pkt->ip.v4.addrs64
-#define addrs6      pkt->ip.v6.addrs64
 #define ports4      pkt->ip.v4.ports
 #define ports6      pkt->ip.v6.ports
-#define from_net4   pkt->ip.v4.addrs16[0]
-#define from_host4  pkt->ip.v4.addrs16[1]
-#define to_net4     pkt->ip.v4.addrs16[2]
-#define to_host4    pkt->ip.v4.addrs16[3]
-#define from_net6   pkt->ip.v6.addrs16[0]
-#define from_host6  pkt->ip.v6.addrs16[7]
-#define to_net6     pkt->ip.v6.addrs16[8]
-#define to_host6    pkt->ip.v6.addrs16[15]
+#define addrs4      pkt->ip.v4.addrs.w64
+#define from_net4   pkt->ip.v4.addrs.w32[0]
+#define from_host4  pkt->ip.v4.addrs.w8[3]
+#define to_net4     pkt->ip.v4.addrs.w32[1]
+#define to_host4    pkt->ip.v4.addrs.w8[7]
+#define addrs6      pkt->ip.v6.addrs.w64
+#define from_net6   pkt->ip.v6.addrs.w64[0]
+#define from_host6  pkt->ip.v6.addrs.w8[15]
+#define to_net6     pkt->ip.v6.addrs.w64[2]
+#define to_host6    pkt->ip.v6.addrs.w8[31]
 #else
 #define PKT_OFFSET_ETH 0
 #define PKT_OFFSET_IP  ETH_SIZE
