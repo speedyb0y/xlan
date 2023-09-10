@@ -77,6 +77,9 @@ typedef typeof(jiffies) jiffies_t;
 #define BUCKETS_PER_SECOND XCONF_XLAN_BUCKETS_PER_SECOND
 #define BUCKETS_BURST      XCONF_XLAN_BUCKETS_BURST
 
+#define XLAN_TIMER_DELAY    (XCONF_XLAN_TIMER_DELAY*HZ) // AFTER SYSTEM BOOT
+#define XLAN_TIMER_INTERVAL (XCONF_XLAN_TIMER_INTERVAL*HZ)
+
 #if !(VENDOR && VENDOR <= 0xFFFFFFFF && !(VENDOR & 0x01000000))
 #error "BAD VENDOR"
 #endif
@@ -229,9 +232,6 @@ static bucket_s buckets[PORTS_N];
 // ao receber um pacote de controle, vindo de qualquer porta,
 //          pega todas as portas que ele diz estarem NAO RECEBENDO,
 //              e desmarca
-
-#define XLAN_TIMER_DELAY    (XCONF_XLAN_TIMER_DELAY*HZ) // AFTER SYSTEM BOOT
-#define XLAN_TIMER_INTERVAL (XCONF_XLAN_TIMER_INTERVAL*HZ)
 
 static void xlan_keeper (struct timer_list*);
 static DEFINE_TIMER(doTimer, xlan_keeper);
