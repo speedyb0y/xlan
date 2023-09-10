@@ -530,7 +530,7 @@ static int __f_cold xlan_cfg (net_device_s* const dev, void* const addr) {
     if(netif_running(dev))
         return -EBUSY;
 
-    const xlan_info_s* const info = addr;
+    const xlan_info_s* const info = PTR(addr) - sizeof(info->_align);
 
     BUILD_BUG_ON( sizeof(*info) != (sizeof(info->_align) + XLAN_INFO_LEN) );
 
@@ -544,7 +544,7 @@ static int __f_cold xlan_cfg (net_device_s* const dev, void* const addr) {
         dev->name, host, gw, net4, (unsigned long long int)net6);
 
     // VERIFY
-    if (net4 && !(net4 & 0xFFU) && net6 && host && host < HOSTS_N && gw < HOSTS_N && gw != host) {
+    if (net4 && !(net4 % HOSTS_N) && net6 && host && host < HOSTS_N && gw < HOSTS_N && gw != host) {
 
         xlan_s* const xlan = netdev_priv(dev);
 
