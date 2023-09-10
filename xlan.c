@@ -287,15 +287,15 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xlan) {
 
             bucket_s* const bucket = &buckets[lport];
 
-            uint bcan;
+            uint bcan = bucket->can;
 
             // SE ESTA CHEIO E NAO TEM OUTRO JEITO, LIBERA UM PEQUENO BURST
-            if (c < PORTS_N*PORTS_N) {
-                    bcan = bucket->can + ((now - bucket->last) * BUCKETS_PER_SECOND)/HZ;
+            if (bcan) {
+                    bcan += ((now - bucket->last) * BUCKETS_PER_SECOND)/HZ;
                 if (bcan > BUCKETS_PER_SECOND) // SE DEU OVERFLOW NO JIFFIES OU SE PASSOU MAIS DO QUE UM SEGUNDO
                     bcan = BUCKETS_PER_SECOND; // ...CONSIDERA COMO 1 SEGUNDO
-            } else // SE CHEGAMOS AO SEGUNDO ROUND, É PORQUE ELE ESTA ZERADO
-                bcan = BUCKETS_BURST;
+            } elif (c >= PORTS_N*PORTS_N) // SE CHEGAMOS AO SEGUNDO ROUND, É PORQUE ELE ESTA ZERADO
+                    bcan = BUCKETS_BURST;
 
             //
             if (bcan) {                
