@@ -79,7 +79,11 @@ typedef struct notifier_block notifier_block_s;
 
 #define IP4_O_PROTO   9
 #define IP4_O_SRC     12
+#define IP4_O_SRC_N   12
+#define IP4_O_SRC_H   15
 #define IP4_O_DST     16
+#define IP4_O_DST_N   16
+#define IP4_O_DST_H   19
 #define IP4_O_PORTS   20
 
 #define IP6_O_VERSION  0
