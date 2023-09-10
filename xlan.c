@@ -459,9 +459,6 @@ static int __f_cold xlan_enslave (net_device_s* dev, net_device_s* phys, struct 
     elif (port >= PORTS_N)
         // BAD PORT
         ret = _ENSL_PORT_HIGH;
-    elif (rtnl_dereference(phys->rx_handler) == xlan_in)
-        // TODO: WTF?
-        ret = _ENSL_ATTACH_FAILED;
     elif (netdev_rx_handler_register(phys, xlan_in, dev) != 0)
         // FAILED TO ATTACH
         ret = _ENSL_ATTACH_FAILED;
