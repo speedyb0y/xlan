@@ -313,7 +313,9 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xlan) {
         ports %= PORTS_N * PORTS_N;
 
         const uint rport = ports / PORTS_N;
-        const uint lport = ports % PORTS_N; // <- MUDA A PORTA LOCAL COM MAIS FREQUENCIA, PARA QUE O SWITCH A DESCUBRA
+        const uint lport = ports % PORTS_N; // <- MUDA A PORTA LOCAL COM MAIS FREQUENCIA,
+                // PARA QUE O SWITCH A DESCUBRA
+                // E PORQUE NOS TEMOS MAIS CONTROLE SE ESSA NOSSA PORTA ESTA EXAUSTA OU NAO
 
         net_device_s* const phys = physs[lport];
 
