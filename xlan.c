@@ -204,6 +204,8 @@ typedef struct r_receiver_s {
     u32 last;
 } r_receiver_s;
 
+#define PHYS_PORT(phys) ((uint)(uintpntr_t)(phys->rx_handler_data))
+
 static u64 boot; // BOOT ID
 static net_device_s* xlan;
 static net_device_s* physs[PORTS_N];
@@ -315,7 +317,7 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
 
                     if (shost == HOST) {
                         // marca esta interface aqui como recebendo
-                        const uint p = skb->dev->rx_handler_data;
+                        const uint p = PHYS_PORT(skb->dev);
                         lReceiversLast[p] = jiffies; // UM TIME (E FLAG) PARA CADA
                         lReceiversMask |= 1U << p; // AGORA SIM A OPERACAO ATOMICA
 #if 0 // a primeira vez que tentar usar
@@ -335,7 +337,7 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
                 }
             } elif (dst_vendor == BE32(VENDOR)
                  && dst_host == HOST
-                 && dst_port == skb->dev->rx_handler_data) {
+                 && dst_port == PHYS_PORT(skb->dev)) {
                 // NORMAL PACKET, TO ME, TO THIS PORT
                 skb->dev = xlan;
                 return RX_HANDLER_ANOTHER;
@@ -560,7 +562,7 @@ static int __f_cold xlan_enslave (net_device_s* xlan, net_device_s* phys, struct
         return -EBUSY;
     }
 
-    if (netdev_rx_handler_register(phys, xlan_in, NULL) != 0) {
+    if (netdev_rx_handler_register(phys, xlan_in, (uintpntr_t)p) != 0) {
         printk("XLAN: FAILED: FAILED TO ATTACH HANDLER\n");
         skb_free(skb);
         return -1;
