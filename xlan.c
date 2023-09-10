@@ -466,7 +466,7 @@ static int __f_cold xlan_cfg (net_device_s* const dev, void* const addr) {
         dev->name, host, host, gw, gw);
 
     // VERIFY
-    if (net4 && !(net4 % HOSTS_N) && net6 && host && host < HOSTS_N && gw < HOSTS_N && gw != host) {
+    if (host && host < HOSTS_N && gw < HOSTS_N && gw != host) {
 
         xlan_s* const xlan = netdev_priv(dev);
 
