@@ -195,8 +195,7 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
     const void* const pkt = SKB_MAC(skb);
 
     // SO HANDLE O QUE FOR
-    if (dst_vendor != BE32(VENDOR)
-     || src_vendor != BE32(VENDOR))
+    if (src_vendor != BE32(VENDOR))
         return RX_HANDLER_PASS;
 
     // ASSERT: skb->type PKT_HOST
@@ -212,7 +211,7 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
      || lport >= PORTS_N
      || rport >= PORTS_N
      || xlan->flags == 0) { // ->flags & UP
-        printk("XLAN: DROPING: skb->dev %s %u [%u] -> %u [%u] SIZE %d DOWN %d\n",
+        printk("XLAN: DROP IN: skb->dev %s %u [%u] -> %u [%u] SIZE %d DOWN %d\n",
             skb->dev->name, rhost, rport, lhost, lport, skb->len, xlan->flags == 0);
         kfree_skb(skb);
         return RX_HANDLER_CONSUMED;
@@ -354,6 +353,9 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xlan) {
     }
 
 drop:
+    printk("XLAN: DROP OUT: PROTOCOL 0x%04X SIZE %d\n",
+        skb->len, BE16(skb->protocol));
+
     dev_kfree_skb(skb);
 
     return NETDEV_TX_OK;
