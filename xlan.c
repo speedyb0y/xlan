@@ -262,6 +262,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xlan) {
     ;    
 #define BUCKET_SIZE 40000
 #define BUCKETS_PER_SECOND 20000
+#define REBUCKET_INTERVAL 10
     // NOTE: MUDA A PORTA LOCAL COM MAIS FREQUENCIA, PARA QUE O SWITCH A DESCUBRA
     // for PORTS_N in range(7): assert len(set((_ // PORTS_N, _ % PORTS_N) for _ in range(PORTS_N*PORTS_N))) == PORTS_N*PORTS_N
     foreach (c, (PORTS_N * PORTS_N * 2 + 1)) {
@@ -285,8 +286,8 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xlan) {
                         now >= bucket->last ?
                         now -  bucket->last : HZ 
                     ;
-                    if (elapsed > 10) {
-                        bucket->can += (BUCKETS_PER_SECOND*elapsed)/HZ;
+                    if (elapsed >= REBUCKET_INTERVAL) {
+                            bucket->can += (elapsed * BUCKETS_PER_SECOND)/HZ;
                         if (bucket->can >= BUCKET_SIZE)
                             bucket->can =  BUCKET_SIZE;
                         bucket->last = now;
