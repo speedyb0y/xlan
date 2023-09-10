@@ -217,13 +217,7 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
 
         if (src_vendor == BE32(VENDOR)) {
             // IT IS A PROPER XLAN PACKET
-            if (dst_vendor == BE32(VENDOR)) {
-                // NORMAL                
-                if (dst_host == HOST && dst_port == skb->dev->handler_data) {
-                    skb->dev = xlan;
-                    return RX_HANDLER_ANOTHER;
-                }
-            } elif (dst_vendor == 0xFFFFFFFFU) {
+            if (dst_vendor == 0xFFFFFFFFU) {
                 // CONTROLE (BROADCAST)
                 const uint shost = src_host;
                 const uint sport = src_port;
@@ -234,6 +228,10 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
                 elif (shost < HOSTS_N && sport < PORTS_N)
                     // um pacote de contrle que OUTRA pessoa mandou
                     seen[shost][sport] = pkt_type == RECEVENDO ? jiffies : 0;
+            } elif (dst_host == HOST
+                 && dst_port == skb->dev->handler_data) {
+                skb->dev = xlan;
+                return RX_HANDLER_ANOTHER;
             }
         }
     }
