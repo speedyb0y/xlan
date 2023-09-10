@@ -184,20 +184,26 @@ typedef typeof(jiffies) jiffies_t;
 #define dst6_host   (*(u8 *)(pkt + ETH_SIZE + IP6_O_DST_H))
 #define ports6      (*(u32*)(pkt + ETH_SIZE + IP6_SIZE))
 
-typedef struct xlan_stream_s {
+typedef struct stream_s {
     u32 ports; // TODO: FIXME: ATOMIC
     u32 last;
-} xlan_stream_s;
+} stream_s;
 
 typedef struct bucket_s {
     u32 can; // TODO: FIXME: ATOMIC
     u32 last;
 } bucket_s;
 
+typedef struct r_receiver_s {    
+    u32 mask;
+    u32 last;
+} r_receiver_s;
+
 static u64 boot; // BOOT ID
 static net_device_s* xlan;
 static net_device_s* physs[PORTS_N];
-static xlan_stream_s paths[HOSTS_N][64]; // POPCOUNT64()
+static stream_s streams[HOSTS_N][64]; // POPCOUNT64()
+static r_receiver_s rReceivers[HOSTS_N];
 static atomic_t seen[HOSTS_N];
 /*
 ATOMIC_INIT
@@ -313,14 +319,14 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
                         const uint p = skb->dev->rx_handler_data;
                         lReceiversLast[p] = jiffies; // UM TIME (E FLAG) PARA CADA
                         lReceiversMask |= 1U << p; // AGORA SIM A OPERACAO ATOMICA
-
-                        // a primeira vez que tentar usar
+#if 0 // a primeira vez que tentar usar
                         if (este->mask & (1U << p)) {
                             if (este->last >= fresh) {
 
                             } else // NAO PERDE MAIS TEMPO COM ISSO
                                 este->mask ^= 1U << p;
                         }
+#endif
                     } elif (shost < HOSTS_N
                          && sport < PORTS_N) { // TODO: cntl_boot, cntl_jiffies
                         // um pacote de contrle que OUTRA pessoa mandou
@@ -378,7 +384,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xlan) {
     // SELECT A PATH
     // OK: TCP | UDP | UDPLITE | SCTP | DCCP
     // FAIL: ICMP
-    xlan_stream_s* const path = &paths[rhost][__builtin_popcountll( (u64) ( v4
+    stream_s* const stream = &streams[rhost][__builtin_popcountll( (u64) ( v4
         ? proto4 * ports4 + addrs4
         : proto6 * ports6 * flow6
         + addrs6[0] + addrs6[1]        
@@ -386,8 +392,8 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xlan) {
     ))];
 
     uint now   = jiffies;
-    uint last  = path->last;
-    uint ports = path->ports;
+    uint last  = stream->last;
+    uint ports = stream->ports;
     
     // FORCA A MUDANCA DA PORTA ATUAL SE...
     if ((now - last) >= HZ/5) {
@@ -444,8 +450,8 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xlan) {
             if (bcan) {                
                 bucket->can = bcan - 1;
                 bucket->last = now;
-                path->ports = ports;
-                path->last  = now;                
+                stream->ports = ports;
+                stream->last  = now;                
 
                 // FILL ETHERNET HEADER
                 dst_vendor = BE32(VENDOR);
@@ -641,7 +647,7 @@ static int __init xlan_init (void) {
     boot = jiffies; // TODO: FIXME:
 
     memset(physs,   0, sizeof(physs));
-    memset(paths,   0, sizeof(paths));
+    memset(streams, 0, sizeof(streams));
     memset(buckets, 0, sizeof(buckets));
     memset(seen,    0, sizeof(seen));
 
