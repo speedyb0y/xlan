@@ -216,11 +216,7 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
 
         const void* const pkt = SKB_MAC(skb);
 
-        const uint shost = src_host;
-        const uint sport = src_port;
-        
-        if (src_vendor == BE32(VENDOR) && shost < HOSTS_N && sport < PORTS_N) {
-
+        if (src_vendor == BE32(VENDOR)) {
             if (dst_vendor == BE32(VENDOR)) {
                 // NORMAL                
                 if (dst_host == HOST && dst_port == skb->dev->handler_data) {
@@ -229,15 +225,16 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
                 }
             } elif (dst_vendor == 0xFFFFFFFFU) {
                 // CONTROLE
-
-                if (dhost == 0xFF) {
-                    // CONTROLE
-                    if (shost != HOST) {
-                        // um pacote de contrle que OUTRA pessoa mandou
-                        // carrega as informacoes de teceiros
-                    } // marca esta interface aqui como recebendo
+                const uint shost = src_host;
+                const uint sport = src_port;
+                                
+                if (shost == HOST) 
+                    // marca esta interface aqui como recebendo
                     receivers[skb->dev->handler_data] = 1;
-                } 
+                elif (shost < HOSTS_N && sport < PORTS_N) {
+                    // um pacote de contrle que OUTRA pessoa mandou
+                    // carrega as informacoes de teceiros
+                }  
             }
         }
     }
