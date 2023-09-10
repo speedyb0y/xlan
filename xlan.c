@@ -105,8 +105,6 @@ typedef struct notifier_block notifier_block_s;
 #define GW HOST
 #endif
 
-#define NORMAL_MODE 1
-
 #define ETH_O_DST      0
 #define ETH_O_DST_V    0
 #define ETH_O_DST_H    4
@@ -177,15 +175,11 @@ typedef struct xlan_stream_s {
 
 static net_device_s* xlan;
 static net_device_s* physs[PORTS_N];
-#if NORMAL_MODE
 static xlan_stream_s paths[HOSTS_N][64]; // POPCOUNT64()
 static u32 seen[HOSTS_N][PORTS_N][PORTS_N]; // TODO: FIXME: ATOMIC
-#else
-static uint pathPorts;
-static u64 bucket;
-static u64 flushAgain;
-#endif
-
+static u32 buckets[PORTS_N];
+static u64 rebucket[PORTS_N];
+rebucket = 0;
 static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
 
     sk_buff_s* const skb = *pskb;
@@ -215,10 +209,9 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
         return RX_HANDLER_CONSUMED;
     }
 
-#if NORMAL_MODE
     //
     seen[rhost][rport][lport] = jiffies;
-#endif
+
     skb->dev = xlan;
 
     return RX_HANDLER_ANOTHER;
@@ -267,7 +260,8 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xlan) {
     ports += (now - last) >= HZ/5
      || 0 // TODO: OU SE O PACOTE É UM TCP-SYN, RST RETRANSMISSION ETC
     ;    
-
+#define BUCKET_SIZE 40000
+#define BUCKETS_PER_SECOND 20000
     // NOTE: MUDA A PORTA LOCAL COM MAIS FREQUENCIA, PARA QUE O SWITCH A DESCUBRA
     // for PORTS_N in range(7): assert len(set((_ // PORTS_N, _ % PORTS_N) for _ in range(PORTS_N*PORTS_N))) == PORTS_N*PORTS_N
     foreach (c, (PORTS_N * PORTS_N * 2 + 1)) {
@@ -279,14 +273,30 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xlan) {
         net_device_s* const phys = physs[lport];
 
         if (phys && (phys->flags & IFF_UP) == IFF_UP) { // IFF_RUNNING // IFF_LOWER_UP
+
+            bucket_s* const bucket = &buckets[lport];
             
             // SE ESTA SOBRECARREGADO, MAS NAO TEM OUTRO JEITO, LIBERA UM PEQUENO BURST
-            if (physCounters[lport] == 0 && c >= PORTS_N*PORTS_N)
-                physCounters[lport] += 200;
+            if (bucket->can == 0) {
+                if (c >= PORTS_N*PORTS_N)
+                    bucket->can += 200;
+                else {
+                    const u64 elapsed =
+                        now >= bucket->last ?
+                        now -  bucket->last : HZ 
+                    ;
+                    if (elapsed > 10) {
+                        bucket->can += (BUCKETS_PER_SECOND*elapsed)/HZ;
+                        if (bucket->can >= BUCKET_SIZE)
+                            bucket->can =  BUCKET_SIZE;
+                        bucket->last = now;
+                    }
+                }
+            }
 
             //
-            if (physCounters[lport]) {
-                physCounters[lport]--;
+            if (bucket->can) {
+                bucket->can--;
 
                 //
                 path->ports = ports;
@@ -474,15 +484,10 @@ static int __init xlan_init (void) {
     printk("XLAN: INIT - VENDOR 0x%04x HOST %u 0x%02X GW %u 0x%02X NET4 0x%08X NET6 0x%016llX\n",
         VENDOR, HOST, HOST, GW, GW, NET4, (unsigned long long int)NET6);
 
-    memset(physs, 0, sizeof(physs));
-#if NORMAL_MODE
-    memset(paths, 0, sizeof(paths));
-    memset(seen,  0, sizeof(seen));
-#else
-    flushAgain = 0;
-    bucket = 0;
-    pathPorts = 0;
-#endif
+    memset(physs,   0, sizeof(physs));
+    memset(paths,   0, sizeof(paths));
+    memset(seen,    0, sizeof(seen));
+    memset(buckets, 0, sizeof(buckets));
 
     //
     xlan = alloc_netdev(0, "xlan", NET_NAME_USER, xlan_setup);
