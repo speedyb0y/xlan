@@ -232,7 +232,7 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
                        && sport < PORTS_N)
                         // um pacote de contrle que OUTRA pessoa mandou
                         foreach (p, PORTS_N)
-                            seen[shost][sport] = ((pkt_mask >> p) & 1U) * now;
+                            seen[shost][p] = ((pkt_mask >> p) & 1U) * now;
                 }
             } elif (dst_vendor == BE32(VENDOR)
                  && dst_host == HOST
