@@ -326,81 +326,45 @@ static int __f_cold xlan_down (net_device_s* const dev) {
 
 static int __f_cold xlan_enslave (net_device_s* dev, net_device_s* phys, struct netlink_ext_ack* extack) {
 
-    enum {
-        _ENSL_SUCCESS,
-        _ENSL_ITSELF,
-        _ENSL_ALREADY,
-        _ENSL_OCCUPIED,
-        _ENSL_NOT_ETHERNET,
-        _ENSL_BAD_VENDOR,
-        _ENSL_BAD_HOST,
-        _ENSL_BAD_PORT,
-        _ENSL_ANOTHER_XLAN,
-        _ENSL_ATTACH_FAILED,
-        __N,
-    };
-
-    static const u16 codes [__N] = {
-        [_ENSL_SUCCESS       ] = 0,
-        [_ENSL_NOT_ETHERNET  ] = EINVAL,
-        [_ENSL_ITSELF        ] = EINVAL,
-        [_ENSL_ALREADY       ] = EISCONN,
-        [_ENSL_OCCUPIED      ] = EBUSY,
-        [_ENSL_BAD_VENDOR    ] = EINVAL,
-        [_ENSL_BAD_HOST      ] = EINVAL,
-        [_ENSL_BAD_PORT      ] = EINVAL,
-        [_ENSL_ANOTHER_XLAN  ] = EINVAL,
-        [_ENSL_ATTACH_FAILED ] = 1,
-    };
-
-    static const char* strs [__N] = {
-        [_ENSL_SUCCESS       ] = "SUCCESS",
-        [_ENSL_NOT_ETHERNET  ] = "FAILED: BAD PHYS - NOT ETHERNET",
-        [_ENSL_ITSELF        ] = "FAILED: BAD PHYS - ITSELF",
-        [_ENSL_ANOTHER_XLAN  ] = "FAILED: BAD PHYS - XLAN",
-        [_ENSL_ALREADY       ] = "FAILED: PHYS IS ALREADY A PORT",
-        [_ENSL_OCCUPIED      ] = "FAILED: PORT ALREADY HAS A PHYS",
-        [_ENSL_BAD_VENDOR    ] = "FAILED: BAD MAC VENDOR",
-        [_ENSL_BAD_HOST      ] = "FAILED: BAD MAC HOST",
-        [_ENSL_BAD_PORT      ] = "FAILED: BAD MAC PORT",
-        [_ENSL_ATTACH_FAILED ] = "FAILED: COULD NOT ATTACH",
-    };
-
     xlan_s* const xlan = netdev_priv(dev);
 
-    const void* const mac = PTR(dev->dev_addr);
+    const u8* const mac = PTR(dev->dev_addr);
 
     const uint port = MAC_PORT(mac);
 
-    uint ret;
+    printk("XLAN: %s: ENSLAVE PHYS %s: PORT %u MAC %02X:%02X:%02X:%02X:%02X:%02X\n",
+        dev->name, phys->name, port,
+        mac[0], mac[1], mac[2],
+        mac[3], mac[4], mac[5]);
 
-    if (phys == dev)
-        // ITSELF
-        ret = _ENSL_ITSELF;
-    elif (0)
-        // TODO: CANNOT BE OF XLAN TYPE
-        ret = _ENSL_ANOTHER_XLAN;
+    if (MAC_VENDOR(mac) != BE32(VENDOR))
+        printk("XLAN: WARNING: WRONG VENDOR\n");
+
+    if (MAC_HOST(mac) != xlan->host)
+        printk("XLAN: WARNING: WRONG HOST\n");
+
+    if (port >= PORTS_N) {
+        printk("XLAN: FAILED: BAD PORT\n");
+        return -EINVAL;
+    }
+
     elif (xlan->ports[port] == dev)
         // ALREADY
         ret = _ENSL_ALREADY;
     elif (xlan->ports[port])
         // SOMETHING ELSE IS ON THAT SLOT
         ret = _ENSL_OCCUPIED;
-    elif (phys->flags & IFF_LOOPBACK)
-        // LOOPBACK
+    
+    if (phys == dev
+     || phys->flags & IFF_LOOPBACK
+     || phys->addr_len != ETH_ALEN) {
+        // ITSELF / LOOPBACK / NOT ETHERNET
+        printk("XLAN: FAILED: BAD PHYS\n");
+        return -EINVAL;
+    }
+
+    elif ()
         ret = _ENSL_NOT_ETHERNET;
-    elif (phys->addr_len != ETH_ALEN)
-        // NOT ETHERNET
-        ret = _ENSL_NOT_ETHERNET;
-    elif (MAC_VENDOR(mac) != BE32(VENDOR))
-        // WRONG VENDOR
-        ret = _ENSL_BAD_VENDOR;
-    elif (MAC_HOST(mac) != xlan->host)
-        // WRONG HOST
-        ret = _ENSL_BAD_HOST;
-    elif (port >= PORTS_N)
-        // BAD PORT
-        ret = _ENSL_BAD_PORT;
     elif (netdev_rx_handler_register(phys, xlan_in, dev) != 0)
         // FAILED TO ATTACH
         ret = _ENSL_ATTACH_FAILED;
@@ -414,9 +378,6 @@ static int __f_cold xlan_enslave (net_device_s* dev, net_device_s* phys, struct 
         // SUCCESS
         ret = _ENSL_SUCCESS;
     }
-
-    printk("XLAN: %s: ENSLAVE ITFC %s: PORT %u: %s\n",
-        dev->name, phys->name, port, strs[ret]);
 
     return -(int)codes[ret];
 }
@@ -448,42 +409,12 @@ static int __f_cold xlan_unslave (net_device_s* dev, net_device_s* phys) {
     return -ENOTCONN;
 }
 
-// ip link set dev xlan addr HH:GG
-#define XLAN_INFO_LEN 2
-
-static int __f_cold xlan_cfg (net_device_s* const dev, void* const addr) {
-
-    if(netif_running(dev))
-        return -EBUSY;
-
-    // READ
-    const uint host = ((const u8*)addr)[0];
-    const uint gw   = ((const u8*)addr)[1];
-
-    printk("XLAN: %s: CONFIGURE: HOST %u 0x%02x GW %u 0x%02x\n",
-        dev->name, host, host, gw, gw);
-
-    // VERIFY
-    if (host && host < HOSTS_N && gw < HOSTS_N && gw != host) {
-
-        xlan_s* const xlan = netdev_priv(dev);
-
-        // COMMIT
-        xlan->host = host;
-        xlan->gw   = gw ?: host;
-
-        return 0;
-    }
-
-    return -EINVAL;
-}
-
 static const net_device_ops_s xlanDevOps = {
     .ndo_init             = NULL,
     .ndo_open             = xlan_up,
     .ndo_stop             = xlan_down,
     .ndo_start_xmit       = xlan_out,
-    .ndo_set_mac_address  = xlan_cfg,
+    .ndo_set_mac_address  = NULL,
     .ndo_add_slave        = xlan_enslave,
     .ndo_del_slave        = xlan_unslave,
     // TODO: SET MTU - NAO EH PARA SETAR AQUI E SIM NO ROUTE
@@ -494,7 +425,7 @@ static void __f_cold xlan_setup (net_device_s* const dev) {
     dev->netdev_ops      = &xlanDevOps;
     dev->header_ops      = NULL;
     dev->type            = ARPHRD_NONE;
-    dev->addr_len        = XLAN_INFO_LEN;
+    dev->addr_len        = 0;
     dev->hard_header_len = ETH_HLEN;
     dev->min_header_len  = ETH_HLEN;
     //dev->needed_headroom = ;
