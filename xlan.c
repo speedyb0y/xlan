@@ -62,6 +62,49 @@ typedef struct notifier_block notifier_block_s;
 #define BE64(x) ((u64)__builtin_bswap64((u64)(x)))
 #endif
 
+#include "xconf.h"
+
+#define VENDOR  XCONF_XLAN_VENDOR
+#define HOSTS_N XCONF_XLAN_HOSTS_N
+#define PORTS_N XCONF_XLAN_PORTS_N
+#define _NET4   XCONF_XLAN_NET4
+#define _NET6   XCONF_XLAN_NET6
+#define HOST    XCONF_XLAN_HOST
+#define GW      XCONF_XLAN_GW
+
+#if !(VENDOR && VENDOR <= 0xFFFFFFFF && !(VENDOR & 0x01000000))
+#error "BAD VENDOR"
+#endif
+
+#if !(2 <= HOSTS_N && HOSTS_N < 0xFF)
+#error "BAD HOSTS N"
+#endif
+
+#if !(2 <= PORTS_N && PORTS_N < 0xFF)
+#error "BAD PORTS N"
+#endif
+
+#if !(_NET4 && !(_NET4 % HOSTS_N))
+#error "BAD NET4"
+#endif
+
+#if !(_NET6)
+#error "BAD NET6"
+#endif
+
+#if !(HOST && HOST < HOSTS_N)
+#error "BAD HOST"
+#endif
+
+#if !(GW != HOST && GW < HOSTS_N)
+#error "BAD GW"
+#endif
+
+#if GW == 0
+#undef GW
+#define GW HOST
+#endif
+
 #define MTU     7600 // TODO: FIXME:
 
 #define ETH_O_DST      0
@@ -95,43 +138,8 @@ typedef struct notifier_block notifier_block_s;
 #define IP6_O_DST_H   39
 #define IP6_SIZE      40
 
-#include "xconf.h"
-
-#define VENDOR  XCONF_XLAN_VENDOR
-#define HOSTS_N XCONF_XLAN_HOSTS_N
-#define PORTS_N XCONF_XLAN_PORTS_N
-#define HOST    XCONF_XLAN_HOST
-#define GW      XCONF_XLAN_GW
-#define _NET4   XCONF_XLAN_NET4
-#define _NET6   XCONF_XLAN_NET6
-
 #define NET4 ((u32)_NET4)
 #define NET6 ((u64)_NET6)
-
-#if !(VENDOR && VENDOR <= 0xFFFFFFFF && !(VENDOR & 0x01000000))
-#error "BAD VENDOR"
-#endif
-
-#if !(2 <= HOSTS_N && HOSTS_N < 0xFF)
-#error "BAD HOSTS N"
-#endif
-
-#if !(2 <= PORTS_N && PORTS_N < 0xFF)
-#error "BAD PORTS N"
-#endif
-
-#if !(_NET4 && !(_NET4 % HOSTS_N))
-#error "BAD NET4"
-#endif
-
-#if !(_NET6)
-#error "BAD NET6"
-#endif
-
-#if GW == 0
-#undef GW
-#define GW HOST
-#endif
 
 #define MAC_VENDOR(mac) ((u32*)mac)[0]
 #define MAC_HOST(mac)    ((u8*)mac)[4]
