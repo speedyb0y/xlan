@@ -70,11 +70,18 @@ typedef struct notifier_block notifier_block_s;
 #define UDP_SIZE  8
 #define TCP_SIZE 20
 
+#define ETH_O_DST      0
+#define ETH_O_SRC      6
+#define ETH_O_TYPE    12
+#define ETH_O_PAYLOAD 14
+
 #define IP4_O_PROTO   9
 #define IP4_O_SRC     12
 #define IP4_O_DST     16
 #define IP4_O_PAYLOAD 20
 
+#define IP6_O_VERSION 0
+#define IP6_O_FLOW    2
 #define IP6_O_PROTO   5
 #define IP6_O_SRC     8
 #define IP6_O_DST     24
@@ -174,28 +181,28 @@ typedef void pkt_s;
 #define PKT_OFFSET_ETH 0
 #define PKT_OFFSET_IP  14
 #define pkt_eth            pkt
-#define to_vendor   ((u16*)pkt)[0]
-#define to_host     ((u16*)pkt)[1]
-#define to_port     ((u16*)pkt)[2]
-#define from_vendor ((u16*)pkt)[3]
-#define from_host   ((u16*)pkt)[4]
-#define from_port   ((u16*)pkt)[5]
-#define pkt_type    ((u16*)pkt)[6]
-#define proto4      ((u8* )pkt)[23]
-#define ports4      (*(u32*)(pkt + 34))
-#define flow6       ((u16*)pkt)[8]
-#define proto6      ((u8* )pkt)[20]
-#define addrs4      (*(u64*)(pkt + ETH_SIZE + IP4_O_SRC))
-#define from_net4   (*(u32*)(pkt + ETH_SIZE + IP4_O_SRC))
-#define from_host4  (*(u8 *)(pkt + ETH_SIZE + IP4_O_SRC + 3))
-#define to_net4     (*(u32*)(pkt + ETH_SIZE + IP4_O_DST))
-#define to_host4    (*(u8 *)(pkt + ETH_SIZE + IP4_O_DST + 3))
-#define ports6      (*(u32*)(pkt + ETH_SIZE + IP4_SIZE))
-#define addrs6      ( (u64*)(pkt + ETH_SIZE + IP6_O_SRC))
-#define from_net6   (*(u64*)(pkt + ETH_SIZE + IP6_O_SRC))
-#define from_host6  (*(u8 *)(pkt + ETH_SIZE + IP6_O_SRC + 15))
-#define to_net6     (*(u64*)(pkt + ETH_SIZE + IP6_O_DST))
-#define to_host6    (*(u8 *)(pkt + ETH_SIZE + IP6_O_DST + 15))
+#define to_vendor   (*(u16*)(pkt + ETH_O_DST))
+#define to_host     (*(u16*)(pkt + ETH_O_DST + 2))
+#define to_port     (*(u16*)(pkt + ETH_O_DST + 4))
+#define from_vendor (*(u16*)(pkt + ETH_O_SRC))
+#define from_host   (*(u16*)(pkt + ETH_O_SRC + 2))
+#define from_port   (*(u16*)(pkt + ETH_O_SRC + 4))
+#define pkt_type    (*(u16*)(pkt + ETH_O_TYPE))
+#define proto4      (*(u8 *)(pkt + ETH_O_PAYLOAD + IP4_O_PROTO))
+#define addrs4      (*(u64*)(pkt + ETH_O_PAYLOAD + IP4_O_SRC))
+#define from_net4   (*(u32*)(pkt + ETH_O_PAYLOAD + IP4_O_SRC))
+#define from_host4  (*(u8 *)(pkt + ETH_O_PAYLOAD + IP4_O_SRC + 3))
+#define to_net4     (*(u32*)(pkt + ETH_O_PAYLOAD + IP4_O_DST))
+#define to_host4    (*(u8 *)(pkt + ETH_O_PAYLOAD + IP4_O_DST + 3))
+#define ports4      (*(u32*)(pkt + ETH_O_PAYLOAD + IP4_SIZE))
+#define flow6       (*(u16*)(pkt + ETH_O_PAYLOAD + IP6_O_FLOW))
+#define proto6      (*(u8 *)(pkt + ETH_O_PAYLOAD + IP6_O_PROTO))
+#define addrs6      ( (u64*)(pkt + ETH_O_PAYLOAD + IP6_O_SRC))
+#define from_net6   (*(u64*)(pkt + ETH_O_PAYLOAD + IP6_O_SRC))
+#define from_host6  (*(u8 *)(pkt + ETH_O_PAYLOAD + IP6_O_SRC + 15))
+#define to_net6     (*(u64*)(pkt + ETH_O_PAYLOAD + IP6_O_DST))
+#define to_host6    (*(u8 *)(pkt + ETH_O_PAYLOAD + IP6_O_DST + 15))
+#define ports6      (*(u32*)(pkt + ETH_O_PAYLOAD + IP6_SIZE))
 #endif
 
 typedef struct xlan_stream_s {
