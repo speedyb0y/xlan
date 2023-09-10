@@ -333,6 +333,9 @@ static int __f_cold xlan_enslave (net_device_s* xlan, net_device_s* phys, struct
 
     const u8* const mac = PTR(phys->dev_addr);
 
+    if (mac == NULL)
+        return -EINVAL;
+
     const uint vendor = MAC_VENDOR(mac);
     const uint host   = MAC_HOST(mac);
     const uint port   = MAC_PORT(mac);
@@ -345,7 +348,7 @@ static int __f_cold xlan_enslave (net_device_s* xlan, net_device_s* phys, struct
     if (vendor != VENDOR)
         printk("XLAN: WARNING: WRONG VENDOR\n");
 
-    if (mac != HOST)
+    if (host != HOST)
         printk("XLAN: WARNING: WRONG HOST\n");
 
     if (port >= PORTS_N) {
