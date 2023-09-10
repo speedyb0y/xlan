@@ -270,11 +270,12 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xlan) {
     // FORCA A MUDANCA DA PORTA ATUAL SE...
     if ((now - last) >= HZ/5) {
         // O ULTIMO ENVIADO JA DEU TEMPO DE SER PROCESSADO
-        printk("XLAN: OUT: ESTE PATH NAO ESTA RECEBENDO! PORTS %u\n", ports);
+        printk("XLAN: OUT: CHANGING FROM PORTS %u BECAUSE BURST IS COMPLETE\n",
+            ports);
         ports++;
     } elif (path->saw && (now - *path->saw) > 5*HZ) {
         // ESTE PATH NAO ESTA RECEBENDO
-        printk("XLAN: OUT: ESTE PATH NAO ESTA RECEBENDO! PORTS %u SAW %u NOW %u\n",
+        printk("XLAN: OUT: CHANGING FROM PORTS %u BECAUSE ESTE PATH NAO ESTA RECEBENDO! PORTS SAW %u NOW %u\n",
             ports, *path->saw, now);
         ports++;
     } elif (0) {
