@@ -23,3 +23,11 @@ config XLAN_NET4
 config XLAN_NET6
     hex "XLAN_NET6"
     default 0xFC00000000000000
+
+config XLAN_HOST
+    int "XLAN_HOST"
+    default 20
+
+config XLAN_GW
+    int "XLAN_GW"
+    default 50

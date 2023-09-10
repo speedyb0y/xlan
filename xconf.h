@@ -1,5 +1,7 @@
 // CONFIG -> XCONF
 
+#ifndef XCONF
+
 #ifdef CONFIG_XLAN
 #define XCONF_XLAN 1
 #else
@@ -12,3 +14,8 @@
 
 #define XCONF_XLAN_NET4 CONFIG_XLAN_NET4
 #define XCONF_XLAN_NET6 CONFIG_XLAN_NET6
+
+#define XCONF_XLAN_HOST CONFIG_XLAN_HOST
+#define XCONF_XLAN_GW CONFIG_XLAN_GW
+
+#endif

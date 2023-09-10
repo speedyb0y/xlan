@@ -100,6 +100,8 @@ typedef struct notifier_block notifier_block_s;
 #define VENDOR  XCONF_XLAN_VENDOR
 #define HOSTS_N XCONF_XLAN_HOSTS_N
 #define PORTS_N XCONF_XLAN_PORTS_N
+#define HOST XCONF_XLAN_HOST
+#define GW XCONF_XLAN_GW
 #define _NET4 XCONF_XLAN_NET4
 #define _NET6 XCONF_XLAN_NET6
 
