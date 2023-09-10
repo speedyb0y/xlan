@@ -270,7 +270,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xlan) {
 
     // NOTE: MUDA A PORTA LOCAL COM MAIS FREQUENCIA, PARA QUE O SWITCH A DESCUBRA
     // for PORTS_N in range(7): assert len(set((_ // PORTS_N, _ % PORTS_N) for _ in range(PORTS_N*PORTS_N))) == PORTS_N*PORTS_N
-    foreach (c, (PORTS_N * PORTS_N + 1)) {
+    foreach (c, (PORTS_N * PORTS_N * 2 + 1)) {
         ports %= PORTS_N * PORTS_N;
 
         const uint rport = ports / PORTS_N;
@@ -281,7 +281,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xlan) {
         if (phys && (phys->flags & IFF_UP) == IFF_UP) { // IFF_RUNNING // IFF_LOWER_UP
             
             // SE ESTA SOBRECARREGADO, MAS NAO TEM OUTRO JEITO, LIBERA UM PEQUENO BURST
-            if (physCounters[lport] == 0 && c >= PORTS_N)
+            if (physCounters[lport] == 0 && c >= PORTS_N*PORTS_N)
                 physCounters[lport] += 200;
 
             //
@@ -323,6 +323,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xlan) {
 
         ports++;
     }
+
 drop:
     dev_kfree_skb(skb);
 
