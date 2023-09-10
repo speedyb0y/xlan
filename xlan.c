@@ -175,8 +175,14 @@ typedef struct xlan_stream_s {
 
 static net_device_s* xlan;
 static net_device_s* physs[PORTS_N];
+#if 0
 static xlan_stream_s paths[HOSTS_N][64]; // POPCOUNT64()
 static u32 seen[HOSTS_N][PORTS_N][PORTS_N]; // TODO: FIXME: ATOMIC
+#else
+static uint pathPorts;
+static u64 bucket;
+static u64 flushAgain;
+#endif
 
 static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
 
@@ -207,15 +213,14 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
         return RX_HANDLER_CONSUMED;
     }
 
+#if 0
     //
     seen[rhost][rport][lport] = jiffies;
-
+#endif
     skb->dev = xlan;
 
     return RX_HANDLER_ANOTHER;
 }
-
-#define ROUNDS 5
 
 static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xlan) {
 
@@ -242,6 +247,8 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xlan) {
      || rhost == HOST)
         goto drop;
 
+    uint now   = jiffies;
+#if 0
     // SELECT A PATH
     // OK: TCP | UDP | UDPLITE | SCTP | DCCP
     // FAIL: ICMP
@@ -252,9 +259,24 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xlan) {
         + addrs6[2] + addrs6[3]        
     ))];
 
-    uint now   = jiffies;
     uint last  = path->last;
     uint ports = path->ports;
+#define ROUNDS 5
+#else
+#define BUCKET_SIZE 20000
+#define BUCKET_INTERVAL (2*HZ)
+#define BUCKET_PKTS_PER_SECOND 5
+    uint ports = pathPorts;
+    const u64 elapsed = now - flushAgain;
+    if (elapsed >= HZ/4
+     && elapsed < 3600*HZ) { // dint overflow
+        bucket += (elapsed * BUCKET_PKTS_PER_SECOND)/HZ;
+        if (bucket > BUCKET_SIZE)
+            bucket = BUCKET_SIZE;
+     //   flushAgain += elapsed;
+    }
+#define ROUNDS 2
+#endif
 
     foreach (r, ROUNDS) {
 
@@ -269,14 +291,23 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xlan) {
             net_device_s* const phys = physs[lport];
 
             if (phys && (phys->flags & IFF_UP) == IFF_UP && // IFF_RUNNING // IFF_LOWER_UP
+#if 0
                 ( r == 4 || ( // NO ULTIMO ROUND FORCA MESMO ASSIM
                     (r*1*HZ)/5 >= (now - last) && // SE DEU UMA PAUSA, TROCA DE PORTA
                     (r*2*HZ)/1 >= (now - seen[rhost][rport][lport]) // KNOWN TO WORK
-            ))) {
+            ))
+#else
+                bucket && now < flushAgain
+#endif
+            ) {
                 //
+#if 0
                 path->ports = ports;
                 path->last  = now;
-
+#else
+                pathPorts = ports;
+                bucket--;
+#endif
                 // FILL ETHERNET HEADER
                 dst_vendor = BE32(VENDOR);
                 dst_host   = rhost;
@@ -304,7 +335,11 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xlan) {
 
                 return NETDEV_TX_OK;
             }
-
+#if 1
+            // TROCANDO DE PORTA
+            bucket = BUCKET_SIZE;
+            flushAgain = now + BUCKET_INTERVAL;
+#endif
             ports++;
         }
     }
@@ -460,8 +495,14 @@ static int __init xlan_init (void) {
         VENDOR, HOST, HOST, GW, GW, NET4, (unsigned long long int)NET6);
 
     memset(physs, 0, sizeof(physs));
+#if 0
     memset(paths, 0, sizeof(paths));
     memset(seen,  0, sizeof(seen));
+#else
+    flushAgain = 0;
+    bucket = 0;
+    pathPorts = 0;
+#endif
 
     //
     xlan = alloc_netdev(0, "xlan", NET_NAME_USER, xlan_setup);
