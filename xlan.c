@@ -155,13 +155,13 @@ typedef void pkt_s;
 #if XCONF_XLAN_STRUCT
 #define PKT_OFFSET_ETH offsetof(pkt_s, dst)
 #define PKT_OFFSET_IP  offsetof(pkt_s, ip)
-#define pkt_eth    (&pkt->dst)
-#define from_vendor pkt->src.vendor
-#define from_host   pkt->src.host
-#define from_port   pkt->src.port
-#define to_vendor   pkt->dst.vendor
-#define to_host     pkt->dst.host
-#define to_port     pkt->dst.port
+#define pkt_eth   (&pkt->dst)
+#define src_vendor  pkt->src.vendor
+#define src_host    pkt->src.host
+#define src_port    pkt->src.port
+#define dst_vendor  pkt->dst.vendor
+#define dst_host    pkt->dst.host
+#define dst_port    pkt->dst.port
 #define pkt_type    pkt->type
 #define flow6       pkt->ip.v6.flow
 #define proto4      pkt->ip.v4.protocol
@@ -169,41 +169,41 @@ typedef void pkt_s;
 #define ports4      pkt->ip.v4.ports
 #define ports6      pkt->ip.v6.ports
 #define addrs4      pkt->ip.v4.addrs.w64
-#define from_net4   pkt->ip.v4.addrs.w32[0]
-#define from_host4  pkt->ip.v4.addrs.w8[3]
-#define to_net4     pkt->ip.v4.addrs.w32[1]
-#define to_host4    pkt->ip.v4.addrs.w8[7]
 #define addrs6      pkt->ip.v6.addrs.w64
-#define from_net6   pkt->ip.v6.addrs.w64[0]
-#define from_host6  pkt->ip.v6.addrs.w8[15]
-#define to_net6     pkt->ip.v6.addrs.w64[2]
-#define to_host6    pkt->ip.v6.addrs.w8[31]
+#define src4_net    pkt->ip.v4.addrs.w32[0]
+#define src4_host   pkt->ip.v4.addrs.w8[3]
+#define dst4_net    pkt->ip.v4.addrs.w32[1]
+#define dst4_host   pkt->ip.v4.addrs.w8[7]
+#define src6_net    pkt->ip.v6.addrs.w64[0]
+#define src6_host   pkt->ip.v6.addrs.w8[15]
+#define dst6_net    pkt->ip.v6.addrs.w64[2]
+#define dst6_host   pkt->ip.v6.addrs.w8[31]
 #else
 #define PKT_OFFSET_ETH 0
 #define PKT_OFFSET_IP  ETH_SIZE
 #define pkt_eth              pkt
-#define to_vendor   (*(u16*)(pkt + ETH_O_DST))
-#define to_host     (*(u16*)(pkt + ETH_O_DST + 2))
-#define to_port     (*(u16*)(pkt + ETH_O_DST + 4))
-#define from_vendor (*(u16*)(pkt + ETH_O_SRC))
-#define from_host   (*(u16*)(pkt + ETH_O_SRC + 2))
-#define from_port   (*(u16*)(pkt + ETH_O_SRC + 4))
+#define dst_vendor  (*(u16*)(pkt + ETH_O_DST))
+#define dst_host    (*(u16*)(pkt + ETH_O_DST + 2))
+#define dst_port    (*(u16*)(pkt + ETH_O_DST + 4))
+#define src_vendor  (*(u16*)(pkt + ETH_O_SRC))
+#define src_host    (*(u16*)(pkt + ETH_O_SRC + 2))
+#define src_port    (*(u16*)(pkt + ETH_O_SRC + 4))
 #define pkt_type    (*(u16*)(pkt + ETH_O_TYPE))
 #define proto4      (*(u8 *)(pkt + ETH_O_PAYLOAD + IP4_O_PROTO))
 #define addrs4      (*(u64*)(pkt + ETH_O_PAYLOAD + IP4_O_SRC))
-#define from_net4   (*(u32*)(pkt + ETH_O_PAYLOAD + IP4_O_SRC))
-#define from_host4  (*(u8 *)(pkt + ETH_O_PAYLOAD + IP4_O_SRC + 3))
-#define to_net4     (*(u32*)(pkt + ETH_O_PAYLOAD + IP4_O_DST))
-#define to_host4    (*(u8 *)(pkt + ETH_O_PAYLOAD + IP4_O_DST + 3))
+#define addrs6      ( (u64*)(pkt + ETH_O_PAYLOAD + IP6_O_SRC))
 #define ports4      (*(u32*)(pkt + ETH_O_PAYLOAD + IP4_O_PAYLOAD))
+#define ports6      (*(u32*)(pkt + ETH_O_PAYLOAD + IP6_O_PAYLOAD))
 #define flow6       (*(u16*)(pkt + ETH_O_PAYLOAD + IP6_O_FLOW))
 #define proto6      (*(u8 *)(pkt + ETH_O_PAYLOAD + IP6_O_PROTO))
-#define addrs6      ( (u64*)(pkt + ETH_O_PAYLOAD + IP6_O_SRC))
-#define from_net6   (*(u64*)(pkt + ETH_O_PAYLOAD + IP6_O_SRC))
-#define from_host6  (*(u8 *)(pkt + ETH_O_PAYLOAD + IP6_O_SRC + 15))
-#define to_net6     (*(u64*)(pkt + ETH_O_PAYLOAD + IP6_O_DST))
-#define to_host6    (*(u8 *)(pkt + ETH_O_PAYLOAD + IP6_O_DST + 15))
-#define ports6      (*(u32*)(pkt + ETH_O_PAYLOAD + IP6_O_PAYLOAD))
+#define src4_net    (*(u32*)(pkt + ETH_O_PAYLOAD + IP4_O_SRC))
+#define dst4_net    (*(u32*)(pkt + ETH_O_PAYLOAD + IP4_O_DST))
+#define src6_net    (*(u64*)(pkt + ETH_O_PAYLOAD + IP6_O_SRC))
+#define dst6_net    (*(u64*)(pkt + ETH_O_PAYLOAD + IP6_O_DST))
+#define src4_host   (*(u8 *)(pkt + ETH_O_PAYLOAD + IP4_O_SRC + 3))
+#define dst4_host   (*(u8 *)(pkt + ETH_O_PAYLOAD + IP4_O_DST + 3))
+#define src6_host   (*(u8 *)(pkt + ETH_O_PAYLOAD + IP6_O_SRC + 15))
+#define dst6_host   (*(u8 *)(pkt + ETH_O_PAYLOAD + IP6_O_DST + 15))
 #endif
 
 typedef struct xlan_stream_s {
@@ -233,15 +233,15 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
     const pkt_s* const pkt = SKB_MAC(skb) - PKT_OFFSET_ETH;
 
     // SO HANDLE O QUE FOR
-    if (to_vendor != BE16(VENDOR)
-   || from_vendor != BE16(VENDOR))
+    if (dst_vendor != BE16(VENDOR)
+   || src_vendor != BE16(VENDOR))
         return RX_HANDLER_PASS;
 
     // ASSERT: skb->type PKT_HOST
-    const uint lhost = HP_DECODE(to_host);
-    const uint lport = HP_DECODE(to_port);
-    const uint rhost = HP_DECODE(from_host);
-    const uint rport = HP_DECODE(from_port);
+    const uint lhost = HP_DECODE(dst_host);
+    const uint lport = HP_DECODE(dst_port);
+    const uint rhost = HP_DECODE(src_host);
+    const uint rport = HP_DECODE(src_port);
 
     // DISCARD THOSE
     if (lhost >= HOSTS_N
@@ -285,8 +285,8 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
 
     // IDENTIFY DESTINATION
     const uint rhost = v4 ?
-        ( (to_net4 & BE32(0xFFFFFF00U)) == xlan->net4 ? to_host4 : xlan->gw ):
-        (  to_net6                      == xlan->net6 ? to_host6 : xlan->gw );
+        ( (dst4_net & BE32(0xFFFFFF00U)) == xlan->net4 ? dst4_host : xlan->gw ):
+        (  dst6_net                      == xlan->net6 ? dst6_host : xlan->gw );
 
     // É INVALIDO / ERA EXTERNO E NAO TEMOS GATEWAY / PARA SI MESMO
     if (rhost >= HOSTS_N
@@ -334,13 +334,13 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
                 path->last  = now;
 
                 // FILL ETHERNET HEADER
-                to_vendor   = BE16(VENDOR);
-                to_host     = HP_ENCODE(rhost);
-                to_port     = HP_ENCODE(rport);
-                from_vendor = BE16(VENDOR);
-                from_host   = HP_ENCODE(xlan->host);
-                from_port   = HP_ENCODE(lport);
-                pkt_type    = skb->protocol;
+                dst_vendor = BE16(VENDOR);
+                dst_host   = HP_ENCODE(rhost);
+                dst_port   = HP_ENCODE(rport);
+                src_vendor = BE16(VENDOR);
+                src_host   = HP_ENCODE(xlan->host);
+                src_port   = HP_ENCODE(lport);
+                pkt_type   = skb->protocol;
 
                 // UPDATE SKB
                 skb->data       = PTR(pkt);
