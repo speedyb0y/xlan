@@ -165,18 +165,15 @@ typedef struct xlan_stream_s {
     u32 last;
 } xlan_stream_s;
 
-typedef struct xlan_s {
-    net_device_s* ports[PORTS_N];
-    xlan_stream_s paths[HOSTS_N][64]; // POPCOUNT64()
-    u32 seen[HOSTS_N][PORTS_N][PORTS_N]; // TODO: FIXME: ATOMIC
-} xlan_s;
+static net_device_s* virt;
+static net_device_s* physs[PORTS_N];
+static xlan_stream_s paths[HOSTS_N][64]; // POPCOUNT64()
+static u32 seen[HOSTS_N][PORTS_N][PORTS_N]; // TODO: FIXME: ATOMIC
 
 static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
 
     sk_buff_s* const skb = *pskb;
     net_device_s* const phys = skb->dev;
-    net_device_s* const virt = skb->dev->rx_handler_data;
-    xlan_s* const xlan = netdev_priv(virt);
 
     const void* const pkt = SKB_MAC(skb);
 
@@ -197,14 +194,14 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
      || lhost != HOST // NOT TO ME (POIS PODE TER RECEBIDO DEVIDO AO MODO PROMISCUO)
      || lport >= PORTS_N
      || rport >= PORTS_N
-     || phys  != xlan->ports[lport] // WRONG INTERFACE
+     || phys  != ports[lport] // WRONG INTERFACE
      || virt->flags == 0) { // ->flags & UP
         kfree_skb(skb);
         return RX_HANDLER_CONSUMED;
     }
 
     //
-    xlan->seen[rhost][rport][lport] = jiffies;
+    seen[rhost][rport][lport] = jiffies;
 
     skb->dev = virt;
 
@@ -243,7 +240,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
     // SELECT A PATH
     // OK: TCP | UDP | UDPLITE | SCTP | DCCP
     // FAIL: ICMP
-    xlan_stream_s* const path = &xlan->paths[rhost][__builtin_popcountll( (u64) ( v4
+    xlan_stream_s* const path = &paths[rhost][__builtin_popcountll( (u64) ( v4
         ? proto4 * ports4 + addrs4
         : proto6 * ports6 * flow6
         + addrs6[0] + addrs6[1]        
@@ -251,6 +248,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
     ))];
 
     uint now   = jiffies;
+    uint last  = path->last;
     uint ports = path->ports;
 
     foreach (r, ROUNDS) {
@@ -263,12 +261,12 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
             const uint rport = ports / PORTS_N;
             const uint lport = ports % PORTS_N;
 
-            net_device_s* const phys = xlan->ports[lport];
+            net_device_s* const phys = physs[lport];
 
             if (phys && (phys->flags & IFF_UP) == IFF_UP && // IFF_RUNNING // IFF_LOWER_UP
                 ( r == 4 || ( // NO ULTIMO ROUND FORCA MESMO ASSIM
-                    (r*1*HZ)/5 >= (now - path->last) && // SE DEU UMA PAUSA, TROCA DE PORTA
-                    (r*2*HZ)/1 >= (now - xlan->seen[rhost][rport][lport]) // KNOWN TO WORK
+                    (r*1*HZ)/5 >= (now - last) && // SE DEU UMA PAUSA, TROCA DE PORTA
+                    (r*2*HZ)/1 >= (now - seen[rhost][rport][lport]) // KNOWN TO WORK
             ))) {
                 //
                 path->ports = ports;
@@ -279,7 +277,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
                 dst_host   = rhost;
                 dst_port   = rport;
                 src_vendor = BE32(VENDOR);
-                src_host   = xlan->host;
+                src_host   = HOST;
                 src_port   = lport;
                 pkt_type   = skb->protocol;
 
@@ -352,12 +350,12 @@ static int __f_cold xlan_enslave (net_device_s* dev, net_device_s* phys, struct 
         return -EINVAL;
     }
 
-    if (xlan->ports[port] == dev) {
+    if (physs[port] == dev) {
         printk("XLAN: FAILED: PHYS ALREADY ATTACHED AS THIS PORT\n");
         return -EISCONN;
     }
 
-    if (xlan->ports[port]) {
+    if (physs[port]) {
         printk("XLAN: FAILED: OTHER PHYS ATTACHED AS THIS PORT\n");
         return -EEXIST;
     }
@@ -386,7 +384,7 @@ static int __f_cold xlan_enslave (net_device_s* dev, net_device_s* phys, struct 
     dev_hold(phys);
     
     // REGISTER IT
-    xlan->ports[port] = phys;
+    physs[port] = phys;
 
     return 0;
 }
@@ -395,10 +393,9 @@ static int __f_cold xlan_unslave (net_device_s* dev, net_device_s* phys) {
 
     xlan_s* const xlan = netdev_priv(dev);
 
-    foreach (port, PORTS_N) {
-        if (xlan->ports[port] == phys) {
-            // UNREGISTER IT
-            xlan->ports[port] = NULL;
+    foreach (p, PORTS_N) {
+        if (physs[p] == phys) {            
+            physs[p] = NULL; // UNREGISTER IT
             // UNHOOK (IF ITS STILL HOOKED)
             if (rtnl_dereference(phys->rx_handler) == xlan_in) {
                                  phys->rx_handler_data = NULL;
@@ -407,7 +404,7 @@ static int __f_cold xlan_unslave (net_device_s* dev, net_device_s* phys) {
             // DROP IT
             dev_put(phys);
             printk("XLAN: %s: DETACHED ITFC %s FROM PORT %u\n",
-                dev->name, phys->name, port);
+                dev->name, phys->name, p);
             return 0;
         }
     }
@@ -459,28 +456,29 @@ static void __f_cold xlan_setup (net_device_s* const dev) {
         // | NETIF_F_TSO6
         // | NETIF_F_RXALL
         ;
-
-    // INITIALIZE
-    memset(netdev_priv(dev), 0, sizeof(xlan_s));
 }
 
 static int __init xlan_init (void) {
 
     // CREATE THE VIRTUAL INTERFACE
     // MAKE IT VISIBLE IN THE SYSTEM
-    printk("XLAN: INIT - VENDOR 0x%04x NET4 0x%08x NET6 0x%016llX\n",
-        VENDOR, NET4, (unsigned long long int)NET6);
+    printk("XLAN: INIT - VENDOR 0x%04x HOST %u %02X GW %u %02X NET4 0x%08x NET6 0x%016llX\n",
+        VENDOR, HOST, HOST, GW, GW, NET4, (unsigned long long int)NET6);
 
-    register_netdev(alloc_netdev(sizeof(xlan_s), "xlan", NET_NAME_USER, xlan_setup));
+    memset(physs, 0, sizeof(physs));
+    memset(paths, 0, sizeof(paths));
+    memset(seen,  0, sizeof(seen));
+
+    //
+    virt = alloc_netdev(0, "xlan", NET_NAME_USER, xlan_setup);
+    //
+    register_netdev(virt);
 
     return 0;
 }
 
 static void __exit xlan_exit (void) {
 
-    printk("XLAN: EXIT\n");
-
-    // TODO: REFUSE TO EXIT IF WE HAVE INTERFACES
 }
 
 module_init(xlan_init);
