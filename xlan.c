@@ -98,9 +98,8 @@ typedef struct notifier_block notifier_block_s;
 #define VENDOR  XCONF_XLAN_VENDOR
 #define HOSTS_N XCONF_XLAN_HOSTS_N
 #define PORTS_N XCONF_XLAN_PORTS_N
-
-#define _NET4 0xC0000000
-#define _NET6 0xFC00000000000000
+#define _NET4 XCONF_XLAN_NET4
+#define _NET6 XCONF_XLAN_NET6
 
 #define NET4 ((u32)_NET4)
 #define NET6 ((u64)_NET6)
@@ -117,11 +116,11 @@ typedef struct notifier_block notifier_block_s;
 #error "BAD PORTS N"
 #endif
 
-#if !(_NET4 && !(NET4 % HOSTS_N))
+#if !(_NET4 && !(_NET4 % HOSTS_N))
 #error "BAD NET4"
 #endif
 
-#if !(NET6)
+#if !(_NET6)
 #error "BAD NET6"
 #endif
 
