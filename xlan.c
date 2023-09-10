@@ -105,6 +105,8 @@ typedef struct notifier_block notifier_block_s;
 #define GW HOST
 #endif
 
+#define 1
+
 #define ETH_O_DST      0
 #define ETH_O_DST_V    0
 #define ETH_O_DST_H    4
@@ -175,7 +177,7 @@ typedef struct xlan_stream_s {
 
 static net_device_s* xlan;
 static net_device_s* physs[PORTS_N];
-#if 0
+#if NORMAL_MODE
 static xlan_stream_s paths[HOSTS_N][64]; // POPCOUNT64()
 static u32 seen[HOSTS_N][PORTS_N][PORTS_N]; // TODO: FIXME: ATOMIC
 #else
@@ -213,7 +215,7 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
         return RX_HANDLER_CONSUMED;
     }
 
-#if 0
+#if NORMAL_MODE
     //
     seen[rhost][rport][lport] = jiffies;
 #endif
@@ -248,7 +250,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xlan) {
         goto drop;
 
     uint now   = jiffies;
-#if 0
+#if NORMAL_MODE
     // SELECT A PATH
     // OK: TCP | UDP | UDPLITE | SCTP | DCCP
     // FAIL: ICMP
@@ -291,7 +293,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xlan) {
             net_device_s* const phys = physs[lport];
 
             if (phys && (phys->flags & IFF_UP) == IFF_UP && // IFF_RUNNING // IFF_LOWER_UP
-#if 0
+#if NORMAL_MODE
                 ( r == 4 || ( // NO ULTIMO ROUND FORCA MESMO ASSIM
                     (r*1*HZ)/5 >= (now - last) && // SE DEU UMA PAUSA, TROCA DE PORTA
                     (r*2*HZ)/1 >= (now - seen[rhost][rport][lport]) // KNOWN TO WORK
@@ -301,7 +303,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xlan) {
 #endif
             ) {
                 //
-#if 0
+#if NORMAL_MODE
                 path->ports = ports;
                 path->last  = now;
 #else
@@ -335,7 +337,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xlan) {
 
                 return NETDEV_TX_OK;
             }
-#if 1
+#if !NORMAL_MODE
             // TROCANDO DE PORTA
             bucket = BUCKET_SIZE;
             flushAgain = now + BUCKET_INTERVAL;
@@ -495,7 +497,7 @@ static int __init xlan_init (void) {
         VENDOR, HOST, HOST, GW, GW, NET4, (unsigned long long int)NET6);
 
     memset(physs, 0, sizeof(physs));
-#if 0
+#if NORMAL_MODE
     memset(paths, 0, sizeof(paths));
     memset(seen,  0, sizeof(seen));
 #else
