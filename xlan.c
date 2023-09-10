@@ -232,7 +232,7 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
 
                         // a primeira vez que tentar usar
                         if (este->mask & (1U << p)) {
-                            if (este->time >= fresh) {
+                            if (este->last >= fresh) {
 
                             } else // NAO PERDE MAIS TEMPO COM ISSO
                                 este->mask ^= 1U << p;
