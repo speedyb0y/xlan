@@ -173,13 +173,21 @@ typedef struct xlan_stream_s {
     u32 last;
 } xlan_stream_s;
 
+typedef struct bucket_s {
+    u32 can;
+    u32 last;
+} bucket_s;
+
 static net_device_s* xlan;
 static net_device_s* physs[PORTS_N];
 static xlan_stream_s paths[HOSTS_N][64]; // POPCOUNT64()
 static u32 seen[HOSTS_N][PORTS_N][PORTS_N]; // TODO: FIXME: ATOMIC
-static u32 buckets[PORTS_N];
-static u64 rebucket[PORTS_N];
-rebucket = 0;
+static bucket_s buckets[PORTS_N];
+
+#define BUCKET_SIZE 40000
+#define BUCKETS_BURST 200
+#define BUCKETS_PER_SECOND 20000
+
 static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
 
     sk_buff_s* const skb = *pskb;
@@ -259,11 +267,8 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xlan) {
     // SE DEU UMA PAUSA, TROCA DE PORTA
     ports += (now - last) >= HZ/5
      || 0 // TODO: OU SE O PACOTE É UM TCP-SYN, RST RETRANSMISSION ETC
-    ;    
-#define BUCKET_SIZE 40000
-#define BUCKETS_BURST 200
-#define BUCKETS_PER_SECOND 20000
-#define BUCKET_BURST_MIN 300
+    ;
+
     // NOTE: MUDA A PORTA LOCAL COM MAIS FREQUENCIA, PARA QUE O SWITCH A DESCUBRA
     // for PORTS_N in range(7): assert len(set((_ // PORTS_N, _ % PORTS_N) for _ in range(PORTS_N*PORTS_N))) == PORTS_N*PORTS_N
     foreach (c, (PORTS_N * PORTS_N * 2 + 1)) {
