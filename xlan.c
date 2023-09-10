@@ -227,14 +227,10 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
                 // CONTROLE
                 const uint shost = src_host;
                 const uint sport = src_port;
-                                
-                if (shost == HOST) 
-                    // marca esta interface aqui como recebendo
-                    receivers[skb->dev->handler_data] = 1;
-                elif (shost < HOSTS_N && sport < PORTS_N) {
-                    // um pacote de contrle que OUTRA pessoa mandou
-                    // carrega as informacoes de teceiros
-                }  
+                    
+                if (shost < HOSTS_N && sport < PORTS_N) {
+                    o[shost][sport] = jiffies;
+                } i[skb->dev->handler_data] = jiffies;
             }
         }
     }
