@@ -105,7 +105,7 @@ typedef struct notifier_block notifier_block_s;
 #define GW HOST
 #endif
 
-#define 1
+#define NORMAL_MODE 1
 
 #define ETH_O_DST      0
 #define ETH_O_DST_V    0
