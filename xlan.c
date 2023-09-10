@@ -39,7 +39,7 @@ typedef struct notifier_block notifier_block_s;
 // TODO: FIXME:
 typedef typeof(jiffies) jiffies_t;
 
-#define clear(obj) memset((obj), 0, sizeof(*obj))
+#define clear(obj) memset((obj), 0, sizeof(*(obj)))
 
 #define SKB_HEAD(skb) PTR((skb)->head)
 #define SKB_DATA(skb) PTR((skb)->data)
@@ -201,22 +201,20 @@ typedef struct bucket_s {
     u32 last;
 } bucket_s;
 
-typedef struct r_receiver_s {    
-    u32 mask;
-    u32 last;
-} r_receiver_s;
-
 #define PHYS_PORT(phys) ((uint)(uintptr_t)(phys)->rx_handler_data)
-
-static u32 lReceiversLast[PORTS_N];
-static atomic_t lReceiversMask; 
 
 static u64 boot; // BOOT ID
 static net_device_s* xlan;
 static net_device_s* physs[PORTS_N];
+// OUT
+static atomic_t lmask;
+static atomic_t rmasks[HOSTS_N];
+static bucket_s buckets[PORTS_N];
 static stream_s streams[HOSTS_N][64]; // POPCOUNT64()
-static r_receiver_s rReceivers[HOSTS_N];
-static atomic_t seen[HOSTS_N];
+// IN
+static atomic_t lalives[PORTS_N];
+static atomic_t ralives[HOSTS_N][PORTS_N];
+
 /*
 ATOMIC_INIT
 atomic_check_mask
@@ -224,7 +222,6 @@ atomic_clear_mask
 atomic_set_mask
 */
     // mask com as portas deles que estao recebendo
-static bucket_s buckets[PORTS_N];
 
 // enviar broadcast:
 //   BROADCAST port_mac port_id RECEBENDO SIM/NAO
@@ -246,6 +243,20 @@ static DEFINE_TIMER(doTimer, xlan_keeper);
 static void xlan_keeper (struct timer_list* const timer) {
 
     const jiffies_t now = jiffies;
+
+    uint _lmask = 0;
+
+    foreach (p, PORTS_N) {
+         = atomic_dec(lalives[p]);
+        _lmask |= (!!lalives[p]) << p;
+    }
+
+    //
+    atomic_set(lmask, _lmask);
+
+    foreach (h, HOSTS_N)
+        foreach (h, PORTS_N)
+            ralives[h][p] = ATOMIC_INIT(0);
 
     foreach (p, PORTS_N) {
 
@@ -272,7 +283,7 @@ static void xlan_keeper (struct timer_list* const timer) {
             pkt_type     = BE16(ETH_P_XLAN);
             cntl_bootid  = BE64(boot);
             cntl_jiffies = BE64(now);
-            cntl_mask    = BE32(0); // TODO:
+            cntl_mask    = BE32(_lmask);
 
             //
             skb->transport_header = PTR(pkt) - SKB_HEAD(skb);
@@ -652,7 +663,12 @@ static int __init xlan_init (void) {
     // BOOT ID
     boot = jiffies; // TODO: FIXME:
 
-    lReceiversLast = 0;
+    foreach (p, PORTS_N)
+        lalives[p] = ATOMIC_INIT(0);
+
+    foreach (h, HOSTS_N)
+        foreach (h, PORTS_N)
+            ralives[h][p] = ATOMIC_INIT(0);
 
     clear(physs);
     clear(streams);
