@@ -456,7 +456,7 @@ static int __init xlan_init (void) {
 
     // CREATE THE VIRTUAL INTERFACE
     // MAKE IT VISIBLE IN THE SYSTEM
-    printk("XLAN: INIT - VENDOR 0x%04x HOST %u %02X GW %u %02X NET4 0x%08x NET6 0x%016llX\n",
+    printk("XLAN: INIT - VENDOR 0x%04x HOST %u 0x%02X GW %u 0x%02X NET4 0x%08X NET6 0x%016llX\n",
         VENDOR, HOST, HOST, GW, GW, NET4, (unsigned long long int)NET6);
 
     memset(physs, 0, sizeof(physs));
