@@ -392,7 +392,6 @@ static int __f_cold xlan_enslave (net_device_s* dev, net_device_s* phys, struct 
         _ENSL_NOT_ETHERNET,
         _ENSL_VENDOR_WRONG,
         _ENSL_HOST_WRONG,
-        _ENSL_PORT_INVALID,
         _ENSL_PORT_HIGH,
         _ENSL_ANOTHER_XLAN,
         _ENSL_ATTACH_FAILED,
@@ -407,7 +406,6 @@ static int __f_cold xlan_enslave (net_device_s* dev, net_device_s* phys, struct 
         [_ENSL_OCCUPIED      ] = EBUSY,
         [_ENSL_VENDOR_WRONG  ] = EINVAL,
         [_ENSL_HOST_WRONG    ] = EINVAL,
-        [_ENSL_PORT_INVALID  ] = EINVAL,
         [_ENSL_PORT_HIGH     ] = EINVAL,
         [_ENSL_ANOTHER_XLAN  ] = EINVAL,
         [_ENSL_ATTACH_FAILED ] = 1,
@@ -421,7 +419,6 @@ static int __f_cold xlan_enslave (net_device_s* dev, net_device_s* phys, struct 
         [_ENSL_ITSELF        ] = "FAILED: ITSELF",
         [_ENSL_VENDOR_WRONG  ] = "FAILED: WRONG VENDOR",
         [_ENSL_HOST_WRONG    ] = "FAILED: WRONG HOST",
-        [_ENSL_PORT_INVALID  ] = "FAILED: INVALID PORT",
         [_ENSL_PORT_HIGH     ] = "FAILED: PORT TOO HIGH",
         [_ENSL_ANOTHER_XLAN  ] = "FAILED: ANOTHER XLAN AS PHYSICAL",
         [_ENSL_ATTACH_FAILED ] = "FAILED: COULD NOT ATTACH",
@@ -429,9 +426,9 @@ static int __f_cold xlan_enslave (net_device_s* dev, net_device_s* phys, struct 
 
     xlan_s* const xlan = netdev_priv(dev);
 
-    const mac_s* const mac = (const void*)dev->dev_addr;
+    const mac_s* const mac = PTR(dev->dev_addr);
 
-    const uint port = HP_DECODE(mac->port);
+    const uint port = mac->port;
 
     uint ret;
 
@@ -459,11 +456,8 @@ static int __f_cold xlan_enslave (net_device_s* dev, net_device_s* phys, struct 
     elif (mac->host != xlan->host)
         // WRONG HOST
         ret = _ENSL_HOST_WRONG;
-    elif (mac->port != port)
-        // BAD PORT - MISMATCH
-        ret = _ENSL_PORT_INVALID;
     elif (port >= PORTS_N)
-        // BAD PORT - TOO HIGH
+        // BAD PORT
         ret = _ENSL_PORT_HIGH;
     elif (rtnl_dereference(phys->rx_handler) == xlan_in)
         // TODO: WTF?
