@@ -218,19 +218,26 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
         if (src_vendor == BE32(VENDOR)) {
             // IT IS A PROPER XLAN PACKET
             if (dst_vendor == 0xFFFFFFFFU) {
-                // CONTROLE (BROADCAST)
-                const uint shost = src_host;
-                const uint sport = src_port;
+                // BROADCAST
+                if (pkt_type == BE16(0x2562) && skb->len == (ETH_SIZE + sizeof(u64))) {
+                    // CONTROLE
+                    const uint now = jiffies;
+                    const uint shost = src_host;
+                    const uint sport = src_port;
 
-                if (shost == HOST) 
-                    // marca esta interface aqui como recebendo
-                    seen[HOST][skb->dev->handler_data] = jiffies;
-                elif (shost < HOSTS_N && sport < PORTS_N)
-                    // um pacote de contrle que OUTRA pessoa mandou
-                    seen[shost][sport] = pkt_type == RECEVENDO ? jiffies : 0;
-            } elif (dst_vendor == BE32(VENDOR) // NORMAL
-                 && dst_host == HOST // TO ME
-                 && dst_port == skb->dev->handler_data) { // TO THIS PORT
+                    if (shost == HOST) 
+                        // marca esta interface aqui como recebendo
+                        seen[HOST][skb->dev->handler_data] = now;
+                    elif (shost < HOSTS_N
+                       && sport < PORTS_N)
+                        // um pacote de contrle que OUTRA pessoa mandou
+                        foreach (p, PORTS_N)
+                            seen[shost][sport] = ((pkt_mask >> p) & 1U) * now;
+                }
+            } elif (dst_vendor == BE32(VENDOR)
+                 && dst_host == HOST
+                 && dst_port == skb->dev->handler_data) {
+                // NORMAL PACKET, TO ME, TO THIS PORT
                 skb->dev = xlan;
                 return RX_HANDLER_ANOTHER;
             }
@@ -241,6 +248,13 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
 
     return RX_HANDLER_CONSUMED;
 }
+
+quando for construir o pacote de controle GERAL, informa:
+ this port sending it
+ foreach (p, PORTS_N) {
+    if (seen[HOST][p] >= now)
+        manda dizendo que ela esta ativa
+ }
 
 static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xlan) {
 
