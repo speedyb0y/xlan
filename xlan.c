@@ -126,6 +126,11 @@ typedef struct notifier_block notifier_block_s;
 #error "BAD NET6"
 #endif
 
+#if GW == 0
+#undef GW
+#define GW HOST
+#endif
+
 #define MAC_VENDOR(mac) ((u32*)mac)[0]
 #define MAC_HOST(mac)    ((u8*)mac)[4]
 #define MAC_PORT(mac)    ((u8*)mac)[5]
@@ -161,8 +166,6 @@ typedef struct xlan_stream_s {
 } xlan_stream_s;
 
 typedef struct xlan_s {
-    uint host;
-    uint gw;
     net_device_s* ports[PORTS_N];
     xlan_stream_s paths[HOSTS_N][64]; // POPCOUNT64()
     u32 seen[HOSTS_N][PORTS_N][PORTS_N]; // TODO: FIXME: ATOMIC
@@ -189,12 +192,11 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
     const uint rport = src_port;
 
     // DISCARD THOSE
-    if (lhost >= HOSTS_N
+    if (rhost == HOST
      || rhost >= HOSTS_N
+     || lhost != HOST // NOT TO ME (POIS PODE TER RECEBIDO DEVIDO AO MODO PROMISCUO)
      || lport >= PORTS_N
      || rport >= PORTS_N
-     || rhost == xlan->host
-     || lhost != xlan->host // NOT TO ME (POIS PODE TER RECEBIDO DEVIDO AO MODO PROMISCUO)
      || phys  != xlan->ports[lport] // WRONG INTERFACE
      || virt->flags == 0) { // ->flags & UP
         kfree_skb(skb);
@@ -230,12 +232,12 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
 
     // IDENTIFY DESTINATION
     const uint rhost = v4 ?
-        ( (dst4_net & BE32(0xFFFFFF00U)) == BE32(NET4) ? dst4_host : xlan->gw ):
-        (  dst6_net                      == BE64(NET6) ? dst6_host : xlan->gw );
+        ( (dst4_net & BE32(0xFFFFFF00U)) == BE32(NET4) ? dst4_host : GW ):
+        (  dst6_net                      == BE64(NET6) ? dst6_host : GW );
 
     // É INVALIDO / ERA EXTERNO E NAO TEMOS GATEWAY / PARA SI MESMO
     if (rhost >= HOSTS_N
-     || rhost == xlan->host)
+     || rhost == HOST)
         goto drop;
 
     // SELECT A PATH
@@ -379,12 +381,12 @@ static int __f_cold xlan_enslave (net_device_s* dev, net_device_s* phys, struct 
 
     // HOOKED
     phys->rx_handler_data = dev;
+    
     // HOLD IT
     dev_hold(phys);
+    
     // REGISTER IT
     xlan->ports[port] = phys;
-    // SUCCESS
-    ret = _ENSL_SUCCESS;
 
     return 0;
 }
