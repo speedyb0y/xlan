@@ -276,23 +276,20 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xlan) {
         if (phys && (phys->flags & IFF_UP) == IFF_UP) { // IFF_RUNNING // IFF_LOWER_UP
 
             bucket_s* const bucket = &buckets[lport];
-            
-            // SE ESTA SOBRECARREGADO, MAS NAO TEM OUTRO JEITO, LIBERA UM PEQUENO BURST
-            if (bucket->can == 0) {
-                if (c >= PORTS_N*PORTS_N)
-                    bucket->can += 200;
-                else {
-                    const u64 elapsed =
-                        now >= bucket->last ?
-                        now -  bucket->last : HZ 
-                    ;
-                    if (elapsed >= REBUCKET_INTERVAL) {
-                            bucket->can += (elapsed * BUCKETS_PER_SECOND)/HZ;
-                        if (bucket->can >= BUCKET_SIZE)
-                            bucket->can =  BUCKET_SIZE;
-                        bucket->last = now;
-                    }
-                }
+
+            const u64 elapsed =
+                now >= bucket->last ?
+                now -  bucket->last : HZ 
+            ;
+
+            if (elapsed >= REBUCKET_INTERVAL) {
+                    bucket->last = now;
+                    bucket->can += (elapsed * BUCKETS_PER_SECOND)/HZ;
+                if (bucket->can >= BUCKET_SIZE)
+                    bucket->can =  BUCKET_SIZE;
+            } elif (bucket->can == 0 && c >= PORTS_N*PORTS_N) { // SE ESTA CHEIO E NAO TEM OUTRO JEITO,
+                    bucket->last += elapsed;
+                    bucket->can += 200; // LIBERA UM PEQUENO BURST
             }
 
             //
