@@ -229,16 +229,11 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
          ) { // VALIDO
             if (dst_vendor == 0xFFFFFFFFU) {
                 // CONTROLE
-                if (src_host == HOST) {
-                    // um pacote de contrle que eu mesmo mandei
-                    // marca esta interface aqui como recebendo
-                    
-                    if ()
-                    if ()
-                    receivers[]
-                } else {
+                if (src_host != HOST) {
+                    // um pacote de contrle que OUTRA pessoa mandou
                     // carrega as informacoes de teceiros
-                }
+                } // marca esta interface aqui como recebendo
+                receivers[skb->dev->handler_data] = 1;
             } elif (dst_vendor == BE32(VENDOR) && dhost == HOST) {
                 // PARA MIM
                 skb->dev = xlan;
