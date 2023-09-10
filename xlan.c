@@ -273,8 +273,8 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xlan) {
         ports++;
     } elif (path->saw && (now - *path->saw) > 5*HZ) {
         // ESTE PATH NAO ESTA RECEBENDO
-        printk("XLAN: ESTE PATH NAO ESTA RECEBENDO! PORTS %u UNSEEN FOR %u JIFFIES\n",
-            ports, now - *path->saw);
+        printk("XLAN: ESTE PATH NAO ESTA RECEBENDO! PORTS %u SAW %u NOW %u\n",
+            ports, *path->saw, now);
         ports++;
     } elif (0) {
         // TODO: OU SE O PACOTE É UM TCP-SYN, RST RETRANSMISSION ETC
