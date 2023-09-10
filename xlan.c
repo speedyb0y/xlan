@@ -485,6 +485,8 @@ static int __f_cold xlan_unslave (net_device_s* dev, net_device_s* phys) {
 
     foreach (port, PORTS_N) {
         if (xlan->ports[port] == phys) {
+            // UNREGISTER IT
+            xlan->ports[port] = NULL;
             // UNHOOK (IF ITS STILL HOOKED)
             if (rtnl_dereference(phys->rx_handler) == xlan_in) {
                                  phys->rx_handler_data = NULL;
@@ -492,8 +494,6 @@ static int __f_cold xlan_unslave (net_device_s* dev, net_device_s* phys) {
             }
             // DROP IT
             dev_put(phys);
-            // UNREGISTER IT
-            xlan->ports[port] = NULL;
             printk("XLAN: %s: DETACHED ITFC %s FROM PORT %u\n",
                 dev->name, phys->name, port);
             return 0;
