@@ -561,14 +561,4 @@ static int __init xlan_init (void) {
     return 0;
 }
 
-static void __exit xlan_exit (void) {
-
-}
-
-module_init(xlan_init);
-module_exit(xlan_exit);
-
-MODULE_LICENSE("GPL");
-MODULE_AUTHOR("speedyb0y");
-MODULE_DESCRIPTION("XLAN");
-MODULE_VERSION("0.1");
+late_initcall(xlan_init);
