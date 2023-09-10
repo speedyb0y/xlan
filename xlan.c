@@ -336,12 +336,12 @@ static int __f_cold xlan_enslave (net_device_s* xlan, net_device_s* phys, struct
     if (mac == NULL)
         return -EINVAL;
 
-    const uint vendor = MAC_VENDOR(mac);
-    const uint host   = MAC_HOST(mac);
-    const uint port   = MAC_PORT(mac);
+    const uint vendor = BE32(MAC_VENDOR(mac));
+    const uint host   =      MAC_HOST(mac);
+    const uint port   =      MAC_PORT(mac);
 
-    printk("XLAN: %s: ENSLAVE PHYS %s: VENDOR 0x%04X HOST %u PORT %u MAC %02X:%02X:%02X:%02X:%02X:%02X\n",
-        xlan->name, phys->name, vendor, host, port,
+    printk("XLAN: ENSLAVE PHYS %s: VENDOR 0x%04X HOST %u PORT %u MAC %02X:%02X:%02X:%02X:%02X:%02X\n",
+        phys->name, vendor, host, port,
         mac[0], mac[1], mac[2],
         mac[3], mac[4], mac[5]);
 
