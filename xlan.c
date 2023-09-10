@@ -539,20 +539,20 @@ static int __f_cold xlan_cfg (net_device_s* const dev, void* const addr) {
     const uint gw     =      info->gw;
     const uint net4   = BE32(info->net4);
     const uint net6   = BE64(info->net6);
-    
-    printk("XLAN: %s: CONFIGURING: HOST %u GW %u NET4 0x%04X NET6 0x%04X\n",
-        dev->name, host, gw, net4, net6);
+
+    printk("XLAN: %s: CONFIGURING: HOST %u GW %u NET4 0x%08X NET6 0x%016llX\n",
+        dev->name, host, gw, net4, (unsigned long long int)net6);
 
     // VERIFY
-    if (net4 && net6 && host && host < HOSTS_N && gw < HOSTS_N && gw != host) {
+    if (net4 && !(net4 & 0xFFU) && net6 && host && host < HOSTS_N && gw < HOSTS_N && gw != host) {
 
         xlan_s* const xlan = netdev_priv(dev);
 
         // COMMIT
-        xlan->net4   = BE16(net4);
-        xlan->net6   = BE16(net6);
+        xlan->net4   = BE32(net4);
+        xlan->net6   = BE64(net6);
         xlan->host   = host;
-        xlan->gw     = gw ?: HOSTS_N;
+        xlan->gw     = gw ?: host;
 
         return 0;
     }
