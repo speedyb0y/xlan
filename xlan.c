@@ -295,21 +295,29 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xlan) {
             bucket_s* const bucket = &buckets[lport];
 
             uint bcan = bucket->can;
-
-            // SE ESTA CHEIO E NAO TEM OUTRO JEITO, LIBERA UM PEQUENO BURST
-            if (bcan) {
-                    bcan += ((now - bucket->last) * BUCKETS_PER_SECOND)/HZ;
-                if (bcan > BUCKETS_PER_SECOND) {
-                    // SE DEU OVERFLOW NO JIFFIES OU SE PASSOU MAIS DO QUE UM SEGUNDO
-                    bcan = BUCKETS_PER_SECOND; // ...CONSIDERA COMO 1 SEGUNDO
-                    printk("XLAN: OVERFLOWED! LPORT %u RHOST %u RPORT %u bcan = %u\n",
-                        lport, rhost, rport, bcan);
-                }
-            } elif (c >= PORTS_N*PORTS_N) {
+            
+            if (bcan == 0) {
+                if (c >= PORTS_N*PORTS_N) {
                     // SE CHEGAMOS AO SEGUNDO ROUND, É PORQUE ELE ESTA ZERADO
+                    // SE ESTA CHEIO E NAO TEM OUTRO JEITO, LIBERA UM PEQUENO BURST
                     bcan = BUCKETS_BURST;
-                    printk("XLAN: BURSTING! LPORT %u RHOST %u RPORT %u bcan = %u\n",
+                    printk("XLAN: BURSTING! LPORT %u RHOST %u RPORT %u BCAN %u\n",
                         lport, rhost, rport, bcan);
+                } elif (now >= bucket->last) {
+                    const uint elapsed =
+                        now >= bucket->last ?
+                        now -  bucket->last : HZ;
+                        bcan += (elapsed * BUCKETS_PER_SECOND)/HZ;
+                    if (bcan > BUCKETS_PER_SECOND) {
+                        // SE DEU OVERFLOW NO JIFFIES OU SE PASSOU MAIS DO QUE UM SEGUNDO
+                        bcan = BUCKETS_PER_SECOND; // ...CONSIDERA COMO 1 SEGUNDO
+                        printk("XLAN: OVERFLOWED! LPORT %u RHOST %u RPORT %u BCAN %u\n",
+                            lport, rhost, rport, bcan);
+                    }
+                } else {
+                    printk("XLAN: TIME OVERFLOW\n");
+                    bcan = BUCKETS_PER_SECOND;
+                }
             }
 
             //
