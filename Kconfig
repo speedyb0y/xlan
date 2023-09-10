@@ -1,33 +1,49 @@
 
-config XLAN
+config        XLAN
     tristate "XLAN"
     help
       example
 
-config XLAN_VENDOR
+config   XLAN_VENDOR
     hex "XLAN_VENDOR"
     default 0x50622562
 
-config XLAN_HOSTS_N
+config   XLAN_HOSTS_N
     int "XLAN_HOSTS_N"
     default 64
 
-config XLAN_PORTS_N
+config   XLAN_PORTS_N
     int "XLAN_PORTS_N"
     default 4
 
-config XLAN_NET4
+config   XLAN_NET4
     hex "XLAN_NET4"
     default 0xC0000000
 
-config XLAN_NET6
+config   XLAN_NET6
     hex "XLAN_NET6"
     default 0xFC00000000000000
 
-config XLAN_HOST
+config   XLAN_HOST
     int "XLAN_HOST"
     default 20
 
-config XLAN_GW
+config   XLAN_GW
     int "XLAN_GW"
     default 50
+
+config   XLAN_TIMER_DELAY
+    int "XLAN_TIMER_DELAY"
+    default 15
+
+config   XLAN_TIMER_INTERVAL
+    int "XLAN_TIMER_INTERVAL"
+    default 2
+
+config   XLAN_BUCKETS_PER_SECOND
+    int "XLAN_BUCKETS_PER_SECOND"
+    default 30000
+
+config   XLAN_BUCKETS_BURST
+    int "XLAN_BUCKETS_BURST"
+    default 200

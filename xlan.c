@@ -67,13 +67,15 @@ typedef typeof(jiffies) jiffies_t;
 
 #include "xconf.h"
 
-#define VENDOR  XCONF_XLAN_VENDOR
-#define HOSTS_N XCONF_XLAN_HOSTS_N
-#define PORTS_N XCONF_XLAN_PORTS_N
-#define _NET4   XCONF_XLAN_NET4
-#define _NET6   XCONF_XLAN_NET6
-#define HOST    XCONF_XLAN_HOST
-#define GW      XCONF_XLAN_GW
+#define VENDOR             XCONF_XLAN_VENDOR
+#define HOSTS_N            XCONF_XLAN_HOSTS_N
+#define PORTS_N            XCONF_XLAN_PORTS_N
+#define _NET4              XCONF_XLAN_NET4
+#define _NET6              XCONF_XLAN_NET6
+#define HOST               XCONF_XLAN_HOST
+#define GW                 XCONF_XLAN_GW
+#define BUCKETS_PER_SECOND XCONF_XLAN_BUCKETS_PER_SECOND
+#define BUCKETS_BURST      XCONF_XLAN_BUCKETS_BURST
 
 #if !(VENDOR && VENDOR <= 0xFFFFFFFF && !(VENDOR & 0x01000000))
 #error "BAD VENDOR"
@@ -228,11 +230,8 @@ static bucket_s buckets[PORTS_N];
 //          pega todas as portas que ele diz estarem NAO RECEBENDO,
 //              e desmarca
 
-#define BUCKETS_PER_SECOND 30000
-#define BUCKETS_BURST 200
-
-#define XLAN_TIMER_DELAY (10*HZ) // AFTER SYSTEM BOOT
-#define XLAN_TIMER_INTERVAL (2*HZ)
+#define XLAN_TIMER_DELAY (XCONF_XLAN_TIMER_DELAY*HZ) // AFTER SYSTEM BOOT
+#define XLAN_TIMER_INTERVAL (XLAN_TIMER_INTERVAL*HZ)
 
 static void xlan_keeper (struct timer_list*);
 static DEFINE_TIMER(doTimer, xlan_keeper);
@@ -262,7 +261,7 @@ static void xlan_keeper (struct timer_list* const timer) {
             dst_port     = 0xFFU;
             src_vendor   = BE32(VENDOR);
             src_host     = HOST;
-            src_port     = port;
+            src_port     = p;
             pkt_type     = BE16(ETH_P_XLAN);
             cntl_bootid  = BE64(boot);
             cntl_jiffies = BE64(now);
