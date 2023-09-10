@@ -228,8 +228,9 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
                 elif (shost < HOSTS_N && sport < PORTS_N)
                     // um pacote de contrle que OUTRA pessoa mandou
                     seen[shost][sport] = pkt_type == RECEVENDO ? jiffies : 0;
-            } elif (dst_host == HOST
-                 && dst_port == skb->dev->handler_data) {
+            } elif (dst_vendor == BE32(VENDOR) // NORMAL
+                 && dst_host == HOST // TO ME
+                 && dst_port == skb->dev->handler_data) { // TO THIS PORT
                 skb->dev = xlan;
                 return RX_HANDLER_ANOTHER;
             }
