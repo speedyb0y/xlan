@@ -249,8 +249,6 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xlan) {
      || rhost == HOST)
         goto drop;
 
-    uint now   = jiffies;
-#if NORMAL_MODE
     // SELECT A PATH
     // OK: TCP | UDP | UDPLITE | SCTP | DCCP
     // FAIL: ICMP
@@ -261,90 +259,63 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xlan) {
         + addrs6[2] + addrs6[3]        
     ))];
 
+    uint now   = jiffies;
     uint last  = path->last;
     uint ports = path->ports;
-#define ROUNDS 5
-#else
-#define BUCKET_SIZE 20000
-#define BUCKET_INTERVAL (2*HZ)
-#define BUCKET_PKTS_PER_SECOND 5
-    uint ports = pathPorts;
-    const u64 elapsed = now - flushAgain;
-    if (elapsed >= HZ/4
-     && elapsed < 3600*HZ) { // dint overflow
-        bucket += (elapsed * BUCKET_PKTS_PER_SECOND)/HZ;
-        if (bucket > BUCKET_SIZE)
-            bucket = BUCKET_SIZE;
-     //   flushAgain += elapsed;
-    }
-#define ROUNDS 2
-#endif
 
-    foreach (r, ROUNDS) {
+    // SE DEU UMA PAUSA, TROCA DE PORTA
+    ports += (now - last) >= HZ/5
+     || 0 // TODO: OU SE O PACOTE É UM TCP-SYN, RST RETRANSMISSION ETC
+    ;    
 
-        // NOTE: MUDA A PORTA LOCAL COM MAIS FREQUENCIA, PARA QUE O SWITCH A DESCUBRA
-        // for PORTS_N in range(7): assert len(set((_ // PORTS_N, _ % PORTS_N) for _ in range(PORTS_N*PORTS_N))) == PORTS_N*PORTS_N
-        foreach (c, (PORTS_N * PORTS_N)) {
-            ports %= PORTS_N * PORTS_N;
+    // NOTE: MUDA A PORTA LOCAL COM MAIS FREQUENCIA, PARA QUE O SWITCH A DESCUBRA
+    // for PORTS_N in range(7): assert len(set((_ // PORTS_N, _ % PORTS_N) for _ in range(PORTS_N*PORTS_N))) == PORTS_N*PORTS_N
+    foreach (c, (PORTS_N * PORTS_N + 1)) {
+        ports %= PORTS_N * PORTS_N;
 
-            const uint rport = ports / PORTS_N;
-            const uint lport = ports % PORTS_N;
+        const uint rport = ports / PORTS_N;
+        const uint lport = ports % PORTS_N;
 
-            net_device_s* const phys = physs[lport];
+        net_device_s* const phys = physs[lport];
 
-            if (phys && (phys->flags & IFF_UP) == IFF_UP && // IFF_RUNNING // IFF_LOWER_UP
-#if NORMAL_MODE
-                ( r == 4 || (r*1*HZ)/5 >= (now - last)) && // SE DEU UMA PAUSA, TROCA DE PORTA                    
-                            (r*3*HZ)/1 >= (now - seen[rhost][rport][lport]) // KNOWN TO WORK
-            )
-#else
-                bucket && now < flushAgain
-#endif
-            ) {
-                //
-#if NORMAL_MODE
-                path->ports = ports;
-                path->last  = now;
-#else
-                pathPorts = ports;
-                bucket--;
-#endif
-                // FILL ETHERNET HEADER
-                dst_vendor = BE32(VENDOR);
-                dst_host   = rhost;
-                dst_port   = rport;
-                src_vendor = BE32(VENDOR);
-                src_host   = HOST;
-                src_port   = lport;
-                pkt_type   = skb->protocol;
+        if (phys && (phys->flags & IFF_UP) == IFF_UP && // IFF_RUNNING // IFF_LOWER_UP
+            ( c >= PORTS_N || 1) // TODO: SE O DEVICE JA ESTIVER SOBRECARREGADO, MANDA POR OUTRO
+        )) {
+            //
+            path->ports = ports;
+            path->last  = now;
+            //physCounters[lport]++;
 
-                // UPDATE SKB
-                skb->data       = PTR(pkt);
+            // FILL ETHERNET HEADER
+            dst_vendor = BE32(VENDOR);
+            dst_host   = rhost;
+            dst_port   = rport;
+            src_vendor = BE32(VENDOR);
+            src_host   = HOST;
+            src_port   = lport;
+            pkt_type   = skb->protocol;
+
+            // UPDATE SKB
+            skb->data       = PTR(pkt);
 #ifdef NET_SKBUFF_DATA_USES_OFFSET
-                skb->mac_header = PTR(pkt) - SKB_HEAD(skb);
+            skb->mac_header = PTR(pkt) - SKB_HEAD(skb);
 #else
-                skb->mac_header = PTR(pkt);
+            skb->mac_header = PTR(pkt);
 #endif
-                skb->len        = SKB_TAIL(skb) - PTR(pkt);
-                skb->mac_len    = ETH_HLEN;
-                skb->dev        = phys;
+            skb->len        = SKB_TAIL(skb) - PTR(pkt);
+            skb->mac_len    = ETH_HLEN;
+            skb->dev        = phys;
 
-                // -- THE FUNCTION CAN BE CALLED FROM AN INTERRUPT
-                // -- WHEN CALLING THIS METHOD, INTERRUPTS MUST BE ENABLED
-                // -- REGARDLESS OF THE RETURN VALUE, THE SKB IS CONSUMED
-                dev_queue_xmit(skb);
+            // -- THE FUNCTION CAN BE CALLED FROM AN INTERRUPT
+            // -- WHEN CALLING THIS METHOD, INTERRUPTS MUST BE ENABLED
+            // -- REGARDLESS OF THE RETURN VALUE, THE SKB IS CONSUMED
+            dev_queue_xmit(skb);
 
-                return NETDEV_TX_OK;
-            }
-#if !NORMAL_MODE
-            // TROCANDO DE PORTA
-            bucket = BUCKET_SIZE;
-            flushAgain = now + BUCKET_INTERVAL;
-#endif
-            ports++;
+            return NETDEV_TX_OK;
         }
-    }
 
+        ports++;
+    }
 drop:
     dev_kfree_skb(skb);
 
