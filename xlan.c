@@ -230,15 +230,15 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
     const pkt_s* const pkt = SKB_MAC(skb) - PKT_OFFSET_ETH;
 
     // SO HANDLE O QUE FOR
-    if (dst_vendor != BE16(VENDOR)
-   || src_vendor != BE16(VENDOR))
+    if (dst_vendor != BE32(VENDOR)
+     || src_vendor != BE32(VENDOR))
         return RX_HANDLER_PASS;
 
     // ASSERT: skb->type PKT_HOST
-    const uint lhost = HP_DECODE(dst_host);
-    const uint lport = HP_DECODE(dst_port);
-    const uint rhost = HP_DECODE(src_host);
-    const uint rport = HP_DECODE(src_port);
+    const uint lhost = dst_host;
+    const uint lport = dst_port;
+    const uint rhost = src_host;
+    const uint rport = src_port;
 
     // DISCARD THOSE
     if (lhost >= HOSTS_N
