@@ -10,10 +10,10 @@
 #include <linux/net.h>
 #include <linux/if_ether.h>
 #include <linux/in.h>
+#include <linux/timer.h>
 #include <net/ip.h>
 #include <net/inet_common.h>
 #include <net/addrconf.h>
-#include <linux/module.h>
 
 #define __f_hot __attribute__((hot))
 #define __f_cold __attribute__((cold))
@@ -35,6 +35,9 @@ typedef struct net_device net_device_s;
 typedef struct net net_s;
 typedef struct net_device_ops net_device_ops_s;
 typedef struct notifier_block notifier_block_s;
+
+// TODO: FIXME:
+typedef typeof(jiffies) jiffies_t;
 
 #define SKB_HEAD(skb) PTR((skb)->head)
 #define SKB_DATA(skb) PTR((skb)->data)
@@ -116,6 +119,13 @@ typedef struct notifier_block notifier_block_s;
 #define ETH_O_TYPE    12
 #define ETH_SIZE      14
 
+#define CNTL_TOTAL_SIZE (ETH_SIZE + CNTL_SIZE)
+
+#define CNTL_O_BOOT     0
+#define CNTL_O_JIFFIES  8
+#define CNTL_O_MASK    16
+#define CNTL_SIZE      20
+
 #define IP4_O_PROTO   9
 #define IP4_O_SRC     12
 #define IP4_O_SRC_N   12
@@ -153,7 +163,9 @@ typedef struct notifier_block notifier_block_s;
 #define src_port    (*(u8 *)(pkt + ETH_O_SRC_P))
 #define pkt_type    (*(u16*)(pkt + ETH_O_TYPE))
 
-#define pkt_mask    (*(u32*)(pkt + ETH_SIZE))
+#define cntl_bootid  (*(u64*)(pkt + ETH_SIZE + CNTL_O_BOOT))
+#define cntl_jiffies (*(u64*)(pkt + ETH_SIZE + CNTL_O_JIFFIES))
+#define cntl_mask    (*(u32*)(pkt + ETH_SIZE + CNTL_O_MASK))
 
 #define proto4      (*(u8 *)(pkt + ETH_SIZE + IP4_O_PROTO))
 #define addrs4      (*(u64*)(pkt + ETH_SIZE + IP4_O_SRC))
@@ -182,14 +194,17 @@ typedef struct bucket_s {
     u32 last;
 } bucket_s;
 
+static u64 boot; // BOOT ID
 static net_device_s* xlan;
 static net_device_s* physs[PORTS_N];
 static xlan_stream_s paths[HOSTS_N][64]; // POPCOUNT64()
 static atomic_t seen[HOSTS_N];
+/*
 ATOMIC_INIT
 atomic_check_mask
 atomic_clear_mask
 atomic_set_mask
+*/
     // mask com as portas deles que estao recebendo
 static bucket_s buckets[PORTS_N];
 
@@ -209,6 +224,71 @@ static bucket_s buckets[PORTS_N];
 
 #define BUCKETS_PER_SECOND 30000
 #define BUCKETS_BURST 200
+
+#define XLAN_TIMER_DELAY (10*HZ) // AFTER SYSTEM BOOT
+#define XLAN_TIMER_INTERVAL (2*HZ)
+
+static void xlan_keeper (struct timer_list*);
+static DEFINE_TIMER(doTimer, xlan_keeper);
+
+static void xlan_keeper (struct timer_list* const timer) {
+
+    const jiffies_t now = jiffies;
+
+    foreach (p, PORTS_N) {
+
+        net_device_s* const phys = &physs[p];
+
+        if (phys && phys->flags & IFF_UP) {
+
+            //
+            sk_buff_s* const skb = alloc_skb(64 + CNTL_TOTAL_SIZE, GFP_ATOMIC);
+
+            if (skb == NULL) {
+                printk("XLAN: FAILED TO CREATE SKB\n");
+                continue;
+            }
+
+            void* const pkt = SKB_DATA(skb);
+
+            dst_vendor   = 0xFFFFFFFFU;
+            dst_host     = 0xFFU;
+            dst_port     = 0xFFU;
+            src_vendor   = BE32(VENDOR);
+            src_host     = HOST;
+            src_port     = port;
+            pkt_type     = BE16(ETH_P_XLAN);
+            cntl_bootid  = BE64(boot);
+            cntl_jiffies = BE64(now);
+            cntl_mask    = BE32(0); // TODO:
+
+            //
+            skb->transport_header = PTR(pkt) - SKB_HEAD(skb);
+            skb->network_header   = PTR(pkt) - SKB_HEAD(skb);
+            skb->mac_header       = PTR(pkt) - SKB_HEAD(skb);
+            skb->data             = PTR(pkt);
+#ifdef NET_SKBUFF_DATA_USES_OFFSET
+            skb->tail             = PTR(pkt) + CNTL_TOTAL_SIZE - SKB_HEAD(skb);
+#else
+            skb->tail             = PTR(pkt) + CNTL_TOTAL_SIZE;
+#endif
+            skb->mac_len          = ETH_HLEN;
+            skb->len              = CNTL_TOTAL_SIZE;
+            skb->ip_summed        = CHECKSUM_NONE;
+            skb->dev              = phys;
+            skb->protocol         = BE16(ETH_P_XLAN); // TODO: FIXME:
+
+            // SEND IT
+            dev_queue_xmit(skb);
+        } else {
+            // TODO: REMOVE ITSELF FROM THE MASK
+        }
+    }
+
+    // REINSTALL TIMER
+    doTimer.expires = now + XLAN_TIMER_INTERVAL*HZ;
+    add_timer(&doTimer);
+}
 
 static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
     
@@ -244,7 +324,7 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
                     } elif (shost < HOSTS_N
                          && sport < PORTS_N) {
                         // um pacote de contrle que OUTRA pessoa mandou
-                        rReceivers[shost].mask = pkt_mask; // UMA MASCARA DE TODOS                      
+                        rReceivers[shost].mask = BE32(pkt_mask); // UMA MASCARA DE TODOS                      
                         rReceivers[shost].last = jiffies; // UM TIME DE TODOS
                     }
                 }
@@ -412,12 +492,16 @@ static int __f_cold xlan_down (net_device_s* const xlan) {
 
     printk("XLAN: %s DOWN\n", xlan->name);
 
+    // TODO: DON'T EXECUTE TIMER
+
     return 0;
 }
 
 static int __f_cold xlan_up (net_device_s* const xlan) {
 
     printk("XLAN: %s UP\n", xlan->name);
+
+    // TODO: REARM TIMER
 
     return 0;
 }
@@ -471,41 +555,6 @@ static int __f_cold xlan_enslave (net_device_s* xlan, net_device_s* phys, struct
         return -EBUSY;
     }
 
-    //
-    sk_buff_s* const skb = alloc_skb(128, GFP_ATOMIC);
-
-    if (skb == NULL) {
-        printk("XLAN: FAILED TO CREATE SKB\n");
-        return -1;
-    }
-
-    void* const pkt = SKB_DATA(skb);
-
-    dst_vendor = 0xFFFFFFFFU;
-    dst_host   = 0xFFU;
-    dst_port   = 0xFFU;
-    src_vendor = BE32(VENDOR);
-    src_host   = HOST;
-    src_port   = port;
-    pkt_type   = BE16(ETH_P_XLAN);
-    pkt_mask   = 0;
-#define XLAN_CONTROL_SIZE (ETH_HLEN + sizeof(pkt_mask))
-    //
-    skb->transport_header = PTR(pkt) - SKB_HEAD(skb);
-    skb->network_header   = PTR(pkt) - SKB_HEAD(skb);
-    skb->mac_header       = PTR(pkt) - SKB_HEAD(skb);
-    skb->data             = PTR(pkt);
-#ifdef NET_SKBUFF_DATA_USES_OFFSET
-    skb->tail             = PTR(pkt) + XLAN_CONTROL_SIZE - SKB_HEAD(skb);
-#else
-    skb->tail             = PTR(pkt) + XLAN_CONTROL_SIZE;
-#endif
-    skb->mac_len          = ETH_HLEN;
-    skb->len              = XLAN_CONTROL_SIZE;
-    skb->ip_summed        = CHECKSUM_NONE;
-    skb->dev              = phys;
-    skb->protocol         = BE16(ETH_P_IP); // TODO: FIXME:
-
     if (netdev_rx_handler_register(phys, xlan_in, NULL) != 0) {
         printk("XLAN: FAILED: FAILED TO ATTACH HANDLER\n");
         skb_free(skb);
@@ -517,7 +566,6 @@ static int __f_cold xlan_enslave (net_device_s* xlan, net_device_s* phys, struct
     
     // REGISTER IT
     physs[port] = phys;
-    skbs[port] = skb;
 
     return 0;
 }
@@ -529,8 +577,6 @@ static int __f_cold xlan_unslave (net_device_s* xlan, net_device_s* phys) {
             physs[p] = NULL; // UNREGISTER
             netdev_rx_handler_unregister(phys); // UNHOOK
             dev_put(phys); // DROP
-            skbs[p] = NULL; // TODO: FIXME: !!!!!!!!!!!!!!!!!!!!!!!!
-            skb_free(skb);
             printk("XLAN: DETACHED PHYS %s FROM PORT %u\n", phys->name, p);
             return 0;
         }
@@ -591,12 +637,9 @@ static int __init xlan_init (void) {
     printk("XLAN: INIT - VENDOR 0x%04x HOST %u 0x%02X GW %u 0x%02X NET4 0x%08X NET6 0x%016llX\n",
         VENDOR, HOST, HOST, GW, GW, NET4, (unsigned long long int)NET6);
 
-#if XLAN_BEEP
-    beepDo = BEEP_NONE;
-    statuses = 0;
-    changeds = 0;
-    handleds = 0;
-#endif
+    // BOOT ID
+    boot = jiffies; // TODO: FIXME:
+
     memset(physs,   0, sizeof(physs));
     memset(paths,   0, sizeof(paths));
     memset(buckets, 0, sizeof(buckets));
@@ -611,12 +654,9 @@ static int __init xlan_init (void) {
     //
     register_netdev(xlan);
 
-#if XLAN_BEEP
     // INSTALL TIMER
-    doTimer.expires = jiffies + 10*HZ;
-
+    doTimer.expires = jiffies + XLAN_TIMER_DELAY;
     add_timer(&doTimer);
-#endif
 
     return 0;
 }
