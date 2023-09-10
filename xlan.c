@@ -209,7 +209,7 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
      || lhost != HOST // NOT TO ME (POIS PODE TER RECEBIDO DEVIDO AO MODO PROMISCUO)
      || lport >= PORTS_N
      || rport >= PORTS_N
-  //   || skb->dev != physs[lport] // WRONG INTERFACE
+     || skb->dev != physs[lport] // WRONG INTERFACE
      || xlan->flags == 0) { // ->flags & UP
         kfree_skb(skb);
         return RX_HANDLER_CONSUMED;
@@ -294,10 +294,9 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xlan) {
 
             if (phys && (phys->flags & IFF_UP) == IFF_UP && // IFF_RUNNING // IFF_LOWER_UP
 #if NORMAL_MODE
-                ( r == 4 || ( // NO ULTIMO ROUND FORCA MESMO ASSIM
-                    (r*1*HZ)/5 >= (now - last) && // SE DEU UMA PAUSA, TROCA DE PORTA
-                    (r*2*HZ)/1 >= (now - seen[rhost][rport][lport]) // KNOWN TO WORK
-            ))
+                ( r == 4 || (r*1*HZ)/5 >= (now - last)) && // SE DEU UMA PAUSA, TROCA DE PORTA                    
+                            (r*3*HZ)/1 >= (now - seen[rhost][rport][lport]) // KNOWN TO WORK
+            )
 #else
                 bucket && now < flushAgain
 #endif
