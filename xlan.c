@@ -220,7 +220,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
     void* const pkt = SKB_NETWORK(skb) - ETH_SIZE;
 
     // CONFIRMA ESPACO
-    if (PTR(pkt_eth) < SKB_HEAD(skb))
+    if (PTR(pkt) < SKB_HEAD(skb))
         goto drop;
 
     // NOTE: ASSUME QUE NÃO TEM IP OPTIONS
