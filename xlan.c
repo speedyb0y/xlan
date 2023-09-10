@@ -139,6 +139,8 @@ typedef struct notifier_block notifier_block_s;
 #define NET4 ((u32)_NET4)
 #define NET6 ((u64)_NET6)
 
+#define ETH_P_XLAN 0x2562
+
 #define MAC_VENDOR(mac) ((u32*)mac)[0]
 #define MAC_HOST(mac)    ((u8*)mac)[4]
 #define MAC_PORT(mac)    ((u8*)mac)[5]
@@ -150,6 +152,8 @@ typedef struct notifier_block notifier_block_s;
 #define src_host    (*(u8 *)(pkt + ETH_O_SRC_H))
 #define src_port    (*(u8 *)(pkt + ETH_O_SRC_P))
 #define pkt_type    (*(u16*)(pkt + ETH_O_TYPE))
+
+#define pkt_mask    (*(u32*)(pkt + ETH_SIZE))
 
 #define proto4      (*(u8 *)(pkt + ETH_SIZE + IP4_O_PROTO))
 #define addrs4      (*(u64*)(pkt + ETH_SIZE + IP4_O_SRC))
@@ -219,7 +223,7 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
             // IT IS A PROPER XLAN PACKET
             if (dst_vendor == 0xFFFFFFFFU) {
                 // BROADCAST
-                if (pkt_type == BE16(0x2562) && skb->len == (ETH_SIZE + sizeof(u32))) {
+                if (pkt_type == BE16(ETH_P_XLAN) && skb->len == (ETH_SIZE + sizeof(u32))) {
                     // CONTROLE
                     const uint shost = src_host;
                     const uint sport = src_port;
@@ -467,6 +471,54 @@ static int __f_cold xlan_enslave (net_device_s* xlan, net_device_s* phys, struct
         return -EBUSY;
     }
 
+    //
+    sk_buff_s* const skb = alloc_skb(128, GFP_ATOMIC);
+
+    if (skb == NULL) {
+        printk("XLAN: FAILED TO CREATE SKB\n");
+        return -1;
+    }
+
+    void* const pkt = SKB_DATA(skb);
+
+    dst_vendor = 0xFFFFFFFFU;
+    dst_host   = 0xFFU;
+    dst_port   = 0xFFU;
+    src_vendor = BE32(VENDOR);
+    src_host   = HOST;
+    src_port   = port;
+    pkt_mask   = 0;
+
+        //
+#if !XGW_SERVER
+        wire->eDst[0]    = cfgPath->gw16[0];
+        wire->eDst[1]    = cfgPath->gw16[1];
+        wire->eDst[2]    = cfgPath->gw16[2];
+        wire->eSrc[0]    = cfgPath->mac16[0];
+        wire->eSrc[1]    = cfgPath->mac16[1];
+        wire->eSrc[2]    = cfgPath->mac16[2];
+#endif
+        wire->eType      = BE16(ETH_P_IP);
+
+        //
+        skb->transport_header = UDP(wire) - SKB_HEAD(skb);
+        skb->network_header   = IP (wire) - SKB_HEAD(skb);
+        skb->mac_header       = ETH(wire) - SKB_HEAD(skb);
+        skb->data             = ETH(wire);
+#ifdef NET_SKBUFF_DATA_USES_OFFSET
+        skb->tail             = ETH(wire) + ETH_SIZE + PATH_KEEPER_IP_SIZE - SKB_HEAD(skb);
+#else
+        skb->tail             = ETH(wire) + ETH_SIZE + PATH_KEEPER_IP_SIZE;
+#endif
+        skb->mac_len          = ETH_SIZE;
+        skb->len              = ETH_SIZE + PATH_KEEPER_IP_SIZE;
+        skb->ip_summed        = CHECKSUM_NONE;
+        skb->dev              = path->itfc;
+        skb->protocol         = BE16(ETH_P_IP);
+
+        path->wire     = wire;
+        path->skb      = skb;
+
     if (netdev_rx_handler_register(phys, xlan_in, NULL) != 0) {
         printk("XLAN: FAILED: FAILED TO ATTACH HANDLER\n");
         return -1;
@@ -548,15 +600,32 @@ static int __init xlan_init (void) {
     printk("XLAN: INIT - VENDOR 0x%04x HOST %u 0x%02X GW %u 0x%02X NET4 0x%08X NET6 0x%016llX\n",
         VENDOR, HOST, HOST, GW, GW, NET4, (unsigned long long int)NET6);
 
+#if XLAN_BEEP
+    beepDo = BEEP_NONE;
+    statuses = 0;
+    changeds = 0;
+    handleds = 0;
+#endif
     memset(physs,   0, sizeof(physs));
     memset(paths,   0, sizeof(paths));
     memset(buckets, 0, sizeof(buckets));
     memset(seen,    0, sizeof(seen));
 
     //
-    xlan = alloc_netdev(0, "xlan", NET_NAME_USER, xlan_setup);
+    if ((xlan = alloc_netdev(0, "xlan", NET_NAME_USER, xlan_setup)) == NULL) {
+        printk("XLAN: FAILED\n");
+        return -1;
+    }
+
     //
     register_netdev(xlan);
+
+#if XLAN_BEEP
+    // INSTALL TIMER
+    doTimer.expires = jiffies + 10*HZ;
+
+    add_timer(&doTimer);
+#endif
 
     return 0;
 }
