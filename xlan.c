@@ -266,14 +266,22 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xlan) {
     uint last  = path->last;
     uint ports = path->ports;
     
-    // MUDA A PORTA ATUAL SE
-    ports += // O ULTIMO ENVIADO JA DEU TEMPO DE SER PROCESSADO
-            (now - last) >= HZ/5
-        || // ESTE PATH NAO ESTA RECEBENDO
-            (path->saw && (now - *path->saw) > 5*HZ)
-        || // TODO: OU SE O PACOTE É UM TCP-SYN, RST RETRANSMISSION ETC
-            0
-    ;
+    // FORCA A MUDANCA DA PORTA ATUAL SE...
+    if ((now - last) >= HZ/5) {
+        // O ULTIMO ENVIADO JA DEU TEMPO DE SER PROCESSADO
+        printk("XLAN: ESTE PATH NAO ESTA RECEBENDO! PORTS %u\n", ports);
+        ports++;
+    } elif (path->saw && (now - *path->saw) > 5*HZ) {
+        // ESTE PATH NAO ESTA RECEBENDO
+        printk("XLAN: ESTE PATH NAO ESTA RECEBENDO! PORTS %u UNSEEN FOR %u JIFFIES\n",
+            ports, now - *path->saw);
+        ports++;
+    } elif (0) {
+        // TODO: OU SE O PACOTE É UM TCP-SYN, RST RETRANSMISSION ETC
+        ports++;
+    } else {
+        // CONTINUA
+    }
     
     foreach (c, (PORTS_N * PORTS_N * 2)) {
         ports %= PORTS_N * PORTS_N;
@@ -292,10 +300,18 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xlan) {
             // SE ESTA CHEIO E NAO TEM OUTRO JEITO, LIBERA UM PEQUENO BURST
             if (bcan) {
                     bcan += ((now - bucket->last) * BUCKETS_PER_SECOND)/HZ;
-                if (bcan > BUCKETS_PER_SECOND) // SE DEU OVERFLOW NO JIFFIES OU SE PASSOU MAIS DO QUE UM SEGUNDO
+                if (bcan > BUCKETS_PER_SECOND) {
+                    // SE DEU OVERFLOW NO JIFFIES OU SE PASSOU MAIS DO QUE UM SEGUNDO
                     bcan = BUCKETS_PER_SECOND; // ...CONSIDERA COMO 1 SEGUNDO
-            } elif (c >= PORTS_N*PORTS_N) // SE CHEGAMOS AO SEGUNDO ROUND, É PORQUE ELE ESTA ZERADO
+                    printk("XLAN: OVERFLOWED! LPORT %u RHOST %u RPORT %u bcan = %u\n",
+                        lport, rhost, rport, bcan);
+                }
+            } elif (c >= PORTS_N*PORTS_N) {
+                    // SE CHEGAMOS AO SEGUNDO ROUND, É PORQUE ELE ESTA ZERADO
                     bcan = BUCKETS_BURST;
+                    printk("XLAN: BURSTING! LPORT %u RHOST %u RPORT %u bcan = %u\n",
+                        lport, rhost, rport, bcan);
+            }
 
             //
             if (bcan) {                
