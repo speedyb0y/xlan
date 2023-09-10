@@ -294,12 +294,9 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
     // OK: TCP | UDP | UDPLITE | SCTP | DCCP
     // FAIL: ICMP
     xlan_stream_s* const path = &xlan->paths[rhost][__builtin_popcountll( (u64) ( v4
-        ? proto4    // IP PROTOCOL
-        * ports4    // SRC PORT, DST PORT
-        + addrs4    // SRC ADDR, DST ADDR
-        : flow6     // FLOW
-        * proto6    // IP PROTOCOL
-        * ports6    // SRC PORT, DST PORT
+        ? proto4 * ports4    // IP PROTOCOL, SRC/DST PORTS
+        + addrs4             // SRC ADDR, DST ADDR
+        : proto6 * ports6 * flow6 // IP PROTOCOL, SRC/DST PORTS, FLOW
         + addrs6[0] // SRC ADDR
         + addrs6[1] // SRC ADDR
         + addrs6[2] // DST ADDR
