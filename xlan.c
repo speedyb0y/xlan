@@ -390,9 +390,9 @@ static int __f_cold xlan_enslave (net_device_s* dev, net_device_s* phys, struct 
         _ENSL_ALREADY,
         _ENSL_OCCUPIED,
         _ENSL_NOT_ETHERNET,
-        _ENSL_VENDOR_WRONG,
-        _ENSL_HOST_WRONG,
-        _ENSL_PORT_HIGH,
+        _ENSL_BAD_VENDOR,
+        _ENSL_BAD_HOST,
+        _ENSL_BAD_PORT,
         _ENSL_ANOTHER_XLAN,
         _ENSL_ATTACH_FAILED,
         __N,
@@ -404,23 +404,23 @@ static int __f_cold xlan_enslave (net_device_s* dev, net_device_s* phys, struct 
         [_ENSL_ITSELF        ] = EINVAL,
         [_ENSL_ALREADY       ] = EISCONN,
         [_ENSL_OCCUPIED      ] = EBUSY,
-        [_ENSL_VENDOR_WRONG  ] = EINVAL,
-        [_ENSL_HOST_WRONG    ] = EINVAL,
-        [_ENSL_PORT_HIGH     ] = EINVAL,
+        [_ENSL_BAD_VENDOR    ] = EINVAL,
+        [_ENSL_BAD_HOST      ] = EINVAL,
+        [_ENSL_BAD_PORT      ] = EINVAL,
         [_ENSL_ANOTHER_XLAN  ] = EINVAL,
         [_ENSL_ATTACH_FAILED ] = 1,
     };
 
     static const char* strs [__N] = {
         [_ENSL_SUCCESS       ] = "SUCCESS",
-        [_ENSL_NOT_ETHERNET  ] = "FAILED: NOT ETHERNET",
-        [_ENSL_ALREADY       ] = "FAILED: ALREADY",
-        [_ENSL_OCCUPIED      ] = "FAILED: ANOTHER INTERFACE ON THE PORT",
-        [_ENSL_ITSELF        ] = "FAILED: ITSELF",
-        [_ENSL_VENDOR_WRONG  ] = "FAILED: WRONG VENDOR",
-        [_ENSL_HOST_WRONG    ] = "FAILED: WRONG HOST",
-        [_ENSL_PORT_HIGH     ] = "FAILED: PORT TOO HIGH",
-        [_ENSL_ANOTHER_XLAN  ] = "FAILED: ANOTHER XLAN AS PHYSICAL",
+        [_ENSL_NOT_ETHERNET  ] = "FAILED: BAD PHYS - NOT ETHERNET",
+        [_ENSL_ITSELF        ] = "FAILED: BAD PHYS - ITSELF",
+        [_ENSL_ANOTHER_XLAN  ] = "FAILED: BAD PHYS - XLAN",
+        [_ENSL_ALREADY       ] = "FAILED: PHYS IS ALREADY A PORT",
+        [_ENSL_OCCUPIED      ] = "FAILED: PORT ALREADY HAS A PHYS",
+        [_ENSL_BAD_VENDOR    ] = "FAILED: BAD MAC VENDOR",
+        [_ENSL_BAD_HOST      ] = "FAILED: BAD MAC HOST",
+        [_ENSL_BAD_PORT      ] = "FAILED: BAD MAC PORT",
         [_ENSL_ATTACH_FAILED ] = "FAILED: COULD NOT ATTACH",
     };
 
@@ -452,13 +452,13 @@ static int __f_cold xlan_enslave (net_device_s* dev, net_device_s* phys, struct 
         ret = _ENSL_NOT_ETHERNET;
     elif (mac->vendor != BE32(VENDOR))
         // WRONG VENDOR
-        ret = _ENSL_VENDOR_WRONG;
+        ret = _ENSL_BAD_VENDOR;
     elif (mac->host != xlan->host)
         // WRONG HOST
-        ret = _ENSL_HOST_WRONG;
+        ret = _ENSL_BAD_HOST;
     elif (port >= PORTS_N)
         // BAD PORT
-        ret = _ENSL_PORT_HIGH;
+        ret = _ENSL_BAD_PORT;
     elif (netdev_rx_handler_register(phys, xlan_in, dev) != 0)
         // FAILED TO ATTACH
         ret = _ENSL_ATTACH_FAILED;
