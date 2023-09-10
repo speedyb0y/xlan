@@ -171,6 +171,7 @@ typedef struct notifier_block notifier_block_s;
 typedef struct xlan_stream_s {
     u32 ports;
     u32 last;
+    const u32* saw;
 } xlan_stream_s;
 
 typedef struct bucket_s {
@@ -266,6 +267,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xlan) {
     // SE DEU UMA PAUSA, TROCA DE PORTA
     ports += (now - last) >= HZ/5
      || 0 // TODO: OU SE O PACOTE É UM TCP-SYN, RST RETRANSMISSION ETC
+     || (path->saw && (now - *path->saw) > 5*HZ)
     ;
 
     // NOTE: MUDA A PORTA LOCAL COM MAIS FREQUENCIA, PARA QUE O SWITCH A DESCUBRA
@@ -282,12 +284,12 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xlan) {
 
             bucket_s* const bucket = &buckets[lport];
 
-            u64 bcan;
+            uint bcan;
 
             // SE ESTA CHEIO E NAO TEM OUTRO JEITO, LIBERA UM PEQUENO BURST
             if (c < PORTS_N*PORTS_N) {
                     bcan = bucket->can + ((now - bucket->last) * BUCKETS_PER_SECOND)/HZ;
-                if (bcan > BUCKETS_PER_SECOND) // SE DEU OVERFLOW
+                if (bcan > BUCKETS_PER_SECOND) // SE DEU OVERFLOW NO JIFFIES OU SE PASSOU MAIS DO QUE UM SEGUNDO
                     bcan = BUCKETS_PER_SECOND; // ...CONSIDERA COMO 1 SEGUNDO
             } else // SE CHEGAMOS AO SEGUNDO ROUND, É PORQUE ELE ESTA ZERADO
                 bcan = BUCKETS_BURST;
@@ -296,10 +298,9 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xlan) {
             if (bcan) {                
                 bucket->can = bcan - 1;
                 bucket->last = now;
-
-                //
                 path->ports = ports;
                 path->last  = now;                
+                path->saw = &seen[rhost][rport][lport];
 
                 // FILL ETHERNET HEADER
                 dst_vendor = BE32(VENDOR);
