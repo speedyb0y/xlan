@@ -207,16 +207,16 @@ static bucket_s buckets[PORTS_N];
 #define BUCKETS_BURST 200
 
 static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
-
-    // netif_oper_up()
-    if (xlan->operstate == IF_OPER_UP
+    
+    if (xlan->operstate == IF_OPER_UP // netif_oper_up()
      || xlan->operstate == IF_OPER_UNKNOWN) {
-
+        // XLAN IS RECEIVING
         sk_buff_s* const skb = *pskb;
 
         const void* const pkt = SKB_MAC(skb);
 
         if (src_vendor == BE32(VENDOR)) {
+            // IT IS A PROPER XLAN PACKET
             if (dst_vendor == BE32(VENDOR)) {
                 // NORMAL                
                 if (dst_host == HOST && dst_port == skb->dev->handler_data) {
@@ -224,7 +224,7 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
                     return RX_HANDLER_ANOTHER;
                 }
             } elif (dst_vendor == 0xFFFFFFFFU) {
-                // CONTROLE
+                // CONTROLE (BROADCAST)
                 const uint shost = src_host;
                 const uint sport = src_port;
 
