@@ -73,19 +73,23 @@ typedef struct notifier_block notifier_block_s;
 #define ETH_O_DST      0
 #define ETH_O_SRC      6
 #define ETH_O_TYPE    12
-#define ETH_O_PAYLOAD 14
+#define ETH_O_IP      14
 
 #define IP4_O_PROTO   9
 #define IP4_O_SRC     12
 #define IP4_O_DST     16
-#define IP4_O_PAYLOAD 20
+#define IP4_O_PORTS 20
 
-#define IP6_O_VERSION 0
-#define IP6_O_FLOW    2
-#define IP6_O_PROTO   5
-#define IP6_O_SRC     8
+#define IP6_O_VERSION  0
+#define IP6_O_FLOW     2
+#define IP6_O_PROTO    5
+#define IP6_O_SRC      8
+#define IP6_O_SRC_N    8
+#define IP6_O_SRC_H   23
 #define IP6_O_DST     24
-#define IP6_O_PAYLOAD 40
+#define IP6_O_DST_N   24
+#define IP6_O_DST_H   39
+#define IP6_O_PORTS   40
 
 #include "xconf.h"
 
@@ -119,103 +123,34 @@ typedef struct notifier_block notifier_block_s;
 #error "BAD NET6"
 #endif
 
-typedef struct mac_s {
-    u32 vendor;
-    u8 host;
-    u8 port;
-} __packed mac_s;
+#define MAC_VENDOR(mac) ((u32*)mac)[0]
+#define MAC_HOST(mac)    ((u8*)mac)[4]
+#define MAC_PORT(mac)    ((u8*)mac)[5]
 
-#if XCONF_XLAN_STRUCT
-#define PKT_SIZE 64
-typedef struct pkt_s {
-    u8 _align[6];
-    mac_s dst;
-    mac_s src;
-    u16 type;
-    const union pkt_ip_s {
-        struct pkt_ip_v4_s {
-            u8 _x[9];
-            u8 protocol;
-            u8 _y[2];
-            union {
-                u64 w64;
-                u32 w32[2];
-                u8 w8[8];
-            } __packed addrs;
-            u32 ports;
-            u8 _z[20];
-        } __packed v4;
-        struct pkt_ip_v6_s {
-            u8 _x[2];
-            u16 flow;
-            u8 _y[2];
-            u8 protocol;
-            u8 _z[1];
-            union {
-                u64 w64[4];
-                u8 w8[32];
-            } __packed addrs;
-            u32 ports;
-        } __packed v6;
-    } ip;
-} __packed pkt_s;
-#else
-typedef void pkt_s;
-#endif
-
-#if XCONF_XLAN_STRUCT
-#define PKT_OFFSET_ETH offsetof(pkt_s, dst)
-#define PKT_OFFSET_IP  offsetof(pkt_s, ip)
-#define pkt_eth   (&pkt->dst)
-#define src_vendor  pkt->src.vendor
-#define src_host    pkt->src.host
-#define src_port    pkt->src.port
-#define dst_vendor  pkt->dst.vendor
-#define dst_host    pkt->dst.host
-#define dst_port    pkt->dst.port
-#define pkt_type    pkt->type
-#define flow6       pkt->ip.v6.flow
-#define proto4      pkt->ip.v4.protocol
-#define proto6      pkt->ip.v6.protocol
-#define ports4      pkt->ip.v4.ports
-#define ports6      pkt->ip.v6.ports
-#define addrs4      pkt->ip.v4.addrs.w64
-#define addrs6      pkt->ip.v6.addrs.w64
-#define src4_net    pkt->ip.v4.addrs.w32[0]
-#define src4_host   pkt->ip.v4.addrs.w8[3]
-#define dst4_net    pkt->ip.v4.addrs.w32[1]
-#define dst4_host   pkt->ip.v4.addrs.w8[7]
-#define src6_net    pkt->ip.v6.addrs.w64[0]
-#define src6_host   pkt->ip.v6.addrs.w8[15]
-#define dst6_net    pkt->ip.v6.addrs.w64[2]
-#define dst6_host   pkt->ip.v6.addrs.w8[31]
-#else
-#define PKT_OFFSET_ETH 0
-#define PKT_OFFSET_IP  ETH_SIZE
-#define pkt_eth              pkt
-#define dst_vendor  (*(u32*)(pkt + ETH_O_DST))
-#define dst_host    (*(u8 *)(pkt + ETH_O_DST + 2))
-#define dst_port    (*(u8 *)(pkt + ETH_O_DST + 4))
-#define src_vendor  (*(u32*)(pkt + ETH_O_SRC))
-#define src_host    (*(u8 *)(pkt + ETH_O_SRC + 2))
-#define src_port    (*(u8 *)(pkt + ETH_O_SRC + 4))
+#define dst_vendor  (*(u32*)(pkt + ETH_O_DST_V))
+#define dst_host    (*(u8 *)(pkt + ETH_O_DST_H))
+#define dst_port    (*(u8 *)(pkt + ETH_O_DST_P))
+#define src_vendor  (*(u32*)(pkt + ETH_O_SRC_V))
+#define src_host    (*(u8 *)(pkt + ETH_O_SRC_H))
+#define src_port    (*(u8 *)(pkt + ETH_O_SRC_P))
 #define pkt_type    (*(u16*)(pkt + ETH_O_TYPE))
-#define addrs4      (*(u64*)(pkt + ETH_O_PAYLOAD + IP4_O_SRC))
-#define addrs6      ( (u64*)(pkt + ETH_O_PAYLOAD + IP6_O_SRC))
-#define ports4      (*(u32*)(pkt + ETH_O_PAYLOAD + IP4_O_PAYLOAD))
-#define ports6      (*(u32*)(pkt + ETH_O_PAYLOAD + IP6_O_PAYLOAD))
-#define flow6       (*(u16*)(pkt + ETH_O_PAYLOAD + IP6_O_FLOW))
-#define proto4      (*(u8 *)(pkt + ETH_O_PAYLOAD + IP4_O_PROTO))
-#define proto6      (*(u8 *)(pkt + ETH_O_PAYLOAD + IP6_O_PROTO))
-#define src4_net    (*(u32*)(pkt + ETH_O_PAYLOAD + IP4_O_SRC))
-#define dst4_net    (*(u32*)(pkt + ETH_O_PAYLOAD + IP4_O_DST))
-#define src6_net    (*(u64*)(pkt + ETH_O_PAYLOAD + IP6_O_SRC))
-#define dst6_net    (*(u64*)(pkt + ETH_O_PAYLOAD + IP6_O_DST))
-#define src4_host   (*(u8 *)(pkt + ETH_O_PAYLOAD + IP4_O_SRC +  4 - 1))
-#define dst4_host   (*(u8 *)(pkt + ETH_O_PAYLOAD + IP4_O_DST +  4 - 1))
-#define src6_host   (*(u8 *)(pkt + ETH_O_PAYLOAD + IP6_O_SRC + 16 - 1))
-#define dst6_host   (*(u8 *)(pkt + ETH_O_PAYLOAD + IP6_O_DST + 16 - 1))
-#endif
+
+#define proto4      (*(u8 *)(pkt + ETH_O_IP + IP4_O_PROTO))
+#define addrs4      (*(u64*)(pkt + ETH_O_IP + IP4_O_SRC))
+#define src4_net    (*(u32*)(pkt + ETH_O_IP + IP4_O_SRC_N))
+#define src4_host   (*(u8 *)(pkt + ETH_O_IP + IP4_O_SRC_H))
+#define dst4_net    (*(u32*)(pkt + ETH_O_IP + IP4_O_DST_N))
+#define dst4_host   (*(u8 *)(pkt + ETH_O_IP + IP4_O_DST_H))
+#define ports4      (*(u32*)(pkt + ETH_O_IP + IP4_O_PORTS))
+
+#define flow6       (*(u16*)(pkt + ETH_O_IP + IP6_O_FLOW))
+#define proto6      (*(u8 *)(pkt + ETH_O_IP + IP6_O_PROTO))
+#define addrs6      ( (u64*)(pkt + ETH_O_IP + IP6_O_SRC))
+#define src6_net    (*(u64*)(pkt + ETH_O_IP + IP6_O_SRC_N))
+#define src6_host   (*(u8 *)(pkt + ETH_O_IP + IP6_O_SRC_H))
+#define dst6_net    (*(u64*)(pkt + ETH_O_IP + IP6_O_DST_N))
+#define dst6_host   (*(u8 *)(pkt + ETH_O_IP + IP6_O_DST_H))
+#define ports6      (*(u32*)(pkt + ETH_O_IP + IP6_O_PORTS))
 
 typedef struct xlan_stream_s {
     u32 ports;
@@ -237,7 +172,7 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
     net_device_s* const virt = skb->dev->rx_handler_data;
     xlan_s* const xlan = netdev_priv(virt);
 
-    const pkt_s* const pkt = SKB_MAC(skb) - PKT_OFFSET_ETH;
+    const void* const pkt = SKB_MAC(skb);
 
     // SO HANDLE O QUE FOR
     if (dst_vendor != BE32(VENDOR)
@@ -281,7 +216,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
     if (skb_linearize(skb))
         goto drop;
 
-    pkt_s* const pkt = SKB_NETWORK(skb) - PKT_OFFSET_IP;
+    void* const pkt = SKB_NETWORK(skb) - ETH_SIZE;
 
     // CONFIRMA ESPACO
     if (PTR(pkt_eth) < SKB_HEAD(skb))
@@ -430,9 +365,9 @@ static int __f_cold xlan_enslave (net_device_s* dev, net_device_s* phys, struct 
 
     xlan_s* const xlan = netdev_priv(dev);
 
-    const mac_s* const mac = PTR(dev->dev_addr);
+    const void* const mac = PTR(dev->dev_addr);
 
-    const uint port = mac->port;
+    const uint port = MAC_PORT(mac);
 
     uint ret;
 
@@ -454,10 +389,10 @@ static int __f_cold xlan_enslave (net_device_s* dev, net_device_s* phys, struct 
     elif (phys->addr_len != ETH_ALEN)
         // NOT ETHERNET
         ret = _ENSL_NOT_ETHERNET;
-    elif (mac->vendor != BE32(VENDOR))
+    elif (MAC_VENDOR(mac) != BE32(VENDOR))
         // WRONG VENDOR
         ret = _ENSL_BAD_VENDOR;
-    elif (mac->host != xlan->host)
+    elif (MAC_HOST(host) != xlan->host)
         // WRONG HOST
         ret = _ENSL_BAD_HOST;
     elif (port >= PORTS_N)
@@ -592,13 +527,6 @@ static int __init xlan_init (void) {
     // MAKE IT VISIBLE IN THE SYSTEM
     printk("XLAN: INIT - VENDOR 0x%04x NET4 0x%08x NET6 0x%016llX\n",
         VENDOR, NET4, (unsigned long long int)NET6);
-
-    BUILD_BUG_ON( sizeof(mac_s) != ETH_ALEN );
-#if XCONF_XLAN_STRUCT
-    BUILD_BUG_ON( sizeof(pkt_s) != PKT_SIZE );
-    BUILD_BUG_ON( sizeof(struct pkt_ip_v4_s)
-               != sizeof(struct pkt_ip_v6_s) );
-#endif
 
     register_netdev(alloc_netdev(sizeof(xlan_s), "xlan", NET_NAME_USER, xlan_setup));
 
