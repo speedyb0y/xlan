@@ -487,40 +487,28 @@ static int __f_cold xlan_enslave (net_device_s* xlan, net_device_s* phys, struct
     src_vendor = BE32(VENDOR);
     src_host   = HOST;
     src_port   = port;
+    pkt_type   = BE16(ETH_P_XLAN);
     pkt_mask   = 0;
-
-        //
-#if !XGW_SERVER
-        wire->eDst[0]    = cfgPath->gw16[0];
-        wire->eDst[1]    = cfgPath->gw16[1];
-        wire->eDst[2]    = cfgPath->gw16[2];
-        wire->eSrc[0]    = cfgPath->mac16[0];
-        wire->eSrc[1]    = cfgPath->mac16[1];
-        wire->eSrc[2]    = cfgPath->mac16[2];
-#endif
-        wire->eType      = BE16(ETH_P_IP);
-
-        //
-        skb->transport_header = UDP(wire) - SKB_HEAD(skb);
-        skb->network_header   = IP (wire) - SKB_HEAD(skb);
-        skb->mac_header       = ETH(wire) - SKB_HEAD(skb);
-        skb->data             = ETH(wire);
+#define XLAN_CONTROL_SIZE (ETH_HLEN + sizeof(pkt_mask))
+    //
+    skb->transport_header = PTR(pkt) - SKB_HEAD(skb);
+    skb->network_header   = PTR(pkt) - SKB_HEAD(skb);
+    skb->mac_header       = PTR(pkt) - SKB_HEAD(skb);
+    skb->data             = PTR(pkt);
 #ifdef NET_SKBUFF_DATA_USES_OFFSET
-        skb->tail             = ETH(wire) + ETH_SIZE + PATH_KEEPER_IP_SIZE - SKB_HEAD(skb);
+    skb->tail             = PTR(pkt) + XLAN_CONTROL_SIZE - SKB_HEAD(skb);
 #else
-        skb->tail             = ETH(wire) + ETH_SIZE + PATH_KEEPER_IP_SIZE;
+    skb->tail             = PTR(pkt) + XLAN_CONTROL_SIZE;
 #endif
-        skb->mac_len          = ETH_SIZE;
-        skb->len              = ETH_SIZE + PATH_KEEPER_IP_SIZE;
-        skb->ip_summed        = CHECKSUM_NONE;
-        skb->dev              = path->itfc;
-        skb->protocol         = BE16(ETH_P_IP);
-
-        path->wire     = wire;
-        path->skb      = skb;
+    skb->mac_len          = ETH_HLEN;
+    skb->len              = XLAN_CONTROL_SIZE;
+    skb->ip_summed        = CHECKSUM_NONE;
+    skb->dev              = phys;
+    skb->protocol         = BE16(ETH_P_IP); // TODO: FIXME:
 
     if (netdev_rx_handler_register(phys, xlan_in, NULL) != 0) {
         printk("XLAN: FAILED: FAILED TO ATTACH HANDLER\n");
+        skb_free(skb);
         return -1;
     }
 
@@ -529,6 +517,7 @@ static int __f_cold xlan_enslave (net_device_s* xlan, net_device_s* phys, struct
     
     // REGISTER IT
     physs[port] = phys;
+    skbs[port] = skb;
 
     return 0;
 }
@@ -540,6 +529,8 @@ static int __f_cold xlan_unslave (net_device_s* xlan, net_device_s* phys) {
             physs[p] = NULL; // UNREGISTER
             netdev_rx_handler_unregister(phys); // UNHOOK
             dev_put(phys); // DROP
+            skbs[p] = NULL; // TODO: FIXME: !!!!!!!!!!!!!!!!!!!!!!!!
+            skb_free(skb);
             printk("XLAN: DETACHED PHYS %s FROM PORT %u\n", phys->name, p);
             return 0;
         }
