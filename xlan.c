@@ -244,19 +244,23 @@ static void xlan_keeper (struct timer_list* const timer) {
 
     const jiffies_t now = jiffies;
 
-    uint _lmask = 0;
+    // THE MASK OF THE PORTS THAT ARE RECEIVING
+    uint _lmask = 0; // LOCAL
 
-    foreach (p, PORTS_N) {
-         = atomic_dec(lalives[p]);
-        _lmask |= (!!lalives[p]) << p;
-    }
-
-    //
+    foreach (p, PORTS_N)
+    MAS SO SE FOR >0 RECEBENDO
+        _lmask |= (!!atomic_dec_ret(lalives[p])) << p;
+    // GLOBAL
     atomic_set(lmask, _lmask);
 
-    foreach (h, HOSTS_N)
-        foreach (h, PORTS_N)
-            ralives[h][p] = ATOMIC_INIT(0);
+    // THE MASK OF THE REMOTE PORTAS THAT ARE RECEIVING
+    
+    foreach (h, HOSTS_N) {
+        uint _rmask = 0;
+        foreach (p, PORTS_N)
+            _rmask |= (!!atomic_dec_ret(ralives[h][p])) << p;
+        atomic_set(rmasks[h], _rmask);
+    }
 
     foreach (p, PORTS_N) {
 
@@ -667,7 +671,7 @@ static int __init xlan_init (void) {
         lalives[p] = ATOMIC_INIT(0);
 
     foreach (h, HOSTS_N)
-        foreach (h, PORTS_N)
+        foreach (p, PORTS_N)
             ralives[h][p] = ATOMIC_INIT(0);
 
     clear(physs);
