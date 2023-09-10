@@ -271,6 +271,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xlan) {
             (path->saw && (now - *path->saw) > 5*HZ)
         || // TODO: OU SE O PACOTE É UM TCP-SYN, RST RETRANSMISSION ETC
             0
+    ;
     
     foreach (c, (PORTS_N * PORTS_N * 2 + 1)) {
         ports %= PORTS_N * PORTS_N;
