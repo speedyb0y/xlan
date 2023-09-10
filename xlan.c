@@ -226,15 +226,12 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
 
                     if (shost == HOST) 
                         // marca esta interface aqui como recebendo
-                        seen[HOST][skb->dev->handler_data] = jiffies;
+                        lReceivers[skb->dev->handler_data] = jiffies;
                     elif (shost < HOSTS_N
                        && sport < PORTS_N) {
                         // um pacote de contrle que OUTRA pessoa mandou
-                        const uint now = jiffies;
-                        const uint mask = pkt_mask;
-                        foreach (p, HOSTS_N)
-                            if (mask & (1U << p))
-                                seen[shost][p] = now;
+                        rReceivers[shost] = pkt_mask;                        
+                        rWhens    [shost] = jiffies; // AQUI UMTIME SETA TUDO
                     }
                 }
             } elif (dst_vendor == BE32(VENDOR)
