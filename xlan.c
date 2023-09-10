@@ -212,6 +212,8 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
      || lport >= PORTS_N
      || rport >= PORTS_N
      || xlan->flags == 0) { // ->flags & UP
+        printk("XLAN: DROPING: skb->dev %s %u [%u] -> %u [%u] SIZE %d DOWN %d\n",
+            skb->dev->name, rhost, rport, lhost, lport, skb->len, xlan->flags == 0);
         kfree_skb(skb);
         return RX_HANDLER_CONSUMED;
     }
