@@ -204,7 +204,10 @@ typedef struct r_receiver_s {
     u32 last;
 } r_receiver_s;
 
-#define PHYS_PORT(phys) ((uint)(uintptr_t)(phys->rx_handler_data))
+#define PHYS_PORT(phys) ((uint)(uintptr_t)(phys)->rx_handler_data)
+
+static u32 lReceiversLast[PORTS_N];
+static atomic_t lReceiversMask; 
 
 static u64 boot; // BOOT ID
 static net_device_s* xlan;
@@ -647,10 +650,13 @@ static int __init xlan_init (void) {
     // BOOT ID
     boot = jiffies; // TODO: FIXME:
 
-    memset(physs,   0, sizeof(physs));
-    memset(streams, 0, sizeof(streams));
-    memset(buckets, 0, sizeof(buckets));
-    memset(seen,    0, sizeof(seen));
+    lReceiversLast = 0;
+
+    memset(physs,          0, sizeof(physs));
+    memset(streams,        0, sizeof(streams));
+    memset(buckets,        0, sizeof(buckets));
+    memset(seen,           0, sizeof(seen));
+    memset(lReceiversMask, 0, sizeof(lReceiversMask));
 
     //
     if ((xlan = alloc_netdev(0, "xlan", NET_NAME_USER, xlan_setup)) == NULL) {
