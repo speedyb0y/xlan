@@ -64,8 +64,6 @@ typedef struct notifier_block notifier_block_s;
 
 #define MTU     7600 // TODO: FIXME:
 
-#define ETH_SIZE 14
-
 #define ETH_O_DST      0
 #define ETH_O_DST_V    0
 #define ETH_O_DST_H    4
@@ -75,7 +73,7 @@ typedef struct notifier_block notifier_block_s;
 #define ETH_O_SRC_H   10
 #define ETH_O_SRC_P   11
 #define ETH_O_TYPE    12
-#define ETH_O_IP      14
+#define ETH_SIZE      14
 
 #define IP4_O_PROTO   9
 #define IP4_O_SRC     12
@@ -84,7 +82,7 @@ typedef struct notifier_block notifier_block_s;
 #define IP4_O_DST     16
 #define IP4_O_DST_N   16
 #define IP4_O_DST_H   19
-#define IP4_O_PORTS   20
+#define IP4_SIZE      20
 
 #define IP6_O_VERSION  0
 #define IP6_O_FLOW     2
@@ -95,7 +93,7 @@ typedef struct notifier_block notifier_block_s;
 #define IP6_O_DST     24
 #define IP6_O_DST_N   24
 #define IP6_O_DST_H   39
-#define IP6_O_PORTS   40
+#define IP6_SIZE      40
 
 #include "xconf.h"
 
@@ -140,22 +138,22 @@ typedef struct notifier_block notifier_block_s;
 #define src_port    (*(u8 *)(pkt + ETH_O_SRC_P))
 #define pkt_type    (*(u16*)(pkt + ETH_O_TYPE))
 
-#define proto4      (*(u8 *)(pkt + ETH_O_IP + IP4_O_PROTO))
-#define addrs4      (*(u64*)(pkt + ETH_O_IP + IP4_O_SRC))
-#define src4_net    (*(u32*)(pkt + ETH_O_IP + IP4_O_SRC_N))
-#define src4_host   (*(u8 *)(pkt + ETH_O_IP + IP4_O_SRC_H))
-#define dst4_net    (*(u32*)(pkt + ETH_O_IP + IP4_O_DST_N))
-#define dst4_host   (*(u8 *)(pkt + ETH_O_IP + IP4_O_DST_H))
-#define ports4      (*(u32*)(pkt + ETH_O_IP + IP4_O_PORTS))
+#define proto4      (*(u8 *)(pkt + ETH_SIZE + IP4_O_PROTO))
+#define addrs4      (*(u64*)(pkt + ETH_SIZE + IP4_O_SRC))
+#define src4_net    (*(u32*)(pkt + ETH_SIZE + IP4_O_SRC_N))
+#define src4_host   (*(u8 *)(pkt + ETH_SIZE + IP4_O_SRC_H))
+#define dst4_net    (*(u32*)(pkt + ETH_SIZE + IP4_O_DST_N))
+#define dst4_host   (*(u8 *)(pkt + ETH_SIZE + IP4_O_DST_H))
+#define ports4      (*(u32*)(pkt + ETH_SIZE + IP4_SIZE))
 
-#define flow6       (*(u16*)(pkt + ETH_O_IP + IP6_O_FLOW))
-#define proto6      (*(u8 *)(pkt + ETH_O_IP + IP6_O_PROTO))
-#define addrs6      ( (u64*)(pkt + ETH_O_IP + IP6_O_SRC))
-#define src6_net    (*(u64*)(pkt + ETH_O_IP + IP6_O_SRC_N))
-#define src6_host   (*(u8 *)(pkt + ETH_O_IP + IP6_O_SRC_H))
-#define dst6_net    (*(u64*)(pkt + ETH_O_IP + IP6_O_DST_N))
-#define dst6_host   (*(u8 *)(pkt + ETH_O_IP + IP6_O_DST_H))
-#define ports6      (*(u32*)(pkt + ETH_O_IP + IP6_O_PORTS))
+#define flow6       (*(u16*)(pkt + ETH_SIZE + IP6_O_FLOW))
+#define proto6      (*(u8 *)(pkt + ETH_SIZE + IP6_O_PROTO))
+#define addrs6      ( (u64*)(pkt + ETH_SIZE + IP6_O_SRC))
+#define src6_net    (*(u64*)(pkt + ETH_SIZE + IP6_O_SRC_N))
+#define src6_host   (*(u8 *)(pkt + ETH_SIZE + IP6_O_SRC_H))
+#define dst6_net    (*(u64*)(pkt + ETH_SIZE + IP6_O_DST_N))
+#define dst6_host   (*(u8 *)(pkt + ETH_SIZE + IP6_O_DST_H))
+#define ports6      (*(u32*)(pkt + ETH_SIZE + IP6_SIZE))
 
 typedef struct xlan_stream_s {
     u32 ports;
