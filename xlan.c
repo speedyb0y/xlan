@@ -263,11 +263,14 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xlan) {
     uint now   = jiffies;
     uint last  = path->last;
     uint ports = path->ports;
-
-    // SE DEU UMA PAUSA, TROCA DE PORTA
-    ports += (now - last) >= HZ/5
-     || 0 // TODO: OU SE O PACOTE É UM TCP-SYN, RST RETRANSMISSION ETC
-     || (path->saw && (now - *path->saw) > 5*HZ)
+    
+    // MUDA A PORTA ATUAL SE
+    ports += // O ULTIMO ENVIADO JA DEU TEMPO DE SER PROCESSADO
+            (now - last) >= HZ/5
+        || // ESTE PATH NAO ESTA RECEBENDO
+            (path->saw && (now - *path->saw) > 5*HZ)
+        || // TODO: OU SE O PACOTE É UM TCP-SYN, RST RETRANSMISSION ETC
+            0
     ;
 
     // NOTE: MUDA A PORTA LOCAL COM MAIS FREQUENCIA, PARA QUE O SWITCH A DESCUBRA
