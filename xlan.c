@@ -230,8 +230,8 @@ static bucket_s buckets[PORTS_N];
 //          pega todas as portas que ele diz estarem NAO RECEBENDO,
 //              e desmarca
 
-#define XLAN_TIMER_DELAY (XCONF_XLAN_TIMER_DELAY*HZ) // AFTER SYSTEM BOOT
-#define XLAN_TIMER_INTERVAL (XLAN_TIMER_INTERVAL*HZ)
+#define XLAN_TIMER_DELAY    (XCONF_XLAN_TIMER_DELAY*HZ) // AFTER SYSTEM BOOT
+#define XLAN_TIMER_INTERVAL (XCONF_XLAN_TIMER_INTERVAL*HZ)
 
 static void xlan_keeper (struct timer_list*);
 static DEFINE_TIMER(doTimer, xlan_keeper);
