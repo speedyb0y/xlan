@@ -93,6 +93,12 @@ typedef struct notifier_block notifier_block_s;
 #define HOSTS_N XCONF_XLAN_HOSTS_N
 #define PORTS_N XCONF_XLAN_PORTS_N
 
+#define _NET4 0xC0000000
+#define _NET6 0xFC00000000000000
+
+#define NET4 ((u32)_NET4)
+#define NET6 ((u64)_NET6)
+
 #if !(VENDOR && VENDOR <= 0xFFFFFFFF && !(VENDOR & 0x01000000))
 #error "BAD VENDOR"
 #endif
@@ -103,6 +109,14 @@ typedef struct notifier_block notifier_block_s;
 
 #if !(2 <= PORTS_N && PORTS_N < 0xFF)
 #error "BAD PORTS N"
+#endif
+
+#if !(_NET4 && !(NET4 % HOSTS_N))
+#error "BAD NET4"
+#endif
+
+#if !(NET6)
+#error "BAD NET6"
 #endif
 
 typedef struct mac_s {
@@ -208,13 +222,9 @@ typedef struct xlan_stream_s {
     u32 last;
 } xlan_stream_s;
 
-// NETWORK, HOST
-// NN.NN.HH.HH NNNN:?:HHHH
 typedef struct xlan_s {
-    u16 host;   // .HH.HH ::HHHH LHOST
-    u16 gw;     // .HH.HH ::HHHH RHOST, WHEN IT DOES NOT BELONG TO THE NET
-    u32 net4;   // 0xNNNNNN00   BIG ENDIAN
-    u64 net6;   // 0xNNNNNNNNNNNNNNNN
+    uint host;
+    uint gw;
     net_device_s* ports[PORTS_N];
     xlan_stream_s paths[HOSTS_N][64]; // POPCOUNT64()
     u32 seen[HOSTS_N][PORTS_N][PORTS_N]; // TODO: FIXME: ATOMIC
@@ -282,8 +292,8 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
 
     // IDENTIFY DESTINATION
     const uint rhost = v4 ?
-        ( (dst4_net & BE32(0xFFFFFF00U)) == xlan->net4 ? dst4_host : xlan->gw ):
-        (  dst6_net                      == xlan->net6 ? dst6_host : xlan->gw );
+        ( (dst4_net & BE32(0xFFFFFF00U)) == BE32(NET4) ? dst4_host : xlan->gw ):
+        (  dst6_net                      == BE64(NET6) ? dst6_host : xlan->gw );
 
     // É INVALIDO / ERA EXTERNO E NAO TEMOS GATEWAY / PARA SI MESMO
     if (rhost >= HOSTS_N
@@ -294,13 +304,10 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const dev) {
     // OK: TCP | UDP | UDPLITE | SCTP | DCCP
     // FAIL: ICMP
     xlan_stream_s* const path = &xlan->paths[rhost][__builtin_popcountll( (u64) ( v4
-        ? proto4 * ports4    // IP PROTOCOL, SRC/DST PORTS
-        + addrs4             // SRC ADDR, DST ADDR
-        : proto6 * ports6 * flow6 // IP PROTOCOL, SRC/DST PORTS, FLOW
-        + addrs6[0] // SRC ADDR
-        + addrs6[1] // SRC ADDR
-        + addrs6[2] // DST ADDR
-        + addrs6[3] // DST ADDR
+        ? proto4 * ports4 + addrs4
+        : proto6 * ports6 * flow6
+        + addrs6[0] + addrs6[1]        
+        + addrs6[2] + addrs6[3]        
     ))];
 
     uint now   = jiffies;
@@ -503,33 +510,20 @@ static int __f_cold xlan_unslave (net_device_s* dev, net_device_s* phys) {
     return -ENOTCONN;
 }
 
-// ip link set dev xlan addr N4:N4:N6:N6:HH:GG
-#define XLAN_INFO_LEN 14
-typedef struct xlan_info_s {
-    u8 _align[2];
-    u8 host;
-    u8 gw;
-    u32 net4;
-    u64 net6;
-} xlan_info_s;
+// ip link set dev xlan addr HH:GG
+#define XLAN_INFO_LEN 2
 
 static int __f_cold xlan_cfg (net_device_s* const dev, void* const addr) {
 
     if(netif_running(dev))
         return -EBUSY;
 
-    const xlan_info_s* const info = PTR(addr) - sizeof(info->_align);
-
-    BUILD_BUG_ON( sizeof(*info) != (sizeof(info->_align) + XLAN_INFO_LEN) );
-
     // READ
-    const uint host   =      info->host;
-    const uint gw     =      info->gw;
-    const uint net4   = BE32(info->net4);
-    const uint net6   = BE64(info->net6);
+    const uint host = ((const u8*)addr)[0];
+    const uint gw   = ((const u8*)addr)[1];
 
-    printk("XLAN: %s: CONFIGURING: HOST %u GW %u NET4 0x%08X NET6 0x%016llX\n",
-        dev->name, host, gw, net4, (unsigned long long int)net6);
+    printk("XLAN: %s: CONFIGURE: HOST %u 0x%02x GW %u 0x%02x\n",
+        dev->name, host, host, gw, gw);
 
     // VERIFY
     if (net4 && !(net4 % HOSTS_N) && net6 && host && host < HOSTS_N && gw < HOSTS_N && gw != host) {
@@ -537,10 +531,8 @@ static int __f_cold xlan_cfg (net_device_s* const dev, void* const addr) {
         xlan_s* const xlan = netdev_priv(dev);
 
         // COMMIT
-        xlan->net4   = BE32(net4);
-        xlan->net6   = BE64(net6);
-        xlan->host   = host;
-        xlan->gw     = gw ?: host;
+        xlan->host = host;
+        xlan->gw   = gw ?: host;
 
         return 0;
     }
@@ -598,7 +590,8 @@ static int __init xlan_init (void) {
 
     // CREATE THE VIRTUAL INTERFACE
     // MAKE IT VISIBLE IN THE SYSTEM
-    printk("XLAN: INIT\n");
+    printk("XLAN: INIT - VENDOR 0x%04x NET4 0x%08x NET6 0x%016llX\n",
+        VENDOR, NET4, (unsigned long long int)NET6);
 
     BUILD_BUG_ON( sizeof(mac_s) != ETH_ALEN );
 #if XCONF_XLAN_STRUCT
