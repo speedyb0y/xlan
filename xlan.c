@@ -246,10 +246,13 @@ static void xlan_keeper (struct timer_list* const timer) {
 
     // THE MASK OF THE PORTS THAT ARE RECEIVING
     uint _lmask = 0; // LOCAL
-
-    foreach (p, PORTS_N)
-    MAS SO SE FOR >0 RECEBENDO
-        _lmask |= (!!atomic_dec_ret(lalives[p])) << p;
+    atomic_t* pa = lalives;
+    foreach (p, PORTS_N) {
+        if ()
+        int count = atomic_read(pa);
+        atomic_set(pa, count);
+        _lmask |= (!!count) << p;
+    } while (mask <<= 1);
     // GLOBAL
     atomic_set(lmask, _lmask);
 
