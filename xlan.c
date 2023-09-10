@@ -208,23 +208,47 @@ static bucket_s buckets[PORTS_N];
 
 static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
 
-    // SO INTECEPTA COM A XLAN ATIVADA
     // netif_oper_up()
-    if (xlan->operstate != IF_OPER_UP
-     && xlan->operstate != IF_OPER_UNKNOWN)
-        return RX_HANDLER_PASS;
+    if (xlan->operstate == IF_OPER_UP
+     || xlan->operstate == IF_OPER_UNKNOWN) {
 
-    sk_buff_s* const skb = *pskb;
+        sk_buff_s* const skb = *pskb;
 
-    const void* const pkt = SKB_MAC(skb);
+        const void* const pkt = SKB_MAC(skb);
 
-    if (dst_vendor == BE32(VENDOR)
-     && src_vendor == BE32(VENDOR)) {
-        skb->dev = xlan;
-        return RX_HANDLER_ANOTHER;
+        const uint shost = src_host;
+        const uint sport = src_port;
+        const uint dhost = dst_host;
+        const uint dport = dst_port;        
+
+        if (src_vendor == BE32(VENDOR)
+         && shost < HOSTS_N
+         && dhost < HOSTS_N
+         && sport < PORTS_N
+         && dport < PORTS_N
+         ) { // VALIDO
+            if (dst_vendor == 0xFFFFFFFFU) {
+                // CONTROLE
+                if (src_host == HOST) {
+                    // um pacote de contrle que eu mesmo mandei
+                    // marca esta interface aqui como recebendo
+                    
+                    if ()
+                    if ()
+                    receivers[]
+                } else {
+                    // carrega as informacoes de teceiros
+                }
+            } elif (dst_vendor == BE32(VENDOR) && dhost == HOST) {
+                // PARA MIM
+                skb->dev = xlan;
+                return RX_HANDLER_ANOTHER;
+            }
+        }
     }
-    
+
     kfree_skb(skb);
+
     return RX_HANDLER_CONSUMED;
 }
 
