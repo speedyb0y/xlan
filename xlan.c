@@ -308,14 +308,12 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xlan) {
                         now >= bucket->last ?
                         now -  bucket->last : HZ;
                         bcan += (elapsed * BUCKETS_PER_SECOND)/HZ;
-                    if (bcan > BUCKETS_PER_SECOND) {
-                        // SE DEU OVERFLOW NO JIFFIES OU SE PASSOU MAIS DO QUE UM SEGUNDO
-                        bcan = BUCKETS_PER_SECOND; // ...CONSIDERA COMO 1 SEGUNDO
-                        printk("XLAN: OVERFLOWED! LPORT %u RHOST %u RPORT %u BCAN %u\n",
-                            lport, rhost, rport, bcan);
-                    }
-                } else {
-                    printk("XLAN: TIME OVERFLOW\n");
+                    if (bcan > BUCKETS_PER_SECOND)
+                        bcan = BUCKETS_PER_SECOND;
+                    printk("XLAN: BUCKET! LPORT %u RHOST %u RPORT %u BCAN %u ELAPSED %u\n",
+                        lport, rhost, rport, bcan, elapsed);
+                } else { // SE DEU OVERFLOW NO JIFFIES CONSIDERA COMO 1 SEGUNDO
+                    printk("XLAN: BUCKET TIME OVERFLOW\n");
                     bcan = BUCKETS_PER_SECOND;
                 }
             }
