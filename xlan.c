@@ -39,6 +39,8 @@ typedef struct notifier_block notifier_block_s;
 // TODO: FIXME:
 typedef typeof(jiffies) jiffies_t;
 
+#define clear(obj) memset((obj), 0, sizeof(*obj))
+
 #define SKB_HEAD(skb) PTR((skb)->head)
 #define SKB_DATA(skb) PTR((skb)->data)
 #define SKB_TAIL(skb) PTR(skb_tail_pointer(skb))
@@ -652,11 +654,11 @@ static int __init xlan_init (void) {
 
     lReceiversLast = 0;
 
-    memset(physs,          0, sizeof(physs));
-    memset(streams,        0, sizeof(streams));
-    memset(buckets,        0, sizeof(buckets));
-    memset(seen,           0, sizeof(seen));
-    memset(lReceiversMask, 0, sizeof(lReceiversMask));
+    clear(physs);
+    clear(streams);
+    clear(buckets);
+    clear(seen);
+    clear(lReceiversMask);
 
     //
     if ((xlan = alloc_netdev(0, "xlan", NET_NAME_USER, xlan_setup)) == NULL) {
