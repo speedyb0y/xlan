@@ -442,9 +442,15 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xlan) {
                 // PARA QUE O SWITCH A DESCUBRA
                 // E PORQUE NOS TEMOS MAIS CONTROLE SE ESSA NOSSA PORTA ESTA EXAUSTA OU NAO
 
+// TODO: FIXME: NEM VERIFICAR ISSO
+ao atachar/unatachar primeiro remove o bit
+muda
+colocar/ou deixa sem
         net_device_s* const phys = physs[lport];
 
-        if (phys && (phys->flags & IFF_UP) == IFF_UP) { // IFF_RUNNING // IFF_LOWER_UP
+        if (phys && (phys->flags & IFF_UP) == IFF_UP &&
+            eleesarecebendodaminhaporta[lport]
+          & eleestarecebendoNAportadele[rport]) { // IFF_RUNNING // IFF_LOWER_UP
 
             bucket_s* const bucket = &buckets[lport];
 
