@@ -224,23 +224,32 @@ static u8 timeouts[HOSTS_N*PORTS_N]; // CADA WORD É UM NUMERO
 // ARGUMENTO DA FUNCAO test_and_clear_bit
 typedef unsigned long BITWORD_t;
 
-
 static void xlan_keeper (struct timer_list* const timer) {
 
     const jiffies_t now = jiffies;
 
     // UPDATE THE MASKS OF THE PORTS THAT ARE RECEIVING
-    foreach (p, ALL_PORTS) {
-        if (test_and_clear_bit(p, seens)) {
-            // IN REPORTED IT'S ALIVE            
-            set_bit(p, masks);
-            // KEEP IT ACTIVE FOR A WHILE
-                timeouts[p] = 8;
-        } elif (timeouts[p])
-            // NOTHING REPORTED, AND IT WAS ON
-          if (--timeouts[p] == 0)
-                // NOTHING REPORTED FOR TOO LONG
-                clear_bit(p, masks);
+    foreach (h, HOSTS_N) {
+
+        u32 seen = atomic_read(&seens[h]);
+                  atomic_write(&seens[h], 0)
+        u32 mask = atomic_read(&masks[h]);
+
+        foreach (p, PORTS_N) {
+            const u32 b = 1U << p;
+            if (seen & b) {
+                // IN REPORTED IT'S ALIVE            
+                mask |= b;
+                // KEEP IT ACTIVE FOR A WHILE
+                    timeouts[p] = 8;
+            } elif (timeouts[p])
+                // NOTHING REPORTED, AND IT WAS ON
+              if (--timeouts[p] == 0)
+                    // NOTHING REPORTED FOR TOO LONG
+                    mask ^= b;
+        }
+
+        atomic_write(&masks[h], mask);
     }
 
     //
@@ -255,7 +264,7 @@ static void xlan_keeper (struct timer_list* const timer) {
     pkt_type     = BE16(ETH_P_XLAN);
     cntl_bootid  = BE64(knowns[HOST].boot);
     cntl_counter = BE64(knowns[HOST].counter++);
-    cntl_mask    =       masks[HOST];
+    cntl_mask    = BE32( masks[HOST]);
 
     foreach (p, PORTS_N) {
 
@@ -339,7 +348,7 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
     const uint rport    = src_port;
     const u64  rboot    = cntl_boot;
     const u64  rcounter = cntl_counter;
-    const uint rmask    = cntl_mask;
+    const u32  rmask    = cntl_mask;
 
     if (rhost == HOST
      || rhost >= HOSTS_N
@@ -356,8 +365,8 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
     }   known->counter = rcounter;
 
     // NOTE: AQUI PODERIA SALVAR A INFORMACAO rport, PARA CONFIRMAR que h:p X h:p estao funcionando
-    // NOTA: ESTA PEGANDO O masks DELE, E COOCANDO NO NOSSO seens
-    seens[rhost] = rmask;
+    // NOTA: ESTA PEGANDO O masks DELE, E COOCANDO NO NOSSO seens    
+    atomic_write(&seens[rhost], rmask);
 drop:
     kfree_skb(skb);
 
