@@ -168,7 +168,7 @@ typedef typeof(jiffies) jiffies_t;
 
 #define cntl_bootid  (*(u64*)(pkt + ETH_SIZE + CNTL_O_BOOT))
 #define cntl_counter (*(u64*)(pkt + ETH_SIZE + CNTL_O_COUNTER))
-#define cntl_mask    ( (a32*)(pkt + ETH_SIZE + CNTL_O_MASK))
+#define cntl_mask    (*(u32*)(pkt + ETH_SIZE + CNTL_O_MASK))
 
 #define proto4      (*(u8 *)(pkt + ETH_SIZE + IP4_O_PROTO))
 #define addrs4      (*(u64*)(pkt + ETH_SIZE + IP4_O_SRC))
