@@ -358,7 +358,7 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
     const uint rport   = src_port;
     const u64 rboot    = cntl_boot;
     const u64 rcounter = cntl_counter;
-          u64 rmask    = cntl_mask;
+          u64 rmask    = cntl_mask; // TODO: BYTE ORDER?
 
     if (rhost == HOST
      || rhost >= HOSTS_N
@@ -374,23 +374,18 @@ typedef struct known_s {
     // IGNORA SE FOR UM PACOTE COM INFORMACOES DESATUALIZADAS
     if (known->counter >= rcounter) {
         if (known->boot == rboot)
-            goto drop;
+            goto drop; // NOTE: A MUDANCA NO BOOT DELE PODE PASSAR DESPERCEBIDA SE O COUNTER FOR MAIOR
         known->boot    = rboot;
     }   known->counter = rcounter;
 
-        if ((rjiffies - known->jiffies) > 24ULL*60*60*HZ)
-            knownJiffies = cntl_jiffies;
-
-      { // 
-
-        u64 mask = cntl_mask; // TODO: 
-        foreach (p PORTS_N) {
-            if (_bit())
-            mask 
-            set_bit(PORTS_N*shost + p, seens)
-        }
+    // NOTE: AQUI PODERIA SALVAR A INFORMACAO rport, PARA CONFIRMAR que h:p X h:p estao funcionando
+    // TODO: QUAL É A ORDEM DESSES BITS MEU FILHO?
+    foreach (p, PORTS_N) {
+        if (mask & 1ULL)         
+            set_bit(PORTS_N*rhost + p, seens);
+        else
+            set_bit(PORTS_N*rhost + p, seens);
     }
-
 drop:
     kfree_skb(skb);
 
