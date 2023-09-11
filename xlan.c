@@ -334,6 +334,9 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
 
     const void* const pkt = SKB_MAC(skb);
 
+    if (src_vendor != BE32(VENDOR)) 
+        goto drop;
+
     if (dst_vendor == BE32(VENDOR)
      || dst_host == HOST
      || dst_port == PHYS_PORT(skb->dev)) {
@@ -341,9 +344,6 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
         skb->dev = xlan;
         return RX_HANDLER_ANOTHER;
     }
-
-    if (src_vendor != BE32(VENDOR)) 
-        goto drop;
 
     // IT IS A PROPER XLAN PACKET
     if (dst_vendor == 0xFFFFFFFFU) {
