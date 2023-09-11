@@ -73,7 +73,7 @@ typedef typeof(jiffies) jiffies_t;
 #include "xconf.h"
 
 #define HOSTS_N 256 // MULTIPLE OF U64
-#define PORTS_N 8 // U8
+#define PORTS_N 32 // atomic_t
 
 #define VENDOR             XCONF_XLAN_VENDOR
 #define _NET4              XCONF_XLAN_NET4
@@ -168,7 +168,7 @@ typedef typeof(jiffies) jiffies_t;
 
 #define cntl_bootid  (*(u64*)(pkt + ETH_SIZE + CNTL_O_BOOT))
 #define cntl_counter (*(u64*)(pkt + ETH_SIZE + CNTL_O_COUNTER))
-#define cntl_mask    ( (u8 *)(pkt + ETH_SIZE + CNTL_O_MASK))
+#define cntl_mask    ( (a32*)(pkt + ETH_SIZE + CNTL_O_MASK))
 
 #define proto4      (*(u8 *)(pkt + ETH_SIZE + IP4_O_PROTO))
 #define addrs4      (*(u64*)(pkt + ETH_SIZE + IP4_O_SRC))
@@ -217,8 +217,8 @@ static DEFINE_TIMER(doTimer, xlan_keeper);
 // TODAS AS PORTAS DE TODOS OS HOSTS
 #define ALL_PORTS (HOSTS_N * PORTS_N)
 
-static int seens[HOSTS_N]; // CADA BIT É UMA PORTA QUE FOI VISTA COMO RECEBENDO
-static u8 masks[HOSTS_N]; // CADA WORD É UM MASK, CADA BIT É UMA PORTA QUE ESTA RECEBENDO
+static a32 seens[HOSTS_N]; // CADA BIT É UMA PORTA QUE FOI VISTA COMO RECEBENDO
+static a32 masks[HOSTS_N]; // CADA WORD É UM MASK, CADA BIT É UMA PORTA QUE ESTA RECEBENDO
 static u8 timeouts[HOSTS_N*PORTS_N]; // CADA WORD É UM NUMERO
 
 static void xlan_keeper (struct timer_list* const timer) {
@@ -658,8 +658,14 @@ static int __init xlan_init (void) {
     clear(streams);
     clear(buckets);
     clear(seen);
-    clear(lReceiversMask);
+    clear(masks);
     clear(knowns);
+
+    //
+    foreach (p, ALL_PORTS) {
+        seen [p] = ATOMIC_INIT(0);
+        masks[p] = ATOMIC_INIT(0);
+    }
 
     // BOOT ID
     knowns[HOST].boot = jiffies; // TODO: FIXME:
