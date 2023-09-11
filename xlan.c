@@ -167,7 +167,7 @@ typedef typeof(jiffies) jiffies_t;
 #define pkt_type    (*(u16*)(pkt + ETH_O_TYPE))
 
 #define cntl_boot    (*(u64*)(pkt + ETH_SIZE + CNTL_O_BOOT))
-#define cntl_counter (*(u64*)(pkt + ETH_SIZE + CNTL_O_ID))
+#define cntl_id      (*(u64*)(pkt + ETH_SIZE + CNTL_O_ID))
 #define cntl_mask    (*(u32*)(pkt + ETH_SIZE + CNTL_O_MASK))
 
 #define proto4      (*(u8 *)(pkt + ETH_SIZE + IP4_O_PROTO))
