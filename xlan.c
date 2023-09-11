@@ -217,7 +217,11 @@ static DEFINE_TIMER(doTimer, xlan_keeper);
          (n)/(sizeof(t)*8) \
     + !!((n)%(sizeof(t)*8)) )
 
+//
 #define ALL_PORTS (HOSTS_N * PORTS_N)
+
+//
+#define PORTS_MY (PORTS_N * HOST)
 
 // CADA BIT É UMA PORTA QUE FOI VISTA COMO FUNCIONANDO
 // O IN SETA (TOUCH)
