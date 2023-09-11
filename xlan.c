@@ -127,7 +127,7 @@ typedef typeof(jiffies) jiffies_t;
 #define CNTL_O_BOOT     0
 #define CNTL_O_COUNTER  8
 #define CNTL_O_MASK    16
-#define CNTL_SIZE_     24 // YOU MOSTLY WON'T USE IT
+#define CNTL_SIZE_     64 // YOU MOSTLY WON'T USE IT
 
 #define IP4_O_PROTO   9
 #define IP4_O_SRC     12
@@ -168,7 +168,7 @@ typedef typeof(jiffies) jiffies_t;
 
 #define cntl_bootid  (*(u64*)(pkt + ETH_SIZE + CNTL_O_BOOT))
 #define cntl_counter (*(u64*)(pkt + ETH_SIZE + CNTL_O_COUNTER))
-#define cntl_mask    ( (a64*)(pkt + ETH_SIZE + CNTL_O_MASK))
+#define cntl_mask    ( (u8 *)(pkt + ETH_SIZE + CNTL_O_MASK))
 
 #define proto4      (*(u8 *)(pkt + ETH_SIZE + IP4_O_PROTO))
 #define addrs4      (*(u64*)(pkt + ETH_SIZE + IP4_O_SRC))
@@ -212,8 +212,6 @@ static DEFINE_TIMER(doTimer, xlan_keeper);
 // TODAS AS PORTAS DE TODOS OS HOSTS
 #define ALL_PORTS (HOSTS_N * PORTS_N)
 
-#define SLOT_OF(array, host) ((array) + PORTS_N*(host))
-
 static u8 seens[HOSTS_N]; // CADA BIT É UMA PORTA QUE FOI VISTA COMO RECEBENDO
 static u8 masks[HOSTS_N]; // CADA WORD É UM MASK, CADA BIT É UMA PORTA QUE ESTA RECEBENDO
 static u8 timeouts[HOSTS_N*PORTS_N]; // CADA WORD É UM NUMERO
@@ -248,8 +246,7 @@ static void xlan_keeper (struct timer_list* const timer) {
     pkt_type     = BE16(ETH_P_XLAN);
     cntl_bootid  = BE64(boot);
     cntl_counter = BE64(counter++);
-
-    atomic_write(cntl_mask, atomic_read(masks + PORTS_MY));
+    cntl_mask    = masks[HOST];
 
     foreach (p, PORTS_N) {
 
