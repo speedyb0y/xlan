@@ -249,7 +249,7 @@ static void xlan_keeper (struct timer_list* const timer) {
                     mask ^= b;
         }
 
-        atomic_write(&masks[h], mask);
+        atomic_set(&masks[h], mask);
     }
 
     //
@@ -342,7 +342,9 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
         goto drop;
 
     // MARCA ESTA INTERFACE AQUI COMO RECEBENDO
-    set_bit(PHYS_PORT(skb->dev), &seens[HOST]);
+    // TODO: ATOMIC OR?
+    atomic_set(     &seens[HOST], 
+        atomic_read(&seens[HOST]) | 1U << PHYS_PORT(skb->dev));
 
     const uint rhost    = src_host;
     const uint rport    = src_port;
@@ -366,7 +368,7 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
 
     // NOTE: AQUI PODERIA SALVAR A INFORMACAO rport, PARA CONFIRMAR que h:p X h:p estao funcionando
     // NOTA: ESTA PEGANDO O masks DELE, E COOCANDO NO NOSSO seens    
-    atomic_write(&seens[rhost], rmask);
+    atomic_set(&seens[rhost], rmask);
 drop:
     kfree_skb(skb);
 
