@@ -220,7 +220,8 @@ static a32 seens[HOSTS_N]; // CADA BIT É UMA PORTA QUE FOI VISTA COMO RECEBENDO
 static a32 masks[HOSTS_N]; // CADA WORD É UM MASK, CADA BIT É UMA PORTA QUE ESTA RECEBENDO
 static u8 timeouts[HOSTS_N*PORTS_N]; // CADA WORD É UM NUMERO
 
-#define SEEN_MASK(p) (1U << (p))
+//BUILD_BUG_ON( sizeof(BITWORD_t)*8 == PORTS_N )
+#define SEEN_MASK(p) ((typeof(BITWORD_t))1U << (p))
 
 // ARGUMENTO DA FUNCAO test_and_clear_bit
 typedef unsigned long BITWORD_t;
