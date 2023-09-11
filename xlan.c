@@ -204,20 +204,17 @@ typedef struct bucket_s {
 
 #define PHYS_PORT(phys) ((uint)(uintptr_t)(phys)->rx_handler_data)
 
-static u64 boot;
-static net_device_s* xlan;
-static net_device_s* physs[PORTS_N];
-static known_s knowns[HOSTS_N];
-// OUT
-static bucket_s buckets[PORTS_N];
-static stream_s streams[HOSTS_N][64]; // POPCOUNT64()
-
 static void xlan_keeper (struct timer_list*);
 static DEFINE_TIMER(doTimer, xlan_keeper);
 
 // TODAS AS PORTAS DE TODOS OS HOSTS
 #define ALL_PORTS (HOSTS_N * PORTS_N)
 
+static net_device_s* xlan;
+static net_device_s* physs[PORTS_N];
+static known_s knowns[HOSTS_N];
+static bucket_s buckets[PORTS_N];
+static stream_s streams[HOSTS_N][64]; // POPCOUNT64()
 static a32 seens[HOSTS_N]; // CADA BIT É UMA PORTA QUE FOI VISTA COMO RECEBENDO
 static a32 masks[HOSTS_N]; // CADA WORD É UM MASK, CADA BIT É UMA PORTA QUE ESTA RECEBENDO
 static u8 timeouts[HOSTS_N*PORTS_N]; // CADA WORD É UM NUMERO
