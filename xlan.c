@@ -334,9 +334,17 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
 
     const void* const pkt = SKB_MAC(skb);
 
+    if (dst_vendor == BE32(VENDOR)
+     || dst_host == HOST
+     || dst_port == PHYS_PORT(skb->dev)) {
+        // NORMAL PACKET, TO ME, TO THIS PORT
+        skb->dev = xlan;
+        return RX_HANDLER_ANOTHER;
+    }
+
     if (src_vendor != BE32(VENDOR)) 
         goto drop;
- 
+
     // IT IS A PROPER XLAN PACKET
     if (dst_vendor == 0xFFFFFFFFU) {
         // BROADCAST
@@ -347,10 +355,11 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
         // CONTROLE
         const uint shost = src_host;
         const uint sport = src_port;
-        
-        if (shost == HOST)
+
+        if (shost == HOST) {
             // marca esta interface aqui como recebendo
             set_bit(PORTS_MY + PHYS_PORT(skb->dev), seens);
+        }
         elif (shost < HOSTS_N
             && sport < PORTS_N) { // 
             if (knownBoot   != cntl_boot) {
@@ -366,15 +375,6 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
                 set_bit(PORTS_N*shost + p, seens)
             }
         }
-        }
-    }
-    
-    if (dst_vendor == BE32(VENDOR)
-            && dst_host == HOST
-            && dst_port == PHYS_PORT(skb->dev)) {
-        // NORMAL PACKET, TO ME, TO THIS PORT
-        skb->dev = xlan;
-        return RX_HANDLER_ANOTHER;
     }
 
 drop:
