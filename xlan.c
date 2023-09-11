@@ -273,22 +273,18 @@ static void xlan_keeper (struct timer_list* const timer) {
     const jiffies_t now = jiffies;
 
     // THE MASK OF THE PORTS THAT ARE RECEIVING
-    u8* to = timeouts;
-    u32* mask = masks;
-
-    foreach (i, ALL_PORTS) {
+    foreach (p, ALL_PORTS) {
         if (test_and_clear_bit(p, seens)) {
-            *to = 8;
-            *masks |= 1U << (i );
-        } elif (*to) {
-            if (--*to == 0)
-                *masks ^= 1U << (i ); // TODO:
-        }
-        to++;
-        mask++;
+            // IN REPORTED IT'S ALIVE            
+            set_bit(p, masks);
+            // KEEP IT ACTIVE FOR A WHILE
+                timeouts[p] = 8;
+        } elif (timeouts[p])
+            // NOTHING REPORTED, AND IT WAS ON
+          if (--timeouts[p] == 0)
+                // NOTHING REPORTED FOR TOO LONG
+                clear_bit(p, masks);
     }
-    // GLOBAL
-    atomic_set(pa, lmask);
 
     // THE MASK OF THE REMOTE PORTAS THAT ARE RECEIVING
     
