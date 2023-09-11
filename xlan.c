@@ -172,7 +172,7 @@ typedef typeof(jiffies) jiffies_t;
 
 #define cntl_bootid  (*(u64*)(pkt + ETH_SIZE + CNTL_O_BOOT))
 #define cntl_counter (*(u64*)(pkt + ETH_SIZE + CNTL_O_COUNTER))
-#define cntl_mask    (*(u64*)(pkt + ETH_SIZE + CNTL_O_MASK))
+#define cntl_mask    ( (u64*)(pkt + ETH_SIZE + CNTL_O_MASK))
 
 #define proto4      (*(u8 *)(pkt + ETH_SIZE + IP4_O_PROTO))
 #define addrs4      (*(u64*)(pkt + ETH_SIZE + IP4_O_SRC))
@@ -272,7 +272,14 @@ static void xlan_keeper (struct timer_list* const timer) {
     pkt_type     = BE16(ETH_P_XLAN);
     cntl_bootid  = BE64(boot);
     cntl_counter = BE64(counter++);
-    cntl_mask    = *(u64*)(masks + PORTS_MY); // NO NEED BE HERE
+// ASSERT: sizeof(atomic_int) == 32
+masks + PORTS_MY
+cntl_mask
+    atomic_write(atomic_read());
+        
+        
+    *(u64*)(); // NOTE: JUST COPYNG THE WORD
+        // WHATEVER ORDER LINUX USES, WILL BE AT THERE TOO
 
     foreach (p, PORTS_N) {
 
@@ -381,10 +388,12 @@ typedef struct known_s {
     // NOTE: AQUI PODERIA SALVAR A INFORMACAO rport, PARA CONFIRMAR que h:p X h:p estao funcionando
     // TODO: QUAL É A ORDEM DESSES BITS MEU FILHO?
     foreach (p, PORTS_N) {
+        atomic_read()
         if (mask & 1ULL)         
             set_bit(PORTS_N*rhost + p, seens);
         else
             set_bit(PORTS_N*rhost + p, seens);
+
     }
 drop:
     kfree_skb(skb);
