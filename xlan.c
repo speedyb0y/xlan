@@ -332,7 +332,7 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
     const uint rport   = src_port;
     const u64 rboot    = cntl_boot;
     const u64 rcounter = cntl_counter;
-          u64 rmask    = cntl_mask; // TODO: QUAL É A ORDEM DESSES BITS MEU FILHO?
+    const uint rmask   = cntl_mask;
 
     if (rhost == HOST
      || rhost >= HOSTS_N
@@ -360,8 +360,7 @@ typedef struct known_s {
         if (mask & 1ULL)         
             set_bit(PORTS_N*rhost + p, seens);
         else
-            set_bit(PORTS_N*rhost + p, seens);
-
+            set_bit(PORTS_N*rhost + p, seens)
     }
 drop:
     kfree_skb(skb);
