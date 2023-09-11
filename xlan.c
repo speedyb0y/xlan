@@ -430,10 +430,10 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xlan) {
     uint now   = jiffies;
     uint last  = stream->last;
     uint ports = stream->ports;
-    
+
     // FORCA A MUDANCA DA PORTA ATUAL SE O ULTIMO ENVIADO JA DEU TEMPO DE SER PROCESSADO
     ports += (now - last) >= HZ/5;
-    
+
     foreach (c, (PORTS_N * PORTS_N * 2)) {
         ports %= PORTS_N * PORTS_N;
 
