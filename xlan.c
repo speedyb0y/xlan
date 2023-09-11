@@ -243,8 +243,11 @@ static DEFINE_TIMER(doTimer, xlan_keeper);
 // MUST BE HOLDABLE BY AN ATOMIC_T
 #define PORTS_N 32
 
-static u8 lalives[PORTS_N/(sizeof(lalives)*8)
-             + !!(PORTS_N%(sizeof(lalives)*8)) ];
+#define SIZE_FOR(name, n) ( \
+         (n)/(sizeof(name)*8) \
+    + !!((n)%(sizeof(name)*8)) )
+
+static u8 lalives[SIZE_FOR(lalives, PORTS_N)];
 
 set_bit(port, lalives)
 
