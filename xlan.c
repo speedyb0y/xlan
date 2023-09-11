@@ -361,7 +361,7 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
     // MARCA ESTA INTERFACE AQUI COMO RECEBENDO
     // TODO: ATOMIC OR?
     atomic_set ( &seens[HOST], 
-    atomic_read( &seens[HOST] | SEEN_MASK(PHYS_PORT(skb->dev)) ));
+    atomic_read( &seens[HOST]) | SEEN_MASK(PHYS_PORT(skb->dev)) );
 
     const uint rhost    = src_host;
     const uint rport    = src_port;
