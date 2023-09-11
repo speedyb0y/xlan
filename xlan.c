@@ -27,6 +27,9 @@ typedef __u16 u16;
 typedef __u32 u32;
 typedef __u64 u64;
 
+typedef atomic_t   a32;
+typedef atomic64_t a64;
+
 typedef unsigned int uint;
 typedef unsigned long long int uintll;
 
@@ -172,7 +175,7 @@ typedef typeof(jiffies) jiffies_t;
 
 #define cntl_bootid  (*(u64*)(pkt + ETH_SIZE + CNTL_O_BOOT))
 #define cntl_counter (*(u64*)(pkt + ETH_SIZE + CNTL_O_COUNTER))
-#define cntl_mask    ( (u64*)(pkt + ETH_SIZE + CNTL_O_MASK))
+#define cntl_mask    ( (a64*)(pkt + ETH_SIZE + CNTL_O_MASK))
 
 #define proto4      (*(u8 *)(pkt + ETH_SIZE + IP4_O_PROTO))
 #define addrs4      (*(u64*)(pkt + ETH_SIZE + IP4_O_SRC))
@@ -272,10 +275,8 @@ static void xlan_keeper (struct timer_list* const timer) {
     pkt_type     = BE16(ETH_P_XLAN);
     cntl_bootid  = BE64(boot);
     cntl_counter = BE64(counter++);
-// ASSERT: sizeof(atomic_int) == 32
-masks + PORTS_MY
-cntl_mask
-    atomic_write(atomic_read());
+
+    atomic_write(cntl_mask, atomic_read(masks + PORTS_MY));
         
         
     *(u64*)(); // NOTE: JUST COPYNG THE WORD
