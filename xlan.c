@@ -233,7 +233,7 @@ static void xlan_keeper (struct timer_list* const timer) {
     // UPDATE THE MASKS OF THE PORTS THAT ARE RECEIVING
     foreach (h, HOSTS_N) {
 
-        u32 seen = atomic_read(&seens[h]);
+        u32 seen = atomic_read(&seens[h]); // TODO: ATOMIC READ AND CLEAR
                     atomic_set(&seens[h], 0);
         u32 mask = atomic_read(&masks[h]);
 
