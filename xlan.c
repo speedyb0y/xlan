@@ -392,13 +392,6 @@ drop:
     return RX_HANDLER_CONSUMED;
 }
 
-quando for construir o pacote de controle GERAL, informa:
- this port sending it
- foreach (p, PORTS_N) {
-    if (seen[HOST][p] >= now)
-        manda dizendo que ela esta ativa
- }
-
 static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xlan) {
 
     // ONLY LINEAR
