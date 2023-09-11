@@ -221,6 +221,10 @@ static a32 seens[HOSTS_N]; // CADA BIT É UMA PORTA QUE FOI VISTA COMO RECEBENDO
 static a32 masks[HOSTS_N]; // CADA WORD É UM MASK, CADA BIT É UMA PORTA QUE ESTA RECEBENDO
 static u8 timeouts[HOSTS_N*PORTS_N]; // CADA WORD É UM NUMERO
 
+// ARGUMENTO DA FUNCAO test_and_clear_bit
+typedef unsigned long BITWORD_t;
+
+
 static void xlan_keeper (struct timer_list* const timer) {
 
     const jiffies_t now = jiffies;
@@ -653,6 +657,12 @@ static int __init xlan_init (void) {
     // MAKE IT VISIBLE IN THE SYSTEM
     printk("XLAN: INIT - VENDOR 0x%04x HOST %u 0x%02X GW %u 0x%02X NET4 0x%08X NET6 0x%016llX\n",
         VENDOR, HOST, HOST, GW, GW, NET4, (unsigned long long int)NET6);
+
+    BUILD_BUG_ON(sizeof(atomic_t)  != sizeof(u32));
+    BUILD_BUG_ON(sizeof(a32)       != sizeof(u32));
+    BUILD_BUG_ON(sizeof(BITWORD_t  != sizeof(a32));
+    BUILD_BUG_ON(sizeof(BITWORD_t) != sizeof(seens[0]));
+    BUILD_BUG_ON(sizeof(BITWORD_t) != sizeof(masks[0]));
 
     clear(physs);
     clear(streams);
