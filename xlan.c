@@ -250,21 +250,20 @@ static DEFINE_TIMER(doTimer, xlan_keeper);
 #define ALL_PORTS ((1 + HOSTS_N)*PORTS_N)
 
 // CADA BIT É UMA PORTA QUE FOI VISTA COMO FUNCIONANDO
-// O IN SETA
-// O TIMER LE/CLEAR
+// O IN SETA (TOUCH)
+// O TIMER LE/CLEAR (RE-WATCH)
 static u8 seens[LEN_FOR(seens, ALL_PORTS)];
 
 // CADA WORD É UM MASK, CADA BIT É UMA PORTA USAVEL
-// O TIMER ESCREVE/LE
-// O OUT LE
+// O TIMER ESCREVE/LE (ON/OFF)
+// O OUT LE (IS ON)
 static u8 masks[LEN_FOR(masks, ALL_PORTS)];
 
 // CADA WORD É UM NUMERO,
 //      == 0 PORTA INUSAVEL
 //      >  0 PORTA USAVEL, MAS COM UM COUNTDOWN
-// SO O TIMER USA
+// SO O TIMER USA (PROCESSING BETWEEN SEEN AND MASK)
 static u8 timeouts[ALL_PORTS];
-
 
 set_bit(PORTS_N*HOST_N + port, seens)
 set_bit(PORTS_N*rhost + rport, seens)
