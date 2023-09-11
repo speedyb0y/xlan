@@ -239,13 +239,20 @@ atomic_set_mask
 static void xlan_keeper (struct timer_list*);
 static DEFINE_TIMER(doTimer, xlan_keeper);
 
+// MUST MATCH THE MASK IN THAT LOOP SO WE SHIFT N -> 0
+// MUST BE HOLDABLE BY AN ATOMIC_T
+#define PORTS_N 32
+
+static u8 lalives[PORTS_N/(sizeof(lalives)*8)
+                + PORTS_N%(sizeof(lalives)*8) ];
+
 static void xlan_keeper (struct timer_list* const timer) {
 
     const jiffies_t now = jiffies;
 
     // THE MASK OF THE PORTS THAT ARE RECEIVING
-    uint lmask = 0; // LOCAL
-    uint pm = 1;
+    u32 l_mask_t = 0; // LOCAL
+    u32 pm = 1;
     atomic_t* pa = lalives;
     do {
         int count = atomic_read(pa);
@@ -254,7 +261,7 @@ static void xlan_keeper (struct timer_list* const timer) {
             atomic_set(pa, count);
             lmask |= pm;
         } pa++;
-    } while (pm <<= 1);
+    } while ((u32)(pm <<= 1));
     // GLOBAL
     atomic_set(pa, lmask);
 
