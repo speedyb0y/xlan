@@ -248,19 +248,19 @@ static DEFINE_TIMER(doTimer, xlan_keeper);
     + !!((n)%(sizeof(name)*8)) )
 
 // CADA BIT É UMA PORTA QUE FOI VISTA COMO FUNCIONANDO
-// SO O IN E O TIMER ESCREVEM
-// SO O TIMER LE
+// O IN SETA
+// O TIMER LE/CLEAR
 static u8 seens[LEN_FOR(seens, (1 + HOSTS_N)*PORTS_N)];
 
 // CADA WORD É UM NUMERO,
 //      == 0 PORTA INUSAVEL
 //      >  0 PORTA USAVEL, MAS COM UM COUNTDOWN
-// SO O TIMER ESCREVE/LE
+// SO O TIMER USA
 static u8 timeouts[(1 + HOSTS_N)*PORTS_N];
 
 // CADA WORD É UM MASK, CADA BIT É UMA PORTA USAVEL
-// SO O TIMER ESCREVE
-// SO O OUT
+// O TIMER ESCREVE/LE
+// O OUT LE
 static u32 masks[1 + HOSTS_N]; 
 
 set_bit(port, lalives)
