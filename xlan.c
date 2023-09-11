@@ -281,7 +281,7 @@ static void xlan_keeper (struct timer_list* const timer) {
     pkt_type     = BE16(ETH_P_XLAN);
     cntl_bootid  = BE64(knowns[HOST].boot);
     cntl_counter = BE64(knowns[HOST].counter++);
-    cntl_mask    = BE32( masks[HOST]);
+    cntl_mask    = BE32( masks[HOST].counter);
 
     foreach (p, PORTS_N) {
 
@@ -686,6 +686,7 @@ static int __init xlan_init (void) {
     printk("XLAN: INIT - VENDOR 0x%04x HOST %u 0x%02X GW %u 0x%02X NET4 0x%08X NET6 0x%016llX\n",
         VENDOR, HOST, HOST, GW, GW, NET4, (unsigned long long int)NET6);
 
+    BUILD_BUG_ON(sizeof(atomic_t)  != sizeof(int));
     BUILD_BUG_ON(sizeof(atomic_t)  != sizeof(u32));
     BUILD_BUG_ON(sizeof(a32)       != sizeof(u32));
     BUILD_BUG_ON(sizeof(BITWORD_t  != sizeof(a32));
