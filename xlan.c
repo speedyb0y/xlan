@@ -248,7 +248,7 @@ static DEFINE_TIMER(doTimer, xlan_keeper);
     + !!((n)%(sizeof(name)*8)) )
 
 // CADA BIT É UMA PORTA QUE FOI VISTA COMO FUNCIONANDO
-// SO O IN ESCREVE
+// SO O IN E O TIMER ESCREVEM
 // SO O TIMER LE
 static u8 seens[LEN_FOR(seens, (1 + HOSTS_N)*PORTS_N)];
 
@@ -274,6 +274,10 @@ static void xlan_keeper (struct timer_list* const timer) {
     u32 l_mask_t = 0; // LOCAL
     u32 pm = 1;
     atomic_t* pa = lalives;
+
+    u8* to = timeouts;
+    u32* mask = masks;
+
     foreach (p, PORTS_N) {
         if (test_and_clear_bit(p, lmask))
             *alive = 8;
