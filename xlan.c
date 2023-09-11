@@ -217,7 +217,7 @@ static void xlan_keeper (struct timer_list*);
 static DEFINE_TIMER(doTimer, xlan_keeper);
 
 // QUANTAS PALAVRAS DESTE TIPO SAO NECESSARIAS PARA TER N BITS
-#define WORDS_FOR(t, n) ( \
+#define LEN_FOR(t, n) ( \
          (n)/(sizeof(t)*8) \
     + !!((n)%(sizeof(t)*8)) )
 
@@ -232,7 +232,7 @@ static DEFINE_TIMER(doTimer, xlan_keeper);
 // CADA BIT É UMA PORTA QUE FOI VISTA COMO RECEBENDO
 // O IN SETA (TOUCH)
 // O TIMER LE/CLEAR (RE-WATCH)
-static u8 seens[WORDS_FOR(u8, ALL_PORTS)];
+static u8 seens[LEN_FOR(u8, ALL_PORTS)];
 
 // CADA WORD É UM MASK, CADA BIT É UMA PORTA QUE ESTA RECEBENDO
 // O TIMER ESCREVE/LE (ON/OFF)
@@ -240,7 +240,7 @@ static u8 seens[WORDS_FOR(u8, ALL_PORTS)];
 // OBS.: MAS O ESTE MASK AQUI É O DE RECEIVING, O masks[THIS HOST][*] SAO SO PARA REPORTAR
 // PARA ENVIAR, USAR A MASK DE INTERFACES ENVIANDO
 // todo: incluir no header ao enviar a um host, a mask de interfaces dele que estao marcadas como recebendo la
-static u8 masks[WORDS_FOR(u8, ALL_PORTS)];
+static u8 masks[LEN_FOR(u8, ALL_PORTS)];
 
 // CADA WORD É UM NUMERO,
 //      == 0 PORTA INUSAVEL
