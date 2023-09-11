@@ -229,6 +229,8 @@ static u8 seens[LEN_FOR(u8, ALL_PORTS)];
 // CADA WORD É UM MASK, CADA BIT É UMA PORTA USAVEL
 // O TIMER ESCREVE/LE (ON/OFF)
 // O OUT LE (IS ON)
+// OBS.: MAS O ESTE MASK AQUI É O DE RECEIVING, O masks[THIS HOST][*] SAO SO PARA REPORTAR
+// PARA ENVIAR, USAR A MASK DE INTERFACES ENVIANDO
 static u8 masks[LEN_FOR(u8, ALL_PORTS)];
 
 // CADA WORD É UM NUMERO,
@@ -236,9 +238,6 @@ static u8 masks[LEN_FOR(u8, ALL_PORTS)];
 //      >  0 PORTA USAVEL, MAS COM UM COUNTDOWN
 // SO O TIMER USA (PROCESSING BETWEEN SEEN AND MASK)
 static u8 timeouts[ALL_PORTS];
-
-set_bit(PORTS_MY + port, seens)
-set_bit(PORTS_N*rhost + rport, seens)
 
 static void xlan_keeper (struct timer_list* const timer) {
 
@@ -305,6 +304,9 @@ static void xlan_keeper (struct timer_list* const timer) {
                 // SEND IT
                 dev_queue_xmit(skb);
             }
+        } else {
+            // TODO: DESMARCA ELA DA LISTA DE PHYS USAVEIS PARA ENVIAR
+
         }
     }
 
@@ -333,17 +335,7 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
 
                     if (shost == HOST) {
                         // marca esta interface aqui como recebendo
-                        const uint p = PHYS_PORT(skb->dev);
-                        lReceiversLast[p] = jiffies; // UM TIME (E FLAG) PARA CADA
-                        lReceiversMask |= 1U << p; // AGORA SIM A OPERACAO ATOMICA
-#if 0 // a primeira vez que tentar usar
-                        if (este->mask & (1U << p)) {
-                            if (este->last >= fresh) {
-
-                            } else // NAO PERDE MAIS TEMPO COM ISSO
-                                este->mask ^= 1U << p;
-                        }
-#endif
+                        set_bit(PORTS_MY + PHYS_PORT(skb->dev), seens);
                     } elif (shost < HOSTS_N
                          && sport < PORTS_N) { // TODO: cntl_boot, cntl_jiffies
                         // um pacote de contrle que OUTRA pessoa mandou
