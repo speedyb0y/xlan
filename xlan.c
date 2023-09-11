@@ -247,21 +247,24 @@ static DEFINE_TIMER(doTimer, xlan_keeper);
          (n)/(sizeof(name)*8) \
     + !!((n)%(sizeof(name)*8)) )
 
+#define ALL_PORTS ((1 + HOSTS_N)*PORTS_N)
+
 // CADA BIT É UMA PORTA QUE FOI VISTA COMO FUNCIONANDO
 // O IN SETA
 // O TIMER LE/CLEAR
-static u8 seens[LEN_FOR(seens, (1 + HOSTS_N)*PORTS_N)];
+static u8 seens[LEN_FOR(seens, ALL_PORTS)];
+
+// CADA WORD É UM MASK, CADA BIT É UMA PORTA USAVEL
+// O TIMER ESCREVE/LE
+// O OUT LE
+static u8 masks[LEN_FOR(masks, ALL_PORTS)];
 
 // CADA WORD É UM NUMERO,
 //      == 0 PORTA INUSAVEL
 //      >  0 PORTA USAVEL, MAS COM UM COUNTDOWN
 // SO O TIMER USA
-static u8 timeouts[(1 + HOSTS_N)*PORTS_N];
+static u8 timeouts[ALL_PORTS];
 
-// CADA WORD É UM MASK, CADA BIT É UMA PORTA USAVEL
-// O TIMER ESCREVE/LE
-// O OUT LE
-static u32 masks[1 + HOSTS_N]; 
 
 set_bit(PORTS_N*HOST_N + port, seens)
 set_bit(PORTS_N*rhost + rport, seens)
@@ -271,19 +274,19 @@ static void xlan_keeper (struct timer_list* const timer) {
     const jiffies_t now = jiffies;
 
     // THE MASK OF THE PORTS THAT ARE RECEIVING
-    u32 l_mask_t = 0; // LOCAL
-    u32 pm = 1;
-    atomic_t* pa = lalives;
-
     u8* to = timeouts;
     u32* mask = masks;
 
-    foreach (p, PORTS_N) {
-        if (test_and_clear_bit(p, lmask))
-            *alive = 8;
-        elif (*alive)
-             (*alive)--;
-
+    foreach (i, ALL_PORTS) {
+        if (test_and_clear_bit(p, seens)) {
+            *to = 8;
+            *masks |= 1U << (i );
+        } elif (*to) {
+            if (--*to == 0)
+                *masks ^= 1U << (i ); // TODO:
+        }
+        to++;
+        mask++;
     }
     // GLOBAL
     atomic_set(pa, lmask);
