@@ -280,6 +280,10 @@ static void xlan_keeper (struct timer_list* const timer) {
 
         if (phys && phys->flags & IFF_UP) {
 
+            if (0) {
+                // SE ESTAVA DESMARCADA COMO USAVEL PARA ENVIAR, RECOLOCA
+            }
+
             sk_buff_s* const skb = alloc_skb(64 + CNTL_TOTAL_SIZE, GFP_ATOMIC);
 
             if (skb) {
@@ -321,42 +325,59 @@ static void xlan_keeper (struct timer_list* const timer) {
 
 static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
     
-    if (xlan->operstate == IF_OPER_UP // netif_oper_up()
-     || xlan->operstate == IF_OPER_UNKNOWN) {
-        // XLAN IS RECEIVING
-        sk_buff_s* const skb = *pskb;
+    if (xlan->operstate != IF_OPER_UP // netif_oper_up()
+     && xlan->operstate != IF_OPER_UNKNOWN)
+        goto drop;
 
-        const void* const pkt = SKB_MAC(skb);
+    // WE ARE DOING
+    sk_buff_s* const skb = *pskb;
 
-        if (src_vendor == BE32(VENDOR)) {
-            // IT IS A PROPER XLAN PACKET
-            if (dst_vendor == 0xFFFFFFFFU) {
-                // BROADCAST
-                if (pkt_type == BE16(ETH_P_XLAN) && skb->len == (ETH_SIZE + sizeof(u32))) {
-                    // CONTROLE
-                    const uint shost = src_host;
-                    const uint sport = src_port;
-                    if (shost == HOST)
-                        // marca esta interface aqui como recebendo
-                        set_bit(PORTS_MY + PHYS_PORT(skb->dev), seens);
-                    elif (shost < HOSTS_N
-                       && sport < PORTS_N) { // TODO: cntl_boot, cntl_jiffies
-                        set_bit(PORTS_N*rhost + rport, seens)
-                        // um pacote de contrle que OUTRA pessoa mandou
-                        rReceivers[shost].mask = BE32(pkt_mask); // UMA MASCARA DE TODOS                      
-                        rReceivers[shost].last = jiffies; // UM TIME DE TODOS
-                    }
-                }
-            } elif (dst_vendor == BE32(VENDOR)
-                 && dst_host == HOST
-                 && dst_port == PHYS_PORT(skb->dev)) {
-                // NORMAL PACKET, TO ME, TO THIS PORT
-                skb->dev = xlan;
-                return RX_HANDLER_ANOTHER;
+    const void* const pkt = SKB_MAC(skb);
+
+    if (src_vendor != BE32(VENDOR)) 
+        goto drop;
+ 
+    // IT IS A PROPER XLAN PACKET
+    if (dst_vendor == 0xFFFFFFFFU) {
+        // BROADCAST
+
+        if (!(pkt_type == BE16(ETH_P_XLAN) && skb->len == CNTL_SIZE))
+            goto drop;
+
+        // CONTROLE
+        const uint shost = src_host;
+        const uint sport = src_port;
+        
+        if (shost == HOST)
+            // marca esta interface aqui como recebendo
+            set_bit(PORTS_MY + PHYS_PORT(skb->dev), seens);
+        elif (shost < HOSTS_N
+            && sport < PORTS_N) { // 
+            if (knownBoot   != cntl_boot) {
+                knownBoot    = cntl_boot
+                knownJiffies = cntl_jiffies;
+            } elif (knownJiffies <= cntl_jiffies) {
+                    knownJiffies = cntl_jiffies;
+            }
+            u64 mask = cntl_mask; // TODO: 
+            foreach (p PORTS_N) {
+                if (_bit())
+                mask 
+                set_bit(PORTS_N*shost + p, seens)
             }
         }
+        }
+    }
+    
+    if (dst_vendor == BE32(VENDOR)
+            && dst_host == HOST
+            && dst_port == PHYS_PORT(skb->dev)) {
+        // NORMAL PACKET, TO ME, TO THIS PORT
+        skb->dev = xlan;
+        return RX_HANDLER_ANOTHER;
     }
 
+drop:
     kfree_skb(skb);
 
     return RX_HANDLER_CONSUMED;
