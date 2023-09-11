@@ -244,7 +244,9 @@ static DEFINE_TIMER(doTimer, xlan_keeper);
 #define PORTS_N 32
 
 static u8 lalives[PORTS_N/(sizeof(lalives)*8)
-                + PORTS_N%(sizeof(lalives)*8) ];
+             + !!(PORTS_N%(sizeof(lalives)*8)) ];
+
+set_bit(port, lalives)
 
 static void xlan_keeper (struct timer_list* const timer) {
 
