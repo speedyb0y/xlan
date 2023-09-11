@@ -213,9 +213,9 @@ static stream_s streams[HOSTS_N][64]; // POPCOUNT64()
 static void xlan_keeper (struct timer_list*);
 static DEFINE_TIMER(doTimer, xlan_keeper);
 
-#define LEN_FOR(name, n) ( \
-         (n)/(sizeof(name)*8) \
-    + !!((n)%(sizeof(name)*8)) )
+#define LEN_FOR(t, n) ( \
+         (n)/(sizeof(t)*8) \
+    + !!((n)%(sizeof(t)*8)) )
 
 #define ALL_PORTS ((1 + HOSTS_N)*PORTS_N)
 
@@ -224,12 +224,12 @@ static DEFINE_TIMER(doTimer, xlan_keeper);
 // CADA BIT É UMA PORTA QUE FOI VISTA COMO FUNCIONANDO
 // O IN SETA (TOUCH)
 // O TIMER LE/CLEAR (RE-WATCH)
-static u8 seens[LEN_FOR(seens, ALL_PORTS)];
+static u8 seens[LEN_FOR(u8, ALL_PORTS)];
 
 // CADA WORD É UM MASK, CADA BIT É UMA PORTA USAVEL
 // O TIMER ESCREVE/LE (ON/OFF)
 // O OUT LE (IS ON)
-static u8 masks[LEN_FOR(masks, ALL_PORTS)];
+static u8 masks[LEN_FOR(u8, ALL_PORTS)];
 
 // CADA WORD É UM NUMERO,
 //      == 0 PORTA INUSAVEL
