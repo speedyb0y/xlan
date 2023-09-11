@@ -8,14 +8,6 @@ config   XLAN_VENDOR
     hex "XLAN_VENDOR"
     default 0x50622562
 
-config   XLAN_HOSTS_N
-    int "XLAN_HOSTS_N"
-    default 64
-
-config   XLAN_PORTS_N
-    int "XLAN_PORTS_N"
-    default 4
-
 config   XLAN_NET4
     hex "XLAN_NET4"
     default 0xC0000000

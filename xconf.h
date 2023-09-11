@@ -8,8 +8,6 @@
 #endif
 
 #define XCONF_XLAN_VENDOR             CONFIG_XLAN_VENDOR
-#define XCONF_XLAN_HOSTS_N            CONFIG_XLAN_HOSTS_N
-#define XCONF_XLAN_PORTS_N            CONFIG_XLAN_PORTS_N
 #define XCONF_XLAN_NET4               CONFIG_XLAN_NET4
 #define XCONF_XLAN_NET6               CONFIG_XLAN_NET6
 #define XCONF_XLAN_HOST               CONFIG_XLAN_HOST

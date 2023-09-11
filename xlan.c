@@ -72,9 +72,10 @@ typedef typeof(jiffies) jiffies_t;
 
 #include "xconf.h"
 
+#define HOSTS_N 256 // MULTIPLE OF U64
+#define PORTS_N 8 // U8
+
 #define VENDOR             XCONF_XLAN_VENDOR
-#define HOSTS_N            XCONF_XLAN_HOSTS_N
-#define PORTS_N            XCONF_XLAN_PORTS_N
 #define _NET4              XCONF_XLAN_NET4
 #define _NET6              XCONF_XLAN_NET6
 #define HOST               XCONF_XLAN_HOST
@@ -87,14 +88,6 @@ typedef typeof(jiffies) jiffies_t;
 
 #if !(VENDOR && VENDOR <= 0xFFFFFFFF && !(VENDOR & 0x01000000))
 #error "BAD VENDOR"
-#endif
-
-#if !(2 <= HOSTS_N && HOSTS_N < 0xFF)
-#error "BAD HOSTS N"
-#endif
-
-#if !(2 <= PORTS_N && PORTS_N < 0xFF)
-#error "BAD PORTS N"
 #endif
 
 #if !(_NET4 && !(_NET4 % HOSTS_N))
@@ -216,37 +209,14 @@ static stream_s streams[HOSTS_N][64]; // POPCOUNT64()
 static void xlan_keeper (struct timer_list*);
 static DEFINE_TIMER(doTimer, xlan_keeper);
 
-// QUANTAS PALAVRAS DESTE TIPO SAO NECESSARIAS PARA TER N BITS
-#define LEN_FOR(t, n) ( \
-         (n)/(sizeof(t)*8) \
-    + !!((n)%(sizeof(t)*8)) )
-
-//
+// TODAS AS PORTAS DE TODOS OS HOSTS
 #define ALL_PORTS (HOSTS_N * PORTS_N)
-
-//
-#define PORTS_MY (PORTS_N * HOST)
 
 #define SLOT_OF(array, host) ((array) + PORTS_N*(host))
 
-// CADA BIT É UMA PORTA QUE FOI VISTA COMO RECEBENDO
-// O IN SETA (TOUCH)
-// O TIMER LE/CLEAR (RE-WATCH)
-static u8 seens[LEN_FOR(u8, ALL_PORTS)];
-
-// CADA WORD É UM MASK, CADA BIT É UMA PORTA QUE ESTA RECEBENDO
-// O TIMER ESCREVE/LE (ON/OFF)
-// O OUT LE (IS ON)
-// OBS.: MAS O ESTE MASK AQUI É O DE RECEIVING, O masks[THIS HOST][*] SAO SO PARA REPORTAR
-// PARA ENVIAR, USAR A MASK DE INTERFACES ENVIANDO
-// todo: incluir no header ao enviar a um host, a mask de interfaces dele que estao marcadas como recebendo la
-static u8 masks[LEN_FOR(u8, ALL_PORTS)];
-
-// CADA WORD É UM NUMERO,
-//      == 0 PORTA INUSAVEL
-//      >  0 PORTA USAVEL, MAS COM UM COUNTDOWN
-// SO O TIMER USA (PROCESSING BETWEEN SEEN AND MASK)
-static u8 timeouts[ALL_PORTS];
+static u8 seens[HOSTS_N]; // CADA BIT É UMA PORTA QUE FOI VISTA COMO RECEBENDO
+static u8 masks[HOSTS_N]; // CADA WORD É UM MASK, CADA BIT É UMA PORTA QUE ESTA RECEBENDO
+static u8 timeouts[HOSTS_N*PORTS_N]; // CADA WORD É UM NUMERO
 
 static void xlan_keeper (struct timer_list* const timer) {
 
