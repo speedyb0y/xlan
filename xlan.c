@@ -216,7 +216,8 @@ static stream_s streams[HOSTS_N][64]; // POPCOUNT64()
 static void xlan_keeper (struct timer_list*);
 static DEFINE_TIMER(doTimer, xlan_keeper);
 
-#define LEN_FOR(t, n) ( \
+// QUANTAS PALAVRAS DESTE TIPO SAO NECESSARIAS PARA TER N BITS
+#define WORDS_FOR(t, n) ( \
          (n)/(sizeof(t)*8) \
     + !!((n)%(sizeof(t)*8)) )
 
@@ -226,18 +227,20 @@ static DEFINE_TIMER(doTimer, xlan_keeper);
 //
 #define PORTS_MY (PORTS_N * HOST)
 
-// CADA BIT É UMA PORTA QUE FOI VISTA COMO FUNCIONANDO
+#define SLOT_OF(array, host) ((array) + PORTS_N*(host))
+
+// CADA BIT É UMA PORTA QUE FOI VISTA COMO RECEBENDO
 // O IN SETA (TOUCH)
 // O TIMER LE/CLEAR (RE-WATCH)
-static u8 seens[LEN_FOR(u8, ALL_PORTS)];
+static u8 seens[WORDS_FOR(u8, ALL_PORTS)];
 
-// CADA WORD É UM MASK, CADA BIT É UMA PORTA USAVEL
+// CADA WORD É UM MASK, CADA BIT É UMA PORTA QUE ESTA RECEBENDO
 // O TIMER ESCREVE/LE (ON/OFF)
 // O OUT LE (IS ON)
 // OBS.: MAS O ESTE MASK AQUI É O DE RECEIVING, O masks[THIS HOST][*] SAO SO PARA REPORTAR
 // PARA ENVIAR, USAR A MASK DE INTERFACES ENVIANDO
 // todo: incluir no header ao enviar a um host, a mask de interfaces dele que estao marcadas como recebendo la
-static u8 masks[LEN_FOR(u8, ALL_PORTS)];
+static u8 masks[WORDS_FOR(u8, ALL_PORTS)];
 
 // CADA WORD É UM NUMERO,
 //      == 0 PORTA INUSAVEL
@@ -277,10 +280,6 @@ static void xlan_keeper (struct timer_list* const timer) {
     cntl_counter = BE64(counter++);
 
     atomic_write(cntl_mask, atomic_read(masks + PORTS_MY));
-        
-        
-    *(u64*)(); // NOTE: JUST COPYNG THE WORD
-        // WHATEVER ORDER LINUX USES, WILL BE AT THERE TOO
 
     foreach (p, PORTS_N) {
 
@@ -366,7 +365,7 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
     const uint rport   = src_port;
     const u64 rboot    = cntl_boot;
     const u64 rcounter = cntl_counter;
-          u64 rmask    = cntl_mask; // TODO: BYTE ORDER?
+          u64 rmask    = cntl_mask; // TODO: QUAL É A ORDEM DESSES BITS MEU FILHO?
 
     if (rhost == HOST
      || rhost >= HOSTS_N
@@ -387,9 +386,10 @@ typedef struct known_s {
     }   known->counter = rcounter;
 
     // NOTE: AQUI PODERIA SALVAR A INFORMACAO rport, PARA CONFIRMAR que h:p X h:p estao funcionando
-    // TODO: QUAL É A ORDEM DESSES BITS MEU FILHO?
+    
     foreach (p, PORTS_N) {
-        atomic_read()
+        // NOTA: ESTA PEGANDO O masks DELE, E COOCANDO NO NOSSO seens
+        atomic_write(SLOT_OF(seens, rhost), atomic_read(cntl_mask));
         if (mask & 1ULL)         
             set_bit(PORTS_N*rhost + p, seens);
         else
