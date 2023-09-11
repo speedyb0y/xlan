@@ -357,7 +357,7 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
     const uint rhost   = src_host;
     const uint rport   = src_port;
     const u64 rboot    = cntl_boot;
-    const u64 rjiffies = cntl_jiffies;
+    const u64 rcounter = cntl_counter;
           u64 rmask    = cntl_mask;
 
     if (rhost == HOST
@@ -365,16 +365,21 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
      || rport >= PORTS_N)
         goto drop;
 
-    known = &[shost];
+typedef struct known_s {
+    u64 boot;
+    u64 counter;
+} known_s;
+    known_s* const known = &knowns[rhost];
 
-    if (known->boot   != rboot) {
-        known->boot    = rboot;        
-    } elif (rjiffies >= known->jiffies) {
+    // IGNORA SE FOR UM PACOTE COM INFORMACOES DESATUALIZADAS
+    if (known->counter >= rcounter) {
+        if (known->boot == rboot)
+            goto drop;
+        known->boot    = rboot;
+    }   known->counter = rcounter;
+
         if ((rjiffies - known->jiffies) > 24ULL*60*60*HZ)
             knownJiffies = cntl_jiffies;
-    }
-
-    
 
       { // 
 
