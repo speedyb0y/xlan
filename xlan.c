@@ -431,18 +431,8 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xlan) {
     uint last  = stream->last;
     uint ports = stream->ports;
     
-    // FORCA A MUDANCA DA PORTA ATUAL SE...
-    if ((now - last) >= HZ/5) {
-        // O ULTIMO ENVIADO JA DEU TEMPO DE SER PROCESSADO
-        printk("XLAN: OUT: CHANGING FROM PORTS %u BECAUSE BURST IS COMPLETE\n",
-            ports);
-        ports++;
-    } elif (0) {
-        // TODO: OU SE O PACOTE É UM TCP-SYN, RST RETRANSMISSION ETC
-        ports++;
-    } else {
-        // CONTINUA
-    }
+    // FORCA A MUDANCA DA PORTA ATUAL SE O ULTIMO ENVIADO JA DEU TEMPO DE SER PROCESSADO
+    ports += (now - last) >= HZ/5;
     
     foreach (c, (PORTS_N * PORTS_N * 2)) {
         ports %= PORTS_N * PORTS_N;
