@@ -337,43 +337,50 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
     if (src_vendor != BE32(VENDOR)) 
         goto drop;
 
+    // NORMAL PACKET
     if (dst_vendor == BE32(VENDOR)
      || dst_host == HOST
      || dst_port == PHYS_PORT(skb->dev)) {
-        // NORMAL PACKET, TO ME, TO THIS PORT
         skb->dev = xlan;
         return RX_HANDLER_ANOTHER;
     }
 
-    // IT IS A PROPER XLAN PACKET
-    if (dst_vendor == 0xFFFFFFFFU) {
-        // BROADCAST
+    // CONTROLE
+    if (dst_vendor != 0xFFFFFFFFU // CONTROLS ARE BROADCAST
+     || pkt_type != BE16(ETH_P_XLAN) // EXPLICITLY
+     || skb->len != CNTL_SIZE) // COMPLETE
+        goto drop;
 
-        if (!(pkt_type == BE16(ETH_P_XLAN) && skb->len == CNTL_SIZE))
-            goto drop;
+    // marca esta interface aqui como recebendo
+    set_bit(PORTS_MY + PHYS_PORT(skb->dev), seens);
 
-        // CONTROLE
-        const uint shost = src_host;
-        const uint sport = src_port;
+    const uint rhost   = src_host;
+    const uint rport   = src_port;
+    const u64 rboot    = cntl_boot;
+    const u64 rjiffies = cntl_jiffies;
+          u64 rmask    = cntl_mask;
 
-        if (shost == HOST) {
-            // marca esta interface aqui como recebendo
-            set_bit(PORTS_MY + PHYS_PORT(skb->dev), seens);
-        }
-        elif (shost < HOSTS_N
-            && sport < PORTS_N) { // 
-            if (knownBoot   != cntl_boot) {
-                knownBoot    = cntl_boot
-                knownJiffies = cntl_jiffies;
-            } elif (knownJiffies <= cntl_jiffies) {
-                    knownJiffies = cntl_jiffies;
-            }
-            u64 mask = cntl_mask; // TODO: 
-            foreach (p PORTS_N) {
-                if (_bit())
-                mask 
-                set_bit(PORTS_N*shost + p, seens)
-            }
+    if (rhost == HOST
+     || rhost >= HOSTS_N
+     || rport >= PORTS_N)
+        goto drop;
+
+    known = &[shost];
+
+    if (known->boot != cntl_boot) {
+        known->boot  = cntl_boot
+        knownJiffies = cntl_jiffies;
+    } elif (knownJiffies <= cntl_jiffies) {
+            knownJiffies = cntl_jiffies;
+    }
+
+      { // 
+
+        u64 mask = cntl_mask; // TODO: 
+        foreach (p PORTS_N) {
+            if (_bit())
+            mask 
+            set_bit(PORTS_N*shost + p, seens)
         }
     }
 
