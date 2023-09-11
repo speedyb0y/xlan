@@ -217,9 +217,7 @@ static DEFINE_TIMER(doTimer, xlan_keeper);
          (n)/(sizeof(t)*8) \
     + !!((n)%(sizeof(t)*8)) )
 
-#define ALL_PORTS ((1 + HOSTS_N)*PORTS_N)
-
-#define PORTS_MY (PORTS_N * HOSTS_N)
+#define ALL_PORTS (HOSTS_N * PORTS_N)
 
 // CADA BIT É UMA PORTA QUE FOI VISTA COMO FUNCIONANDO
 // O IN SETA (TOUCH)
@@ -231,6 +229,7 @@ static u8 seens[LEN_FOR(u8, ALL_PORTS)];
 // O OUT LE (IS ON)
 // OBS.: MAS O ESTE MASK AQUI É O DE RECEIVING, O masks[THIS HOST][*] SAO SO PARA REPORTAR
 // PARA ENVIAR, USAR A MASK DE INTERFACES ENVIANDO
+// todo: incluir no header ao enviar a um host, a mask de interfaces dele que estao marcadas como recebendo la
 static u8 masks[LEN_FOR(u8, ALL_PORTS)];
 
 // CADA WORD É UM NUMERO,
@@ -280,10 +279,11 @@ static void xlan_keeper (struct timer_list* const timer) {
             sk_buff_s* const skb = alloc_skb(64 + CNTL_TOTAL_SIZE, GFP_ATOMIC);
 
             if (skb) {
-    
-                void* const pkt = SKB_DATA(skb);
+
                 // PER PORT
                 src_port = p;
+                //
+                void* const pkt = memcpy(SKB_DATA(skb), pkt, CNTL_SIZE);
 
                 //
                 skb->transport_header = PTR(pkt) - SKB_HEAD(skb);
@@ -332,12 +332,12 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
                     // CONTROLE
                     const uint shost = src_host;
                     const uint sport = src_port;
-
-                    if (shost == HOST) {
+                    if (shost == HOST)
                         // marca esta interface aqui como recebendo
                         set_bit(PORTS_MY + PHYS_PORT(skb->dev), seens);
-                    } elif (shost < HOSTS_N
-                         && sport < PORTS_N) { // TODO: cntl_boot, cntl_jiffies
+                    elif (shost < HOSTS_N
+                       && sport < PORTS_N) { // TODO: cntl_boot, cntl_jiffies
+                        set_bit(PORTS_N*rhost + rport, seens)
                         // um pacote de contrle que OUTRA pessoa mandou
                         rReceivers[shost].mask = BE32(pkt_mask); // UMA MASCARA DE TODOS                      
                         rReceivers[shost].last = jiffies; // UM TIME DE TODOS
