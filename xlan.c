@@ -188,8 +188,8 @@ typedef typeof(jiffies) jiffies_t;
 #define ports6      (*(u32*)(pkt + ETH_SIZE + IP6_SIZE))
 
 typedef struct known_s {
-    u64 boot;
-    u64 counter;
+    u64 boot; // BOOT ID
+    u64 counter; // CONTROL PACKET COUNTER
 } known_s;
 
 typedef struct stream_s {
@@ -204,9 +204,10 @@ typedef struct bucket_s {
 
 #define PHYS_PORT(phys) ((uint)(uintptr_t)(phys)->rx_handler_data)
 
-static u64 boot; // BOOT ID
+static u64 boot;
 static net_device_s* xlan;
 static net_device_s* physs[PORTS_N];
+static known_s knowns[HOSTS_N];
 // OUT
 static bucket_s buckets[PORTS_N];
 static stream_s streams[HOSTS_N][64]; // POPCOUNT64()
