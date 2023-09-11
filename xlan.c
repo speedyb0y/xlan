@@ -187,9 +187,10 @@ typedef typeof(jiffies) jiffies_t;
 #define dst6_host   (*(u8 *)(pkt + ETH_SIZE + IP6_O_DST_H))
 #define ports6      (*(u32*)(pkt + ETH_SIZE + IP6_SIZE))
 
+// TODO: THOSE MUST BE ATOMIC; AND BOOT AFTER BOOT
 typedef struct known_s {
-    u64 boot; // BOOT ID
     u64 counter; // CONTROL PACKET COUNTER
+    u64 boot; // BOOT ID
 } known_s;
 
 typedef struct stream_s {
