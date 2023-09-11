@@ -126,12 +126,12 @@ typedef typeof(jiffies) jiffies_t;
 #define ETH_O_TYPE    12
 #define ETH_SIZE      14
 
-#define CNTL_TOTAL_SIZE (ETH_SIZE + CNTL_SIZE)
+#define CNTL_TOTAL_SIZE (ETH_SIZE + CNTL_SIZE_)
 
 #define CNTL_O_BOOT     0
-#define CNTL_O_JIFFIES  8
+#define CNTL_O_COUNTER  8
 #define CNTL_O_MASK    16
-#define CNTL_SIZE      24
+#define CNTL_SIZE_     24 // YOU MOSTLY WON'T USE IT
 
 #define IP4_O_PROTO   9
 #define IP4_O_SRC     12
@@ -171,7 +171,7 @@ typedef typeof(jiffies) jiffies_t;
 #define pkt_type    (*(u16*)(pkt + ETH_O_TYPE))
 
 #define cntl_bootid  (*(u64*)(pkt + ETH_SIZE + CNTL_O_BOOT))
-#define cntl_jiffies (*(u64*)(pkt + ETH_SIZE + CNTL_O_JIFFIES))
+#define cntl_counter (*(u64*)(pkt + ETH_SIZE + CNTL_O_COUNTER))
 #define cntl_mask    (*(u64*)(pkt + ETH_SIZE + CNTL_O_MASK))
 
 #define proto4      (*(u8 *)(pkt + ETH_SIZE + IP4_O_PROTO))
@@ -271,7 +271,7 @@ static void xlan_keeper (struct timer_list* const timer) {
     src_port     = 0;
     pkt_type     = BE16(ETH_P_XLAN);
     cntl_bootid  = BE64(boot);
-    cntl_jiffies = BE64(now);
+    cntl_counter = BE64(counter++);
     cntl_mask    = *(u64*)(masks + PORTS_MY); // NO NEED BE HERE
 
     foreach (p, PORTS_N) {
@@ -291,7 +291,7 @@ static void xlan_keeper (struct timer_list* const timer) {
                 // PER PORT
                 src_port = p;
                 //
-                void* const pkt = memcpy(SKB_DATA(skb), pkt, CNTL_SIZE);
+                void* const pkt = memcpy(SKB_DATA(skb), pkt, CNTL_TOTAL_SIZE);
 
                 //
                 skb->transport_header = PTR(pkt) - SKB_HEAD(skb);
@@ -348,7 +348,7 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
     // CONTROLE
     if (dst_vendor != 0xFFFFFFFFU // CONTROLS ARE BROADCAST
      || pkt_type != BE16(ETH_P_XLAN) // EXPLICITLY
-     || skb->len != CNTL_SIZE) // COMPLETE
+     || skb->len != CNTL_TOTAL_SIZE) // COMPLETE
         goto drop;
 
     // marca esta interface aqui como recebendo
@@ -367,12 +367,14 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
 
     known = &[shost];
 
-    if (known->boot != cntl_boot) {
-        known->boot  = cntl_boot
-        knownJiffies = cntl_jiffies;
-    } elif (knownJiffies <= cntl_jiffies) {
+    if (known->boot   != rboot) {
+        known->boot    = rboot;        
+    } elif (rjiffies >= known->jiffies) {
+        if ((rjiffies - known->jiffies) > 24ULL*60*60*HZ)
             knownJiffies = cntl_jiffies;
     }
+
+    
 
       { // 
 
@@ -686,6 +688,7 @@ static int __init xlan_init (void) {
 
     // BOOT ID
     boot = jiffies; // TODO: FIXME:
+    counter = 0;
 
     foreach (p, PORTS_N)
         lalives[p] = ATOMIC_INIT(0);
