@@ -207,12 +207,9 @@ static u64 boot; // BOOT ID
 static net_device_s* xlan;
 static net_device_s* physs[PORTS_N];
 // OUT
-static atomic_t rmasks[HOSTS_N];
 static bucket_s buckets[PORTS_N];
 static stream_s streams[HOSTS_N][64]; // POPCOUNT64()
-// IN
-static atomic_t lalives[PORTS_N + 1]; // THE LAST IS THE MASK
-static atomic_t ralives[HOSTS_N][PORTS_N];
+
 
 /*
 ATOMIC_INIT
@@ -238,10 +235,6 @@ atomic_set_mask
 
 static void xlan_keeper (struct timer_list*);
 static DEFINE_TIMER(doTimer, xlan_keeper);
-
-// MUST MATCH THE MASK IN THAT LOOP SO WE SHIFT N -> 0
-// MUST BE HOLDABLE BY AN ATOMIC_T
-#define PORTS_N 32
 
 #define LEN_FOR(name, n) ( \
          (n)/(sizeof(name)*8) \
@@ -274,7 +267,7 @@ static void xlan_keeper (struct timer_list* const timer) {
 
     const jiffies_t now = jiffies;
 
-    // THE MASK OF THE PORTS THAT ARE RECEIVING
+    // UPDATE THE MASKS OF THE PORTS THAT ARE RECEIVING
     foreach (p, ALL_PORTS) {
         if (test_and_clear_bit(p, seens)) {
             // IN REPORTED IT'S ALIVE            
@@ -296,7 +289,7 @@ static void xlan_keeper (struct timer_list* const timer) {
     dst_port     = 0xFFU;
     src_vendor   = BE32(VENDOR);
     src_host     = HOST;
-    src_port     = p;
+    src_port     = 0;
     pkt_type     = BE16(ETH_P_XLAN);
     cntl_bootid  = BE64(boot);
     cntl_jiffies = BE64(now);
@@ -308,47 +301,33 @@ static void xlan_keeper (struct timer_list* const timer) {
 
         if (phys && phys->flags & IFF_UP) {
 
-            //
             sk_buff_s* const skb = alloc_skb(64 + CNTL_TOTAL_SIZE, GFP_ATOMIC);
 
-            if (skb == NULL) {
-                printk("XLAN: FAILED TO CREATE SKB\n");
-                continue;
-            }
+            if (skb) {
+    
+                void* const pkt = SKB_DATA(skb);
+                // PER PORT
+                src_port = p;
 
-            void* const pkt = SKB_DATA(skb);
-
-            dst_vendor   = 0xFFFFFFFFU;
-            dst_host     = 0xFFU;
-            dst_port     = 0xFFU;
-            src_vendor   = BE32(VENDOR);
-            src_host     = HOST;
-            src_port     = p;
-            pkt_type     = BE16(ETH_P_XLAN);
-            cntl_bootid  = BE64(boot);
-            cntl_jiffies = BE64(now);
-            cntl_mask    = *(u64*)(masks + PORTS_MY); // NO NEED BE HERE
-
-            //
-            skb->transport_header = PTR(pkt) - SKB_HEAD(skb);
-            skb->network_header   = PTR(pkt) - SKB_HEAD(skb);
-            skb->mac_header       = PTR(pkt) - SKB_HEAD(skb);
-            skb->data             = PTR(pkt);
+                //
+                skb->transport_header = PTR(pkt) - SKB_HEAD(skb);
+                skb->network_header   = PTR(pkt) - SKB_HEAD(skb);
+                skb->mac_header       = PTR(pkt) - SKB_HEAD(skb);
+                skb->data             = PTR(pkt);
 #ifdef NET_SKBUFF_DATA_USES_OFFSET
-            skb->tail             = PTR(pkt) + CNTL_TOTAL_SIZE - SKB_HEAD(skb);
+                skb->tail             = PTR(pkt) + CNTL_TOTAL_SIZE - SKB_HEAD(skb);
 #else
-            skb->tail             = PTR(pkt) + CNTL_TOTAL_SIZE;
+                skb->tail             = PTR(pkt) + CNTL_TOTAL_SIZE;
 #endif
-            skb->mac_len          = ETH_HLEN;
-            skb->len              = CNTL_TOTAL_SIZE;
-            skb->ip_summed        = CHECKSUM_NONE;
-            skb->dev              = phys;
-            skb->protocol         = BE16(ETH_P_XLAN); // TODO: FIXME:
+                skb->mac_len          = ETH_HLEN;
+                skb->len              = CNTL_TOTAL_SIZE;
+                skb->ip_summed        = CHECKSUM_NONE;
+                skb->dev              = phys;
+                skb->protocol         = BE16(ETH_P_XLAN); // TODO: FIXME:
 
-            // SEND IT
-            dev_queue_xmit(skb);
-        } else {
-            // TODO: REMOVE ITSELF FROM THE MASK
+                // SEND IT
+                dev_queue_xmit(skb);
+            }
         }
     }
 
