@@ -366,7 +366,7 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
     const uint rhost    = src_host;
     const uint rport    = src_port;
     const u64  rboot    = cntl_boot;
-    const u64  rcounter = cntl_id;
+    const u64  rid      = cntl_id;
     const u32  rmask    = cntl_mask;
 
     if (rhost == HOST
@@ -377,11 +377,11 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
     known_s* const known = &knowns[rhost];
 
     // IGNORA SE FOR UM PACOTE COM INFORMACOES DESATUALIZADAS
-    if (known->counter >= rcounter) {
+    if (known->counter >= rid) {
         if (known->boot == rboot)
             goto drop; // NOTE: A MUDANCA NO BOOT DELE PODE PASSAR DESPERCEBIDA SE O COUNTER FOR MAIOR
         known->boot    = rboot;
-    }   known->counter = rcounter;
+    }   known->counter = rid;
 
     // NOTE: AQUI PODERIA SALVAR A INFORMACAO rport, PARA CONFIRMAR que h:p X h:p estao funcionando
     // NOTA: ESTA PEGANDO O masks DELE, E COOCANDO NO NOSSO seens    
