@@ -230,6 +230,7 @@ static void xlan_keeper (struct timer_list* const timer) {
     const jiffies_t now = jiffies;
 
     // UPDATE THE MASKS OF THE PORTS THAT ARE RECEIVING
+#if 0
     foreach (h, HOSTS_N) {
 
         u32 seen = atomic_read(&seens[h]); // TODO: ATOMIC READ AND CLEAR
@@ -251,6 +252,21 @@ static void xlan_keeper (struct timer_list* const timer) {
         }
 
         atomic_set(&masks[h], mask);
+    }
+#endif
+
+    // UPDATE THE MASKS OF THE PORTS THAT ARE RECEIVING
+    foreach (p, ALL_PORTS) {
+        if (test_and_clear_bit(p, seens)) {
+            // IN REPORTED IT'S ALIVE            
+            set_bit(p, masks);
+            // KEEP IT ACTIVE FOR A WHILE
+                timeouts[p] = 8;
+        } elif (timeouts[p])
+            // NOTHING REPORTED, AND IT WAS ON
+          if (--timeouts[p] == 0)
+                // NOTHING REPORTED FOR TOO LONG
+                clear_bit(p, masks);
     }
 
     //
