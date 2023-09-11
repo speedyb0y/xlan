@@ -265,10 +265,8 @@ static void xlan_keeper (struct timer_list* const timer) {
 
             sk_buff_s* const skb = alloc_skb(64 + CNTL_TOTAL_SIZE, GFP_ATOMIC);
 
-            if (skb) {
-
-                // PER PORT
-                src_port = p;
+            if (skb) { src_port = p;
+                
                 //
                 void* const pkt = memcpy(SKB_DATA(skb), pkt, CNTL_TOTAL_SIZE);
 
