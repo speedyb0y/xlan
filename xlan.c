@@ -263,8 +263,8 @@ static u8 timeouts[(1 + HOSTS_N)*PORTS_N];
 // O OUT LE
 static u32 masks[1 + HOSTS_N]; 
 
-set_bit(port, lalives)
-set_bit(PORTS_N*rhost + rport, ralives)
+set_bit(PORTS_N*HOST_N + port, seens)
+set_bit(PORTS_N*rhost + rport, seens)
 
 static void xlan_keeper (struct timer_list* const timer) {
 
