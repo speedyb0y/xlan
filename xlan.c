@@ -187,6 +187,11 @@ typedef typeof(jiffies) jiffies_t;
 #define dst6_host   (*(u8 *)(pkt + ETH_SIZE + IP6_O_DST_H))
 #define ports6      (*(u32*)(pkt + ETH_SIZE + IP6_SIZE))
 
+typedef struct known_s {
+    u64 boot;
+    u64 counter;
+} known_s;
+
 typedef struct stream_s {
     u32 ports; // TODO: FIXME: ATOMIC
     u32 last;
@@ -244,9 +249,9 @@ static void xlan_keeper (struct timer_list* const timer) {
     src_host     = HOST;
     src_port     = 0;
     pkt_type     = BE16(ETH_P_XLAN);
-    cntl_bootid  = BE64(boot);
-    cntl_counter = BE64(counter++);
-    cntl_mask    = masks[HOST];
+    cntl_bootid  = BE64(knowns[HOST].boot);
+    cntl_counter = BE64(knowns[HOST].counter++);
+    cntl_mask    =       masks[HOST];
 
     foreach (p, PORTS_N) {
 
@@ -325,24 +330,20 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
      || skb->len != CNTL_TOTAL_SIZE) // COMPLETE
         goto drop;
 
-    // marca esta interface aqui como recebendo
-    set_bit(PORTS_MY + PHYS_PORT(skb->dev), seens);
+    // MARCA ESTA INTERFACE AQUI COMO RECEBENDO
+    set_bit(PHYS_PORT(skb->dev), &seens[HOST]);
 
-    const uint rhost   = src_host;
-    const uint rport   = src_port;
-    const u64 rboot    = cntl_boot;
-    const u64 rcounter = cntl_counter;
-    const uint rmask   = cntl_mask;
+    const uint rhost    = src_host;
+    const uint rport    = src_port;
+    const u64  rboot    = cntl_boot;
+    const u64  rcounter = cntl_counter;
+    const uint rmask    = cntl_mask;
 
     if (rhost == HOST
      || rhost >= HOSTS_N
      || rport >= PORTS_N)
         goto drop;
 
-typedef struct known_s {
-    u64 boot;
-    u64 counter;
-} known_s;
     known_s* const known = &knowns[rhost];
 
     // IGNORA SE FOR UM PACOTE COM INFORMACOES DESATUALIZADAS
@@ -353,15 +354,8 @@ typedef struct known_s {
     }   known->counter = rcounter;
 
     // NOTE: AQUI PODERIA SALVAR A INFORMACAO rport, PARA CONFIRMAR que h:p X h:p estao funcionando
-    
-    foreach (p, PORTS_N) {
-        // NOTA: ESTA PEGANDO O masks DELE, E COOCANDO NO NOSSO seens
-        atomic_write(SLOT_OF(seens, rhost), atomic_read(cntl_mask));
-        if (mask & 1ULL)         
-            set_bit(PORTS_N*rhost + p, seens);
-        else
-            set_bit(PORTS_N*rhost + p, seens)
-    }
+    // NOTA: ESTA PEGANDO O masks DELE, E COOCANDO NO NOSSO seens
+    seens[rhost] = rmask;
 drop:
     kfree_skb(skb);
 
@@ -662,22 +656,15 @@ static int __init xlan_init (void) {
     printk("XLAN: INIT - VENDOR 0x%04x HOST %u 0x%02X GW %u 0x%02X NET4 0x%08X NET6 0x%016llX\n",
         VENDOR, HOST, HOST, GW, GW, NET4, (unsigned long long int)NET6);
 
-    // BOOT ID
-    boot = jiffies; // TODO: FIXME:
-    counter = 0;
-
-    foreach (p, PORTS_N)
-        lalives[p] = ATOMIC_INIT(0);
-
-    foreach (h, HOSTS_N)
-        foreach (p, PORTS_N)
-            ralives[h][p] = ATOMIC_INIT(0);
-
     clear(physs);
     clear(streams);
     clear(buckets);
     clear(seen);
     clear(lReceiversMask);
+    clear(knowns);
+
+    // BOOT ID
+    knowns[HOST].boot = jiffies; // TODO: FIXME:
 
     //
     if ((xlan = alloc_netdev(0, "xlan", NET_NAME_USER, xlan_setup)) == NULL) {
