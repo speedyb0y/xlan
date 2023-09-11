@@ -210,29 +210,6 @@ static net_device_s* physs[PORTS_N];
 static bucket_s buckets[PORTS_N];
 static stream_s streams[HOSTS_N][64]; // POPCOUNT64()
 
-
-/*
-ATOMIC_INIT
-atomic_check_mask
-atomic_clear_mask
-atomic_set_mask
-*/
-    // mask com as portas deles que estao recebendo
-
-// enviar broadcast:
-//   BROADCAST port_mac port_id RECEBENDO SIM/NAO
-// dai vai receber de volta em outra interface
-//    ao receber um pacote de SI MESMO isso em outra interface
-//              marca a interface como RECEBENDO
-//      manda o proximo controle com ela marcada como recebendo
-//          
-
-// ao receber um pacote de uma porta, a qual afirma que ela mesma esta recebendo,
-//     marca ela como ativa aqui
-// ao receber um pacote de controle, vindo de qualquer porta,
-//          pega todas as portas que ele diz estarem NAO RECEBENDO,
-//              e desmarca
-
 static void xlan_keeper (struct timer_list*);
 static DEFINE_TIMER(doTimer, xlan_keeper);
 
