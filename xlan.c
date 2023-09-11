@@ -207,12 +207,11 @@ static u64 boot; // BOOT ID
 static net_device_s* xlan;
 static net_device_s* physs[PORTS_N];
 // OUT
-static atomic_t lmask;
 static atomic_t rmasks[HOSTS_N];
 static bucket_s buckets[PORTS_N];
 static stream_s streams[HOSTS_N][64]; // POPCOUNT64()
 // IN
-static atomic_t lalives[PORTS_N];
+static atomic_t lalives[PORTS_N + 1]; // THE LAST IS THE MASK
 static atomic_t ralives[HOSTS_N][PORTS_N];
 
 /*
@@ -245,16 +244,19 @@ static void xlan_keeper (struct timer_list* const timer) {
     const jiffies_t now = jiffies;
 
     // THE MASK OF THE PORTS THAT ARE RECEIVING
-    uint _lmask = 0; // LOCAL
+    uint lmask = 0; // LOCAL
+    uint pm = 1;
     atomic_t* pa = lalives;
-    foreach (p, PORTS_N) {
-        if ()
+    do {
         int count = atomic_read(pa);
-        atomic_set(pa, count);
-        _lmask |= (!!count) << p;
-    } while (mask <<= 1);
+        if (count) {
+            count--;
+            atomic_set(pa, count);
+            lmask |= pm;
+        } pa++;
+    } while (pm <<= 1);
     // GLOBAL
-    atomic_set(lmask, _lmask);
+    atomic_set(pa, lmask);
 
     // THE MASK OF THE REMOTE PORTAS THAT ARE RECEIVING
     
