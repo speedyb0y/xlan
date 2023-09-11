@@ -255,7 +255,7 @@ static void xlan_keeper (struct timer_list* const timer) {
     }
 
     //
-    u8* pkt[CNTL_SIZE];
+    u8* pkt[CNTL_TOTAL_SIZE];
 
     dst_vendor   = 0xFFFFFFFFU;
     dst_host     = 0xFFU;
