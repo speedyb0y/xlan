@@ -131,7 +131,7 @@ typedef typeof(jiffies) jiffies_t;
 #define CNTL_O_BOOT     0
 #define CNTL_O_JIFFIES  8
 #define CNTL_O_MASK    16
-#define CNTL_SIZE      20
+#define CNTL_SIZE      24
 
 #define IP4_O_PROTO   9
 #define IP4_O_SRC     12
@@ -172,7 +172,7 @@ typedef typeof(jiffies) jiffies_t;
 
 #define cntl_bootid  (*(u64*)(pkt + ETH_SIZE + CNTL_O_BOOT))
 #define cntl_jiffies (*(u64*)(pkt + ETH_SIZE + CNTL_O_JIFFIES))
-#define cntl_mask    (*(u32*)(pkt + ETH_SIZE + CNTL_O_MASK))
+#define cntl_mask    (*(u64*)(pkt + ETH_SIZE + CNTL_O_MASK))
 
 #define proto4      (*(u8 *)(pkt + ETH_SIZE + IP4_O_PROTO))
 #define addrs4      (*(u64*)(pkt + ETH_SIZE + IP4_O_SRC))
@@ -249,6 +249,8 @@ static DEFINE_TIMER(doTimer, xlan_keeper);
 
 #define ALL_PORTS ((1 + HOSTS_N)*PORTS_N)
 
+#define PORTS_MY (PORTS_N * HOSTS_N)
+
 // CADA BIT É UMA PORTA QUE FOI VISTA COMO FUNCIONANDO
 // O IN SETA (TOUCH)
 // O TIMER LE/CLEAR (RE-WATCH)
@@ -265,7 +267,7 @@ static u8 masks[LEN_FOR(masks, ALL_PORTS)];
 // SO O TIMER USA (PROCESSING BETWEEN SEEN AND MASK)
 static u8 timeouts[ALL_PORTS];
 
-set_bit(PORTS_N*HOST_N + port, seens)
+set_bit(PORTS_MY + port, seens)
 set_bit(PORTS_N*rhost + rport, seens)
 
 static void xlan_keeper (struct timer_list* const timer) {
@@ -286,14 +288,19 @@ static void xlan_keeper (struct timer_list* const timer) {
                 clear_bit(p, masks);
     }
 
-    // THE MASK OF THE REMOTE PORTAS THAT ARE RECEIVING
-    
-    foreach (h, HOSTS_N) {
-        uint _rmask = 0;
-        foreach (p, PORTS_N)
-            _rmask |= (!!atomic_dec_ret(ralives[h][p])) << p;
-        atomic_set(rmasks[h], _rmask);
-    }
+    //
+    u8* pkt[CNTL_SIZE];
+
+    dst_vendor   = 0xFFFFFFFFU;
+    dst_host     = 0xFFU;
+    dst_port     = 0xFFU;
+    src_vendor   = BE32(VENDOR);
+    src_host     = HOST;
+    src_port     = p;
+    pkt_type     = BE16(ETH_P_XLAN);
+    cntl_bootid  = BE64(boot);
+    cntl_jiffies = BE64(now);
+    cntl_mask    = *(u64*)(masks + PORTS_MY); // NO NEED BE HERE
 
     foreach (p, PORTS_N) {
 
@@ -320,7 +327,7 @@ static void xlan_keeper (struct timer_list* const timer) {
             pkt_type     = BE16(ETH_P_XLAN);
             cntl_bootid  = BE64(boot);
             cntl_jiffies = BE64(now);
-            cntl_mask    = BE32(_lmask);
+            cntl_mask    = *(u64*)(masks + PORTS_MY); // NO NEED BE HERE
 
             //
             skb->transport_header = PTR(pkt) - SKB_HEAD(skb);
