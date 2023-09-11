@@ -221,6 +221,8 @@ static a32 seens[HOSTS_N]; // CADA BIT É UMA PORTA QUE FOI VISTA COMO RECEBENDO
 static a32 masks[HOSTS_N]; // CADA WORD É UM MASK, CADA BIT É UMA PORTA QUE ESTA RECEBENDO
 static u8 timeouts[HOSTS_N*PORTS_N]; // CADA WORD É UM NUMERO
 
+#define SEEN_MASK(p) (((typeof(seens[0]))1) << (p))
+
 // ARGUMENTO DA FUNCAO test_and_clear_bit
 typedef unsigned long BITWORD_t;
 
@@ -343,8 +345,8 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
 
     // MARCA ESTA INTERFACE AQUI COMO RECEBENDO
     // TODO: ATOMIC OR?
-    atomic_set(     &seens[HOST], 
-        atomic_read(&seens[HOST]) | 1U << PHYS_PORT(skb->dev));
+    atomic_set ( &seens[HOST], 
+    atomic_read( &seens[HOST] | SEEN_MASK(PHYS_PORT(skb->dev)) ));
 
     const uint rhost    = src_host;
     const uint rport    = src_port;
