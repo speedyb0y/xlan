@@ -125,7 +125,7 @@ typedef typeof(jiffies) jiffies_t;
 #define CNTL_TOTAL_SIZE (ETH_SIZE + CNTL_SIZE_)
 
 #define CNTL_O_BOOT     0
-#define CNTL_O_COUNTER  8
+#define CNTL_O_ID       8
 #define CNTL_O_MASK    16
 #define CNTL_SIZE_     64 // YOU MOSTLY WON'T USE IT
 
@@ -166,8 +166,8 @@ typedef typeof(jiffies) jiffies_t;
 #define src_port    (*(u8 *)(pkt + ETH_O_SRC_P))
 #define pkt_type    (*(u16*)(pkt + ETH_O_TYPE))
 
-#define cntl_bootid  (*(u64*)(pkt + ETH_SIZE + CNTL_O_BOOT))
-#define cntl_counter (*(u64*)(pkt + ETH_SIZE + CNTL_O_COUNTER))
+#define cntl_boot    (*(u64*)(pkt + ETH_SIZE + CNTL_O_BOOT))
+#define cntl_counter (*(u64*)(pkt + ETH_SIZE + CNTL_O_ID))
 #define cntl_mask    (*(u32*)(pkt + ETH_SIZE + CNTL_O_MASK))
 
 #define proto4      (*(u8 *)(pkt + ETH_SIZE + IP4_O_PROTO))
@@ -280,8 +280,8 @@ static void xlan_keeper (struct timer_list* const timer) {
     src_host     = HOST;
     src_port     = 0;
     pkt_type     = BE16(ETH_P_XLAN);
-    cntl_bootid  = BE64(knowns[HOST].boot);
-    cntl_counter = BE64(knowns[HOST].counter++);
+    cntl_boot    = BE64(knowns[HOST].boot);
+    cntl_id      = BE64(knowns[HOST].counter++);
     cntl_mask    = BE32( masks[HOST].counter);
 
     foreach (p, PORTS_N) {
@@ -366,7 +366,7 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
     const uint rhost    = src_host;
     const uint rport    = src_port;
     const u64  rboot    = cntl_boot;
-    const u64  rcounter = cntl_counter;
+    const u64  rcounter = cntl_id;
     const u32  rmask    = cntl_mask;
 
     if (rhost == HOST
