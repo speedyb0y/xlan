@@ -332,20 +332,19 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
         // NOT A XLAN PACKET - DON'T INTERCEPT IT
         return RX_HANDLER_PASS;
 
-    // CONTROLE
-
-    // MARCA ESTA INTERFACE AQUI COMO RECEBENDO
-    if (rhost == HOST) {
-        bit_set(&seens[HOST], PHYS_PORT(skb->dev));
-        goto drop;
-    }
-
+    // CONTROL PACKET
     const uint size = BE16(cntl_size);
     const u64  rboot    = cntl_boot;
     const u64  rid      = cntl_id;
     const uint rhost    = cntl_host;
     const uint rport    = cntl_port;
     const u32  rmask    = cntl_mask;
+
+    // MARCA ESTA INTERFACE AQUI COMO RECEBENDO
+    if (rhost == HOST) {
+        bit_set(&seens[HOST], PHYS_PORT(skb->dev));
+        goto drop;
+    }
 
     if (size != CNTL_TOTAL_SIZE
      || size > skb->len
@@ -363,15 +362,15 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
     }
 
     if (checksum != cntl_checksum)
-        // CORRUPTED / INVALID
+        // CORRUPTED
         goto drop;
 
-    // IGNORA SE FOR UM PACOTE COM INFORMACOES DESATUALIZADAS
     host_s* const h = &hosts[rhost];
 
     if (h->counter >= rid) {
         if (h->boot == rboot)
-            goto drop; // NOTE: A MUDANCA NO BOOT DELE PODE PASSAR DESPERCEBIDA SE O COUNTER FOR MAIOR
+            // PACOTE COM INFORMACOES DESATUALIZADAS
+            goto drop; 
         h->boot    = rboot;
     }   h->counter = rid;
     
