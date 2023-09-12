@@ -218,8 +218,8 @@ static net_device_s* physs[PORTS_N];
 static host_s hosts[HOSTS_N];
 static bucket_s buckets[PORTS_N];
 static stream_s streams[HOSTS_N][64]; // POPCOUNT64()
-static a32 seens[HOSTS_N]; // CADA BIT É UMA PORTA QUE FOI VISTA COMO RECEBENDO
-static a32 masks[HOSTS_N]; // CADA WORD É UM MASK, CADA BIT É UMA PORTA QUE ESTA RECEBENDO
+static BITWORD_t seens[HOSTS_N]; // CADA BIT É UMA PORTA QUE FOI VISTA COMO RECEBENDO
+static u8 masks[HOSTS_N]; // CADA WORD É UM MASK, CADA BIT É UMA PORTA QUE ESTA RECEBENDO
 static u8 timeouts[HOSTS_N*PORTS_N]; // CADA WORD É UM NUMERO
 static uint keeperPort = 0;
 
@@ -233,17 +233,24 @@ static void xlan_keeper (struct timer_list* const timer) {
     const jiffies_t now = jiffies;
 
     // UPDATE THE MASKS OF THE PORTS THAT ARE RECEIVING
-    foreach (p, ALL_PORTS) {
-        if (test_and_clear_bit(p, (BITWORD_t*)seens)) {
-            // IN REPORTED IT'S ALIVE
-            set_bit(p, (BITWORD_t*)masks);
-            // KEEP IT ACTIVE FOR A WHILE
-                timeouts[p] = 8;
-        } elif (timeouts[p])
-            // NOTHING REPORTED, AND IT WAS ON
-          if (--timeouts[p] == 0)
-                // NOTHING REPORTED FOR TOO LONG
-                clear_bit(p, (BITWORD_t*)masks);
+    foreach (h, HOSTS_N) {
+
+        uint mask = masks[h];
+
+        foreach (p, PORTS_N) {
+            if (test_and_clear_bit(p, &seens[h])) {
+                // IN REPORTED IT'S ALIVE
+                mask |= 1U << p;
+                // KEEP IT ACTIVE FOR A WHILE
+                    timeouts[h][p] = 8;
+            } elif (timeouts[h][p])
+                // NOTHING REPORTED, AND IT WAS ON
+            if (--timeouts[h][p] == 0)
+                    // NOTHING REPORTED FOR TOO LONG
+                    mask ^= ~(1U << p);
+        }
+
+        masks[h] = mask;
     }
 
     // SELECIONA UMA INTERFACE DA QUAL ENVIAR
