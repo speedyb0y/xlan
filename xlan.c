@@ -107,7 +107,7 @@ typedef typeof(jiffies) jiffies_t;
 #endif
 
 #if GW == 0
-#undef GW
+#undef GW //
 #define GW HOST
 #endif
 
@@ -165,7 +165,7 @@ typedef typeof(jiffies) jiffies_t;
 #define src_vendor  (*(u32*)(pkt + ETH_O_SRC_V))
 #define src_host    (*(u8 *)(pkt + ETH_O_SRC_H))
 #define src_port    (*(u8 *)(pkt + ETH_O_SRC_P))
-#define pkt_proto   (*(u16*)(pkt + ETH_O_PROTO))
+#define eth_proto   (*(u16*)(pkt + ETH_O_PROTO))
 
 #define cntl_boot    (*(u64*)(pkt + ETH_SIZE + CNTL_O_BOOT))
 #define cntl_id      (*(u64*)(pkt + ETH_SIZE + CNTL_O_ID))
@@ -221,6 +221,7 @@ static stream_s streams[HOSTS_N][64]; // POPCOUNT64()
 static a32 seens[HOSTS_N]; // CADA BIT É UMA PORTA QUE FOI VISTA COMO RECEBENDO
 static a32 masks[HOSTS_N]; // CADA WORD É UM MASK, CADA BIT É UMA PORTA QUE ESTA RECEBENDO
 static u8 timeouts[HOSTS_N*PORTS_N]; // CADA WORD É UM NUMERO
+static uint keeperPort = 0;
 
 //BUILD_BUG_ON( sizeof(BITWORD_t)*8 == PORTS_N )
 
@@ -245,36 +246,36 @@ static void xlan_keeper (struct timer_list* const timer) {
                 clear_bit(p, (BITWORD_t*)masks);
     }
 
-    //
-    u8* pkt[CNTL_TOTAL_SIZE];
+    // SELECIONA UMA INTERFACE DA QUAL ENVIAR
+    foreach (c, PORTS_N) {
 
-    dst_vendor   = 0xFFFFFFFFU;
-    dst_host     = 0xFFU;
-    dst_port     = 0xFFU;
-    src_vendor   = BE32(VENDOR);
-    src_host     = HOST;
-    src_port     = 0;
-    pkt_proto    = BE16(ETH_P_XLAN);
-    cntl_boot    = BE64(hosts[HOST].boot);
-    cntl_id      = BE64(hosts[HOST].counter++);
-    cntl_mask    = BE32( masks[HOST].counter);
-
-    foreach (p, PORTS_N) {
+        const uint p = keeperPort++ % PORTS_N;
+        
 
         net_device_s* const phys = physs[p];
 
         if (phys && phys->flags & IFF_UP) {
 
-            if (0) {
-                // SE ESTAVA DESMARCADA COMO USAVEL PARA ENVIAR, RECOLOCA
-            }
-
             sk_buff_s* const skb = alloc_skb(64 + CNTL_TOTAL_SIZE, GFP_ATOMIC);
 
-            if (skb) { src_port = p;
+            if (skb) {
 
-                //
-                void* const pkt = memcpy(SKB_DATA(skb), pkt, CNTL_TOTAL_SIZE);
+                void* const pkt = SKB_DATA(skb);
+
+                dst_mac[0]   = 0xFFFFU;
+                dst_mac[1]   = 0xFFFFU;
+                dst_mac[2]   = 0xFFFFU;
+                src_mac[0]   = ((u16*)dev->dev_addr)[0];
+                src_mac[1]   = ((u16*)dev->dev_addr)[1];
+                src_mac[2]   = ((u16*)dev->dev_addr)[2];
+                eth_proto    = BE16(ETH_P_XLAN);
+                cntl_boot    = BE64(hosts[HOST].boot);
+                cntl_id      = BE64(hosts[HOST].counter++);
+                src_host     = HOST;
+                cntl_mask    = masks[HOST].counter;
+
+                // PREENCHE OS MACS
+
 
                 //
                 skb->transport_header = PTR(pkt) - SKB_HEAD(skb);
@@ -294,9 +295,9 @@ static void xlan_keeper (struct timer_list* const timer) {
 
                 // SEND IT
                 dev_queue_xmit(skb);
+
+                break;
             }
-        } else {
-            // TODO: DESMARCA ELA DA LISTA DE PHYS USAVEIS PARA ENVIAR
 
         }
     }
@@ -312,7 +313,7 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
 
     const void* const pkt = SKB_MAC(skb);
 
-    if (pkt_proto == BE16(ETH_P_XLAN_DATA)) {
+    if (eth_proto == BE16(ETH_P_XLAN_DATA)) {
         // NORMAL PACKET
 
         if (xlan->operstate != IF_OPER_UP // netif_oper_up()
@@ -328,7 +329,7 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
         return RX_HANDLER_ANOTHER;
     }
 
-    if (pkt_proto != BE16(ETH_P_XLAN_CONTROL)
+    if (eth_proto != BE16(ETH_P_XLAN_CONTROL)
      || skb->len != CNTL_TOTAL_SIZE)
         // NOT A XLAN PACKET - DON'T INTERCEPT IT
         return RX_HANDLER_PASS;
@@ -485,7 +486,7 @@ colocar/ou deixa sem
                 src_vendor = BE32(VENDOR);
                 src_host   = HOST;
                 src_port   = lport;
-                pkt_proto  = skb->protocol;
+                eth_proto  = skb->protocol;
 
                 // UPDATE SKB
                 skb->data       = PTR(pkt);
