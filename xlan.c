@@ -191,7 +191,7 @@ typedef typeof(jiffies) jiffies_t;
 
 // TODO: THOSE MUST BE ATOMIC; AND BOOT AFTER BOOT
 typedef struct host_s {
-    u64 counter; // CONTROL PACKET COUNTER
+    a64 counter; // CONTROL PACKET COUNTER
     u64 boot; // BOOT ID
 } host_s;
 
@@ -249,10 +249,7 @@ static void xlan_keeper (struct timer_list* const timer) {
     // SELECIONA UMA INTERFACE DA QUAL ENVIAR
     foreach (c, PORTS_N) {
 
-        const uint p = keeperPort++ % PORTS_N;
-        
-
-        net_device_s* const phys = physs[p];
+        net_device_s* const phys = physs[keeperPort++ % PORTS_N];
 
         if (phys && phys->flags & IFF_UP) {
 
@@ -271,13 +268,10 @@ static void xlan_keeper (struct timer_list* const timer) {
                 eth_proto    = BE16(ETH_P_XLAN);
                 cntl_boot    = BE64(hosts[HOST].boot);
                 cntl_id      = BE64(hosts[HOST].counter++);
-                src_host     = HOST;
-                cntl_mask    = masks[HOST].counter;
+                cntl_host    = HOST;
+                cntl_mask    = masks[HOST];
 
                 // PREENCHE OS MACS
-
-
-                //
                 skb->transport_header = PTR(pkt) - SKB_HEAD(skb);
                 skb->network_header   = PTR(pkt) - SKB_HEAD(skb);
                 skb->mac_header       = PTR(pkt) - SKB_HEAD(skb);
@@ -298,7 +292,6 @@ static void xlan_keeper (struct timer_list* const timer) {
 
                 break;
             }
-
         }
     }
 
