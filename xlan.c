@@ -239,15 +239,11 @@ static void xlan_keeper (struct timer_list* const timer) {
 
         foreach (p, PORTS_N) {
             if (test_and_clear_bit(p, &seens[h])) {
-                // IN REPORTED IT'S ALIVE
-                mask |= 1U << p;
-                // KEEP IT ACTIVE FOR A WHILE
+                    mask |=   1U << p;
                     timeouts[h][p] = 8;
             } elif (timeouts[h][p])
-                // NOTHING REPORTED, AND IT WAS ON
-            if (--timeouts[h][p] == 0)
-                    // NOTHING REPORTED FOR TOO LONG
-                    mask ^= ~(1U << p);
+              if (--timeouts[h][p] == 0)
+                    mask &= ~(1U << p);
         }
 
         masks[h] = mask;
