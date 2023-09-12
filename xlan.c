@@ -328,17 +328,16 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
         return RX_HANDLER_ANOTHER;
     }
 
-    if (pkt_proto != BE16(ETH_P_XLAN_CONTROL))
+    if (pkt_proto != BE16(ETH_P_XLAN_CONTROL)
+     || skb->len != CNTL_TOTAL_SIZE)
         // NOT A XLAN PACKET - DON'T INTERCEPT IT
         return RX_HANDLER_PASS;
 
     // CONTROL PACKET
-    const uint size = BE16(cntl_size);
-    const u64  rboot    = cntl_boot;
-    const u64  rid      = cntl_id;
-    const uint rhost    = cntl_host;
-    const uint rport    = cntl_port;
-    const u32  rmask    = cntl_mask;
+    const uint rhost = cntl_host;
+    const u64  rboot = cntl_boot;
+    const u64  rid   = cntl_id;
+          uint rmask = cntl_mask;
 
     // MARCA ESTA INTERFACE AQUI COMO RECEBENDO
     if (rhost == HOST) {
@@ -346,11 +345,8 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
         goto drop;
     }
 
-    if (size != CNTL_TOTAL_SIZE
-     || size > skb->len
-     || rhost >= HOSTS_N
-     || rport >= PORTS_N)
-        // INCOMPLETE / INVALID
+    if (rhost >= HOSTS_N)
+        // INVALID
         goto drop;
 
     // VERIFY CHECKSUM
@@ -375,10 +371,12 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
     }   h->counter = rid;
     
     foreach (p, PORTS_N) {
-		// REGISTRA O MAC DESTA PORTA DELE
-		memcpy(h->macs[p], cntl_macs[p], ETH_ALEN);
-        // REPORTA ELA COMO VISTA
-        set_bit(p, &seens[rhost]);
+        if (rmask & 1U) {
+		    // REGISTRA O MAC DESTA PORTA DELE
+		    memcpy(h->macs[p], cntl_macs[p], ETH_ALEN);
+            // REPORTA ELA COMO VISTA
+            set_bit(p, &seens[rhost]);
+        } rmask >>= 1;
     }
 
 drop:
