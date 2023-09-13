@@ -394,13 +394,21 @@ static int __f_cold xlan_enslave (net_device_s* xlan, net_device_s* phys, struct
         if (physs[p] == NULL) {
             // FREE PORT
 
-            if (netdev_rx_handler_register(phys, xlan_in, &seens[HOST][p]) != 0) {
-                printk("XLAN: FAILED TO ATTACH HANDLER ON PHYS %s\n", phys->name);
+            atomic_set(&seens[HOST][p], 0);
+
+            if (netdev_master_upper_dev_link(phys, xlan, NULL, NULL, NULL))
+                return -EBUSY;
+
+            if (netdev_rx_handler_register(phys, xlan_in, &seens[HOST][p])) {
+                netdev_upper_dev_unlink(phys, xlan);
                 return -EBUSY;
             }
 
             // HOLD IT
             dev_hold(phys);
+
+            //
+	        phys->dev->flags |= IFF_SLAVE;
 
             // REGISTER IT
             physs[p] = phys;
@@ -420,6 +428,9 @@ static int __f_cold xlan_unslave (net_device_s* xlan, net_device_s* phys) {
     foreach (p, PORTS_N) {
         if (physs[p] == phys) {
             physs[p] = NULL; // UNREGISTER
+            atomic_set(&seens[HOST][p], 0);
+	        phys->dev->flags ^= IFF_SLAVE;
+            netdev_upper_dev_unlink(phys, xlan);
             netdev_rx_handler_unregister(phys); // UNHOOK
             dev_put(phys); // DROP
             printk("XLAN: PORT %u: DETACHED PHYS %s\n", p, phys->name);
