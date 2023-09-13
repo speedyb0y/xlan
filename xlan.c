@@ -312,11 +312,16 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xlan) {
     ))];
 
     uint now   = jiffies;
+    uint counter = stream->counter;
     uint last  = stream->last;
     uint ports = stream->ports;
-
+    
     // FORCA A MUDANCA DA PORTA ATUAL SE O ULTIMO ENVIADO JA DEU TEMPO DE SER PROCESSADO
-    ports += (now - last) >= HZ/5;
+    if (counter == 0 || (now - last) >= HZ/5) {        
+        counter = 20000;
+        ports++;        
+    } else
+        counter--;
 
     foreach (c, (PORTS_N * PORTS_N * 2)) {
         ports %= PORTS_N * PORTS_N;
@@ -345,7 +350,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xlan) {
                     bucks /= HZ;
                     if (bucks > BUCKETS_PER_SECOND)
                         bucks = BUCKETS_PER_SECOND;
-                }
+                } last = now;
             }
 
             //
