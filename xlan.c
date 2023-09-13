@@ -226,7 +226,7 @@ static void xlan_keeper (struct timer_list* const timer) {
 
                     // BROADCAST
              *(u64*)eth_dst = 0xFFFFFFFFFFFFFFFFULL;
-             *(u64*)eth_src = *(u64*)(phys->dev_addr ?: "\x00\x00\x00\x00\x00\x00\x00\x00");
+             *(u64*)eth_src = *(u64*)(phys->dev_addr ?: (typeof(phys->dev_addr))"\x00\x00\x00\x00\x00\x00\x00\x00");
                     eth_proto    = BE16(ETH_P_XLAN);
                     cntl_host    = HOST;
                     cntl_port    = p;
