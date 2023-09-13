@@ -387,9 +387,10 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xlan) {
                 stream->ports = ports;
                 stream->last  = now;
 #define PHYS_ADDR64(phys) (*(u64*)((phys)->dev_addr ?: typeof((phys)->dev_addr)"\x00\x00\x00\x00\x00\x00\x00\x00"))
+#define HOST_ADDR64(h, p) atomic64_read(&macs[h][p])
                 // INSERT ETHERNET HEADER
-             *(u64*)eth_dst = atomic64_read(&macs[rhost][rport]);
-             *(u64*)eth_src = PHYS_ADDR(phys);
+             *(u64*)eth_dst = HOST_ADDR64(rhost, rport);
+             *(u64*)eth_src = PHYS_ADDR64(phys);
                     eth_proto    = BE16(ETH_P_XLAN);
 
                 // UPDATE SKB
