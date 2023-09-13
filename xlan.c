@@ -263,36 +263,31 @@ static void xlan_keeper (struct timer_list* const timer) {
 static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
 
     sk_buff_s* const skb = *pskb;
+        
+    if (skb->len >= CNTL_TOTAL_SIZE) {
+        // IS COMPLETE
+        const uint proto = skb->protocol;
 
-    const void* const pkt = SKB_MAC(skb);
+        if (proto == BE16(ETH_P_XLAN)) {
+            // CONTROL
+            const void* const pkt = SKB_MAC(skb);
+            const uint h = cntl_host;
+            const uint p = cntl_port;
 
-    if (eth_proto != BE16(ETH_P_XLAN))
-        // NOT XLAN - DONT INTERCEPT
-        return RX_HANDLER_PASS;
-
-    // INTERCEPT
-    if (skb->len != CNTL_TOTAL_SIZE) {
-        // NORMAL
-
-        if (xlan_is_up()) {
-            // RECEIVING
-            skb->dev = xlan;
-            skb->protocol = version4 == 0x45 ?
-                BE16(ETH_P_IP) :
-                BE16(ETH_P_IPV6);
-            return RX_HANDLER_ANOTHER;
-        }
-
-    } else {
-        // CONTROL
-        const uint h = cntl_host;
-        const uint p = cntl_port;
-
-        if (h < HOSTS_N && p < PORTS_N) {
-            atomic64_set(&macs [h][p], *(u64*)eth_src);
-              atomic_set(&seens[h][p], 1U << 4);
-            // MARCA ESTA INTERFACE COMO RECEBENDO
-            atomic_set((atomic_t*)skb->dev->rx_handler_data, 1U << 4);
+            if (h < HOSTS_N && p < PORTS_N) {
+                atomic64_set(&macs [h][p], *(u64*)eth_src);
+                  atomic_set(&seens[h][p], 1U << 4);
+                // MARCA ESTA INTERFACE COMO RECEBENDO
+                atomic_set((atomic_t*)skb->dev->rx_handler_data, 1U << 4);
+            }
+        } elif (proto == BE16(ETH_P_IP)
+             || proto == BE16(ETH_P_IPV6)) {
+            // NORMAL
+            if (xlan_is_up()) {
+                // RECEIVING
+                skb->dev = xlan;            
+                return RX_HANDLER_ANOTHER;
+            }
         }
     }
 
