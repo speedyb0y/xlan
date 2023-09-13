@@ -67,8 +67,8 @@ typedef typeof(jiffies) jiffies_t;
 
 #include "xconf.h"
 
-#define HOSTS_N 256 // MULTIPLE OF U64
-#define PORTS_N 32 // atomic_t
+#define HOSTS_N 256 // 0xFF + 1
+#define PORTS_N 8
 
 #define _NET4              XCONF_XLAN_NET4
 #define _NET6              XCONF_XLAN_NET6
