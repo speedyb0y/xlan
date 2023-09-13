@@ -246,7 +246,7 @@ static void xlan_announce (struct timer_list* const timer) {
 static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
 
     sk_buff_s* const skb = *pskb;
-        
+
     if (skb->len >= CNTL_TOTAL_SIZE) {
         // IS COMPLETE
         const uint proto = skb->protocol;
@@ -268,7 +268,7 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
             // NORMAL
             if (xlan_is_up()) {
                 // RECEIVING
-                skb->dev = xlan;            
+                skb->dev = xlan;
                 return RX_HANDLER_ANOTHER;
             }
         }
@@ -309,12 +309,11 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xlan) {
     ))];
 
     uint now   = jiffies;
-    uint counter = stream->counter;
     uint last  = stream->last;
     uint ports = stream->ports;
 
     // FORCA A MUDANCA DA PORTA ATUAL SE O ULTIMO ENVIADO JA DEU TEMPO DE SER PROCESSADO
-    ports += (now - last) >= HZ/5;        
+    ports += (now - last) >= HZ/5;
 
     foreach (c, (PORTS_N * PORTS_N * 2)) {
         ports %= PORTS_N * PORTS_N;
@@ -329,6 +328,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xlan) {
         if (phys && (phys->flags & IFF_UP) == IFF_UP && atomic_read((atomic_t*)phys->rx_handler_data)) { // IFF_RUNNING // IFF_LOWER_UP
 
             stream->ports = ports;
+            stream->last  = now;
 
             // INSERT ETHERNET HEADER
      *(u64*)eth_dst   = HOST_ADDR64(rhost, rport);
