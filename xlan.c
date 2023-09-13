@@ -68,7 +68,7 @@ typedef typeof(jiffies) jiffies_t;
 #include "xconf.h"
 
 #define HOSTS_N 256 // 0xFF + 1
-#define PORTS_N 8
+#define PORTS_N 4
 
 #define _NET4              XCONF_XLAN_NET4
 #define _NET6              XCONF_XLAN_NET6
@@ -173,14 +173,9 @@ typedef struct stream_s {
     u32 last;
 } stream_s;
 
-typedef struct bucket_s {
-    u32 can; // TODO: FIXME: ATOMIC
-    u32 last;
-} bucket_s;
-
 static net_device_s* xlan;
 static net_device_s* physs[PORTS_N];
-static bucket_s buckets[PORTS_N];
+static atomic64_t buckets[PORTS_N];
 static atomic64_t macs[HOSTS_N][PORTS_N];
 static atomic_t seens[HOSTS_N][PORTS_N]; // CADA WORD É UM COUNTDOWN (SHIFTED)
 static stream_s streams[HOSTS_N][64]; // POPCOUNT64()
@@ -335,36 +330,36 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xlan) {
 
         if (phys && (phys->flags & IFF_UP) == IFF_UP && atomic_read((atomic_t*)phys->rx_handler_data)) { // IFF_RUNNING // IFF_LOWER_UP
 
-            bucket_s* const bucket = &buckets[lport];
+            const u64 bucket = atomic64_read(&buckets[lport]);
 
-            uint bcan = bucket->can;
+            uint bucks = bucket & 0xFFFFFFFFU;
+            uint last = bucket >> 32;
 
-            if (bcan == 0) {
+            if (bucks == 0) {
                 if (c >= PORTS_N*PORTS_N) {
                     // SE CHEGAMOS AO SEGUNDO ROUND, É PORQUE ELE ESTA ZERADO
                     // SE ESTA CHEIO E NAO TEM OUTRO JEITO, LIBERA UM PEQUENO BURST
-                    bcan = BUCKETS_BURST;
+                    bucks = BUCKETS_BURST;
                     printk("XLAN: OUT: BURSTING! LPORT %u RHOST %u RPORT %u BCAN %u\n",
-                        lport, rhost, rport, bcan);
-                } elif (now >= bucket->last) {
+                        lport, rhost, rport, bucks);
+                } elif (now >= last) {
                     const uint elapsed =
-                        now >= bucket->last ?
-                        now -  bucket->last : HZ;
-                        bcan += (elapsed * BUCKETS_PER_SECOND)/HZ;
-                    if (bcan > BUCKETS_PER_SECOND)
-                        bcan = BUCKETS_PER_SECOND;
+                        now >= last ?
+                        now -  last : HZ;
+                        bucks += (elapsed * BUCKETS_PER_SECOND)/HZ;
+                    if (bucks > BUCKETS_PER_SECOND)
+                        bucks = BUCKETS_PER_SECOND;
                     printk("XLAN: OUT: BUCKET! LPORT %u RHOST %u RPORT %u BCAN %u ELAPSED %u\n",
-                        lport, rhost, rport, bcan, elapsed);
+                        lport, rhost, rport, bucks, elapsed);
                 } else { // SE DEU OVERFLOW NO JIFFIES CONSIDERA COMO 1 SEGUNDO
                     printk("XLAN: OUT: BUCKET TIME OVERFLOW\n");
-                    bcan = BUCKETS_PER_SECOND;
+                    bucks = BUCKETS_PER_SECOND;
                 }
             }
 
             //
-            if (bcan) {
-                bucket->can = bcan - 1;
-                bucket->last = now;
+            if (bucks) {
+                atomic64_set(&buckets[lport], ((u64)now << 32) | (bucks - 1));
                 stream->ports = ports;
                 stream->last  = now;
 
