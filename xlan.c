@@ -175,6 +175,9 @@ typedef unsigned long BITWORD_t;
 #define dst6_host   (*(u8 *)(pkt + ETH_SIZE + IP6_O_DST_H))
 #define ports6      (*(u32*)(pkt + ETH_SIZE + IP6_SIZE))
 
+#define PHYS_ADDR64(phys) (*(u64*)((phys)->dev_addr ?: (typeof((phys)->dev_addr))"\x00\x00\x00\x00\x00\x00\x00\x00"))
+#define HOST_ADDR64(h, p) atomic64_read(&macs[h][p])
+
 typedef struct stream_s {
     u32 ports; // TODO: FIXME: ATOMIC
     u32 last;
@@ -226,7 +229,7 @@ static void xlan_keeper (struct timer_list* const timer) {
 
                     // BROADCAST
              *(u64*)eth_dst = 0xFFFFFFFFFFFFFFFFULL;
-             *(u64*)eth_src = *(u64*)(phys->dev_addr ?: (typeof(phys->dev_addr))"\x00\x00\x00\x00\x00\x00\x00\x00");
+             *(u64*)eth_src = PHYS_ADDR64(phys);
                     eth_proto    = BE16(ETH_P_XLAN);
                     cntl_host    = HOST;
                     cntl_port    = p;
@@ -386,8 +389,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xlan) {
                 bucket->last = now;
                 stream->ports = ports;
                 stream->last  = now;
-#define PHYS_ADDR64(phys) (*(u64*)((phys)->dev_addr ?: typeof((phys)->dev_addr)"\x00\x00\x00\x00\x00\x00\x00\x00"))
-#define HOST_ADDR64(h, p) atomic64_read(&macs[h][p])
+
                 // INSERT ETHERNET HEADER
              *(u64*)eth_dst = HOST_ADDR64(rhost, rport);
              *(u64*)eth_src = PHYS_ADDR64(phys);
