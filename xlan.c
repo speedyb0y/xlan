@@ -385,10 +385,6 @@ static int __f_cold xlan_enslave (net_device_s* xlan, net_device_s* phys, struct
         //
         return -EINVAL;
 
-    if (netdev_is_rx_handler_busy(phys))
-        //
-        return -EBUSY;
-
     foreach (p, PORTS_N) {
 
         if (physs[p] == phys)
@@ -400,7 +396,7 @@ static int __f_cold xlan_enslave (net_device_s* xlan, net_device_s* phys, struct
 
             if (netdev_rx_handler_register(phys, xlan_in, &seens[HOST][p]) != 0) {
                 printk("XLAN: FAILED TO ATTACH HANDLER ON PHYS %s\n", phys->name);
-                return -1;
+                return -EBUSY;
             }
 
             // HOLD IT
