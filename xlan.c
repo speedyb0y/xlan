@@ -150,8 +150,8 @@ typedef unsigned long BITWORD_t;
 
 #define ETH_P_XLAN 0x2562
 
-#define eth_dst     (*(u8 *)(pkt + ETH_O_DST_V))
-#define eth_src     (*(u8 *)(pkt + ETH_O_SRC_V))
+#define eth_dst     ( (u8 *)(pkt + ETH_O_DST_V))
+#define eth_src     ( (u8 *)(pkt + ETH_O_SRC_V))
 #define eth_proto   (*(u16*)(pkt + ETH_O_PROTO))
 
 #define cntl_host   (*(u8 *)(pkt + ETH_SIZE))
