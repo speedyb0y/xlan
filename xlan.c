@@ -198,8 +198,8 @@ static void xlan_announce (struct timer_list* const timer) {
                 void* const pkt = SKB_DATA(skb);
 
                 // BROADCAST
-            *(u64*)eth_dst   = 0xFFFFFFFFFFFFFFFFULL;
-            *(u64*)eth_src   = PHYS_ADDR64(phys);
+         *(u64*)eth_dst   = 0xFFFFFFFFFFFFFFFFULL;
+         *(u64*)eth_src   = PHYS_ADDR64(phys);
                 eth_proto = BE16(ETH_P_XLAN);
                 cntl_host = HOST;
                 cntl_port = p;
@@ -348,6 +348,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xlan) {
                 return NETDEV_TX_OK;
             }
 
+            // POIS O TIMER NAO TOCA NOS SEENS DE INTERFACES QUE NAO ESTAO UP
             atomic_set(&seens[HOST][lport], 0);
         }
 
