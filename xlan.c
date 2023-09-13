@@ -43,8 +43,6 @@ typedef typeof(jiffies) jiffies_t;
 // ARGUMENTO DA FUNCAO test_and_clear_bit
 typedef unsigned long BITWORD_t;
 
-#define clear(obj) memset((obj), 0, sizeof(*(obj)))
-
 #define SKB_HEAD(skb) PTR((skb)->head)
 #define SKB_DATA(skb) PTR((skb)->data)
 #define SKB_TAIL(skb) PTR(skb_tail_pointer(skb))
@@ -551,11 +549,11 @@ static int __init xlan_init (void) {
     printk("XLAN: INIT - HOST %u 0x%02X GW %u 0x%02X NET4 0x%08X NET6 0x%016llX\n",
         HOST, HOST, GW, GW, NET4, (unsigned long long int)NET6);
 
-    clear(physs);
-    clear(streams);
-    clear(buckets);
-    clear(seens); // NOTE: ATOMIC_INIT(0)
-    clear(macs);
+    memset(physs, 0, sizeof(physs));
+    memset(streams, 0, sizeof(sreams));
+    memset(buckets, 0, sizeof(buckets));
+    memset(seens, 0, sizeof(seens)); // NOTE: ATOMIC_INIT(0)
+    memset(macs, 0, sizeof(macs));
 
     //
     if ((xlan = alloc_netdev(0, "xlan", NET_NAME_USER, xlan_setup)) == NULL) {
