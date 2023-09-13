@@ -77,8 +77,8 @@ typedef typeof(jiffies) jiffies_t;
 #define BUCKETS_PER_SECOND XCONF_XLAN_BUCKETS_PER_SECOND
 #define BUCKETS_BURST      XCONF_XLAN_BUCKETS_BURST
 
-#define XLAN_TIMER_DELAY    (XCONF_XLAN_TIMER_DELAY*HZ) // AFTER SYSTEM BOOT
-#define XLAN_TIMER_INTERVAL (XCONF_XLAN_TIMER_INTERVAL*HZ)
+#define XLAN_ANNOUNCE_DELAY    (XCONF_XLAN_ANNOUNCE_DELAY    * HZ) // AFTER SYSTEM BOOT
+#define XLAN_ANNOUNCE_INTERVAL (XCONF_XLAN_ANNOUNCE_INTERVAL * HZ)
 
 #if !(_NET4 && !(_NET4 % HOSTS_N))
 #error "BAD NET4"
@@ -189,8 +189,8 @@ static atomic64_t macs[HOSTS_N][PORTS_N];
 static atomic_t seens[HOSTS_N][PORTS_N]; // CADA WORD É UM COUNTDOWN (SHIFTED)
 static stream_s streams[HOSTS_N][64]; // POPCOUNT64()
 
-static void xlan_keeper (struct timer_list*);
-static DEFINE_TIMER(doTimer, xlan_keeper);
+static void xlan_announce (struct timer_list*);
+static DEFINE_TIMER(doTimer, xlan_announce);
 
 static inline bool xlan_is_up (void) {
 
@@ -198,7 +198,7 @@ static inline bool xlan_is_up (void) {
         || xlan->operstate == IF_OPER_UNKNOWN;
 }
 
-static void xlan_keeper (struct timer_list* const timer) {
+static void xlan_announce (struct timer_list* const timer) {
 
     const jiffies_t now = jiffies;
 
