@@ -166,16 +166,11 @@ typedef typeof(jiffies) jiffies_t;
 #define PHYS_ADDR64(phys) (*(u64*)((phys)->dev_addr ?: (typeof((phys)->dev_addr))"\x00\x00\x00\x00\x00\x00\x00\x00"))
 #define HOST_ADDR64(h, p) atomic64_read(&macs[h][p])
 
-typedef struct stream_s {
-    u32 ports; // TODO: FIXME: ATOMIC
-    u32 last;
-} stream_s;
-
 static net_device_s* xlan;
 static net_device_s* physs[PORTS_N];
 static atomic64_t macs[HOSTS_N][PORTS_N];
 static atomic_t seens[HOSTS_N][PORTS_N]; // CADA WORD É UM COUNTDOWN (SHIFTED)
-static stream_s streams[HOSTS_N][64]; // POPCOUNT64()
+static atomic64_t streams[HOSTS_N][64]; // POPCOUNT64()
 
 static void xlan_announce (struct timer_list*);
 static DEFINE_TIMER(doTimer, xlan_announce);
@@ -490,9 +485,9 @@ static int __init xlan_init (void) {
         HOST, HOST, GW, GW, NET4, (unsigned long long int)NET6);
 
     memset(physs, 0, sizeof(physs));
-    memset(streams, 0, sizeof(streams));
+    memset(streams, 0, sizeof(streams)); // NOTE: ATOMIC_INIT(0)
     memset(seens, 0, sizeof(seens)); // NOTE: ATOMIC_INIT(0)
-    memset(macs, 0, sizeof(macs));
+    memset(macs, 0, sizeof(macs)); // NOTE: ATOMIC_INIT(0)
 
     //
     if ((xlan = alloc_netdev(0, "xlan", NET_NAME_USER, xlan_setup)) == NULL) {
