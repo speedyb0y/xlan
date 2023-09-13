@@ -315,13 +315,9 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xlan) {
     uint counter = stream->counter;
     uint last  = stream->last;
     uint ports = stream->ports;
-    
+
     // FORCA A MUDANCA DA PORTA ATUAL SE O ULTIMO ENVIADO JA DEU TEMPO DE SER PROCESSADO
-    if (counter == 0 || (now - last) >= HZ/5) {        
-        counter = 20000;
-        ports++;        
-    } else
-        counter--;
+    ports += (now - last) >= HZ/5;        
 
     foreach (c, (PORTS_N * PORTS_N * 2)) {
         ports %= PORTS_N * PORTS_N;
@@ -335,52 +331,30 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xlan) {
 
         if (phys && (phys->flags & IFF_UP) == IFF_UP && atomic_read((atomic_t*)phys->rx_handler_data)) { // IFF_RUNNING // IFF_LOWER_UP
 
-            u64 last  = atomic64_read(&buckets[lport]);
-            uint bucks = last & 0xFFFFFFU;            
-            last >>= 24;
+            stream->ports = ports;
 
-            if (bucks == 0) {
-                if (c >= PORTS_N*PORTS_N)
-                    // SE CHEGAMOS AO SEGUNDO ROUND, É PORQUE ELE ESTA ZERADO, E NAO TEM OUTRO JEITO
-                    // LIBERA UM PEQUENO BURST
-                    bucks = BUCKETS_BURST;
-                else { // SE DER OVERFLOW NO JIFFIES NAO TEM TANTO IMPACTO
-                    bucks = now - last;
-                    bucks *= BUCKETS_PER_SECOND;
-                    bucks /= HZ;
-                    if (bucks > BUCKETS_PER_SECOND)
-                        bucks = BUCKETS_PER_SECOND;
-                } last = now;
-            }
+            // INSERT ETHERNET HEADER
+     *(u64*)eth_dst   = HOST_ADDR64(rhost, rport);
+     *(u64*)eth_src   = PHYS_ADDR64(phys);
+            eth_proto = BE16(ETH_P_XLAN);
 
-            //
-            if (bucks) {
-                atomic64_set(&buckets[lport], ((u64)last << 24) | (bucks - 1));
-                stream->ports = ports;
-
-                // INSERT ETHERNET HEADER
-             *(u64*)eth_dst = HOST_ADDR64(rhost, rport);
-             *(u64*)eth_src = PHYS_ADDR64(phys);
-                    eth_proto    = BE16(ETH_P_XLAN);
-
-                // UPDATE SKB
-                skb->data       = PTR(pkt);
+            // UPDATE SKB
+            skb->data       = PTR(pkt);
 #ifdef NET_SKBUFF_DATA_USES_OFFSET
-                skb->mac_header = PTR(pkt) - SKB_HEAD(skb);
+            skb->mac_header = PTR(pkt) - SKB_HEAD(skb);
 #else
-                skb->mac_header = PTR(pkt);
+            skb->mac_header = PTR(pkt);
 #endif
-                skb->len        = SKB_TAIL(skb) - PTR(pkt);
-                skb->mac_len    = ETH_HLEN;
-                skb->dev        = phys;
+            skb->len        = SKB_TAIL(skb) - PTR(pkt);
+            skb->mac_len    = ETH_HLEN;
+            skb->dev        = phys;
 
-                // -- THE FUNCTION CAN BE CALLED FROM AN INTERRUPT
-                // -- WHEN CALLING THIS METHOD, INTERRUPTS MUST BE ENABLED
-                // -- REGARDLESS OF THE RETURN VALUE, THE SKB IS CONSUMED
-                dev_queue_xmit(skb);
+            // -- THE FUNCTION CAN BE CALLED FROM AN INTERRUPT
+            // -- WHEN CALLING THIS METHOD, INTERRUPTS MUST BE ENABLED
+            // -- REGARDLESS OF THE RETURN VALUE, THE SKB IS CONSUMED
+            dev_queue_xmit(skb);
 
-                return NETDEV_TX_OK;
-            }
+            return NETDEV_TX_OK;
         }
 
         ports++;
