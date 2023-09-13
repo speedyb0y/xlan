@@ -80,7 +80,7 @@ typedef typeof(jiffies) jiffies_t;
 #define XLAN_ANNOUNCE_DELAY    (XCONF_XLAN_ANNOUNCE_DELAY    * HZ) // AFTER SYSTEM BOOT
 #define XLAN_ANNOUNCE_INTERVAL (XCONF_XLAN_ANNOUNCE_INTERVAL * HZ)
 
-#if !(_NET4 && !(_NET4 % HOSTS_N))
+#if !(_NET4 && _NET4 <= 0xFFFFFFFF && !(_NET4 & 0xFF))
 #error "BAD NET4"
 #endif
 
@@ -88,17 +88,12 @@ typedef typeof(jiffies) jiffies_t;
 #error "BAD NET6"
 #endif
 
-#if !(HOST && HOST < HOSTS_N)
+#if !(HOST < HOSTS_N && HOST)
 #error "BAD HOST"
 #endif
 
-#if !(GW != HOST && GW < HOSTS_N)
+#if !(GW < HOSTS_N)
 #error "BAD GW"
-#endif
-
-#if GW == 0
-#undef GW //
-#define GW HOST
 #endif
 
 #define ETH_O_DST      0
@@ -151,6 +146,7 @@ typedef typeof(jiffies) jiffies_t;
 #define cntl_host   (*(u8 *)(pkt + ETH_SIZE))
 #define cntl_port   (*(u8 *)(pkt + ETH_SIZE + 1))
 
+// NOTE: ASSUME QUE NÃO TEM IP OPTIONS
 #define version4    (*(u8 *)(pkt + ETH_SIZE + IP4_O_VERSION))
 #define proto4      (*(u8 *)(pkt + ETH_SIZE + IP4_O_PROTO))
 #define addrs4      (*(u64*)(pkt + ETH_SIZE + IP4_O_SRC))
@@ -303,18 +299,12 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xlan) {
     if (PTR(pkt) < SKB_HEAD(skb))
         goto drop;
 
-    // NOTE: ASSUME QUE NÃO TEM IP OPTIONS
     const int v4 = skb->protocol == BE16(ETH_P_IP);
 
     // IDENTIFY DESTINATION
     const uint rhost = v4 ?
         ( (dst4_net & BE32(0xFFFFFF00U)) == BE32(NET4) ? dst4_host : GW ):
         (  dst6_net                      == BE64(NET6) ? dst6_host : GW );
-
-    // É INVALIDO / ERA EXTERNO E NAO TEMOS GATEWAY / PARA SI MESMO
-    if (rhost >= HOSTS_N
-     || rhost == HOST)
-        goto drop;
 
     // SELECT A PATH
     // OK: TCP | UDP | UDPLITE | SCTP | DCCP
