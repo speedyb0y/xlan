@@ -317,7 +317,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xlan) {
                 // E PORQUE NOS TEMOS MAIS CONTROLE SE ESSA NOSSA PORTA ESTA EXAUSTA OU NAO
 
         if (0 < atomic_read(&seens[HOST][lport])
-         && 0 < atomic_read(&seens[rhost][rport]) {
+         && 0 < atomic_read(&seens[rhost][rport])) {
 
             net_device_s* const phys = physs[lport];
 
