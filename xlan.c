@@ -355,9 +355,8 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xlan) {
 
             //
             if (bucks) {
-                atomic64_set(&buckets[lport], ((u64)now << 24) | (bucks - 1));
+                atomic64_set(&buckets[lport], ((u64)last << 24) | (bucks - 1));
                 stream->ports = ports;
-                stream->last  = now;
 
                 // INSERT ETHERNET HEADER
              *(u64*)eth_dst = HOST_ADDR64(rhost, rport);
