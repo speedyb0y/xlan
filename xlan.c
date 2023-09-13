@@ -70,10 +70,10 @@ typedef typeof(jiffies) jiffies_t;
 #define HOSTS_N 256 // 0xFF + 1
 #define PORTS_N 4
 
-#define _NET4              XCONF_XLAN_NET4
-#define _NET6              XCONF_XLAN_NET6
-#define HOST               XCONF_XLAN_HOST
-#define GW                 XCONF_XLAN_GW
+#define _NET4 XCONF_XLAN_NET4
+#define _NET6 XCONF_XLAN_NET6
+#define HOST  XCONF_XLAN_HOST
+#define GW    XCONF_XLAN_GW
 
 #define XLAN_ANNOUNCE_DELAY    (XCONF_XLAN_ANNOUNCE_DELAY    * HZ) // AFTER SYSTEM BOOT
 #define XLAN_ANNOUNCE_INTERVAL (XCONF_XLAN_ANNOUNCE_INTERVAL * HZ)

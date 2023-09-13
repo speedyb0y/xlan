@@ -27,11 +27,3 @@ config   XLAN_ANNOUNCE_DELAY
 config   XLAN_ANNOUNCE_INTERVAL
     int "XLAN_ANNOUNCE_INTERVAL"
     default 2
-
-config   XLAN_BUCKETS_PER_SECOND
-    int "XLAN_BUCKETS_PER_SECOND"
-    default 30000
-
-config   XLAN_BUCKETS_BURST
-    int "XLAN_BUCKETS_BURST"
-    default 200
