@@ -20,12 +20,12 @@ config   XLAN_GW
     int "XLAN_GW"
     default 50
 
-config   XLAN_TIMER_DELAY
-    int "XLAN_TIMER_DELAY"
+config   XLAN_ANNOUNCE_DELAY
+    int "XLAN_ANNOUNCE_DELAY"
     default 15
 
-config   XLAN_TIMER_INTERVAL
-    int "XLAN_TIMER_INTERVAL"
+config   XLAN_ANNOUNCE_INTERVAL
+    int "XLAN_ANNOUNCE_INTERVAL"
     default 2
 
 config   XLAN_BUCKETS_PER_SECOND
