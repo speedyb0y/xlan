@@ -361,10 +361,10 @@ drop:
 
 static int __f_cold xlan_down (net_device_s* const xlan) {
 
+    printk("XLAN: %s DOWN\n", xlan->name);
+
     // CANCEL TIMER
     del_timer_sync(&doTimer);
-
-    printk("XLAN: %s DOWN\n", xlan->name);
 
     return 0;
 }
@@ -374,8 +374,7 @@ static int __f_cold xlan_up (net_device_s* const xlan) {
     printk("XLAN: %s UP\n", xlan->name);
 
     // ACTIVATE TIMER
-    doTimer.expires = jiffies + XLAN_ANNOUNCE_DELAY;
-    add_timer(&doTimer);
+    mod_timer(&doTimer, jiffies + XLAN_ANNOUNCE_DELAY);
 
     return 0;
 }
