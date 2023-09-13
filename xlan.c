@@ -185,15 +185,12 @@ typedef struct bucket_s {
     u32 last;
 } bucket_s;
 
-// TODO: THOSE MUST BE ATOMIC; AND BOOT AFTER BOOT
+static net_device_s* xlan;
+static net_device_s* physs[PORTS_N];
+static bucket_s buckets[PORTS_N];
 static atomic64_t macs[HOSTS_N][PORTS_N];
 static atomic_t seens[HOSTS_N][PORTS_N]; // CADA BIT É UMA PORTA QUE FOI VISTA COMO RECEBENDO
 static stream_s streams[HOSTS_N][64]; // POPCOUNT64()
-static net_device_s* xlan;
-static net_device_s* physs[PORTS_N];
-static host_s hosts[HOSTS_N];
-static bucket_s buckets[PORTS_N];
-
 
 static void xlan_keeper (struct timer_list*);
 static DEFINE_TIMER(doTimer, xlan_keeper);
