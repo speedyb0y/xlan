@@ -75,8 +75,9 @@ typedef typeof(jiffies) jiffies_t;
 #define HOST  XCONF_XLAN_HOST
 #define GW    XCONF_XLAN_GW
 
-#define XLAN_ANNOUNCE_DELAY    (XCONF_XLAN_ANNOUNCE_DELAY    * HZ) // AFTER SYSTEM BOOT
-#define XLAN_ANNOUNCE_INTERVAL (XCONF_XLAN_ANNOUNCE_INTERVAL * HZ)
+#define ANNOUNCE_DELAY    (XCONF_XLAN_ANNOUNCE_DELAY    * HZ) // AFTER SYSTEM BOOT
+#define ANNOUNCE_INTERVAL (XCONF_XLAN_ANNOUNCE_INTERVAL * HZ)
+#define ANNOUNCE_ROUNDS    XCONF_XLAN_ANNOUNCE_ROUNDS
 
 #if !(_NET4 && _NET4 <= 0xFFFFFFFF && !(_NET4 & 0xFF))
 #error "BAD NET4"
@@ -227,7 +228,7 @@ static void xlan_announce (struct timer_list* const timer) {
     }
 
     // REINSTALL TIMER
-    doTimer.expires = jiffies + XLAN_ANNOUNCE_INTERVAL;
+    doTimer.expires = jiffies + ANNOUNCE_INTERVAL;
     
     add_timer(&doTimer);
 }
@@ -248,15 +249,15 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
 
             if (h == HOST)
                 // MARCA ESTA INTERFACE COMO RECEBENDO
-                atomic_set((atomic_t*)skb->dev->rx_handler_data, 5);
+                atomic_set((atomic_t*)skb->dev->rx_handler_data, ANNOUNCE_ROUNDS);
             elif (p < PORTS_N) { // ASSERT: h < HOSTS_N
                 atomic64_set(&macs [h][p], *(u64*)eth_src);
-                  atomic_set(&seens[h][p], 5);
+                  atomic_set(&seens[h][p], ANNOUNCE_ROUNDS);
             }
         } elif (proto == BE16(ETH_P_IP)
              || proto == BE16(ETH_P_IPV6)) {
             // NORMAL
-            if (xlan_is_up() && skbtype == PACKET_HOST) {
+            if (skb->pkt_type == PACKET_HOST && xlan_is_up()) {
                 // RECEIVING
                 skb->dev = xlan;
                 return RX_HANDLER_ANOTHER;
@@ -376,7 +377,7 @@ static int __f_cold xlan_up (net_device_s* const xlan) {
     printk("XLAN: %s UP\n", xlan->name);
 
     // ACTIVATE TIMER
-    mod_timer(&doTimer, jiffies + XLAN_ANNOUNCE_DELAY);
+    mod_timer(&doTimer, jiffies + ANNOUNCE_DELAY);
 
     return 0;
 }

@@ -22,8 +22,12 @@ config   XLAN_GW
 
 config   XLAN_ANNOUNCE_DELAY
     int "XLAN_ANNOUNCE_DELAY"
-    default 15
+    default 3
 
 config   XLAN_ANNOUNCE_INTERVAL
     int "XLAN_ANNOUNCE_INTERVAL"
     default 2
+
+config   XLAN_ANNOUNCE_ROUNDS
+    int "XLAN_ANNOUNCE_ROUNDS"
+    default 3
