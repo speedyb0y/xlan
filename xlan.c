@@ -411,7 +411,7 @@ static int __f_cold xlan_enslave (net_device_s* xlan, net_device_s* phys, struct
             dev_hold(phys);
 
             //
-	        phys->dev->flags |= IFF_SLAVE;
+	        phys->flags |= IFF_SLAVE;
 
             // REGISTER IT
             physs[p] = phys;
@@ -432,7 +432,7 @@ static int __f_cold xlan_unslave (net_device_s* xlan, net_device_s* phys) {
         if (physs[p] == phys) {
             physs[p] = NULL; // UNREGISTER
             netdev_rx_handler_unregister(phys); // UNHOOK
-	        phys->dev->flags ^= IFF_SLAVE;
+	        phys->flags ^= IFF_SLAVE;
             netdev_upper_dev_unlink(phys, xlan);
             atomic_set(&seens[HOST][p], 0);
             dev_put(phys); // DROP
