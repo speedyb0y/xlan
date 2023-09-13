@@ -550,7 +550,7 @@ static int __init xlan_init (void) {
         HOST, HOST, GW, GW, NET4, (unsigned long long int)NET6);
 
     memset(physs, 0, sizeof(physs));
-    memset(streams, 0, sizeof(sreams));
+    memset(streams, 0, sizeof(streams));
     memset(buckets, 0, sizeof(buckets));
     memset(seens, 0, sizeof(seens)); // NOTE: ATOMIC_INIT(0)
     memset(macs, 0, sizeof(macs));
