@@ -256,12 +256,11 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
             const void* const pkt = SKB_MAC(skb);
             const uint h = cntl_host;
             const uint p = cntl_port;
-            // ASSERT: h < HOSTS_N
 
             if (h == HOST)
                 // MARCA ESTA INTERFACE COMO RECEBENDO
                 atomic_set((atomic_t*)skb->dev->rx_handler_data, 1U << 4);
-            elif (p < PORTS_N) {
+            elif (p < PORTS_N) { // ASSERT: h < HOSTS_N
                 atomic64_set(&macs [h][p], *(u64*)eth_src);
                   atomic_set(&seens[h][p], 1U << 4); // XLAN_ANNOUNCE_INTERVAL
             }
@@ -300,19 +299,21 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xlan) {
         ( (dst4_net & BE32(0xFFFFFF00U)) == BE32(NET4) ? dst4_host : GW ):
         (  dst6_net                      == BE64(NET6) ? dst6_host : GW );
 
+    const u64 now = jiffies;
+
     // SELECT A PATH
     // OK: TCP | UDP | UDPLITE | SCTP | DCCP
     // FAIL: ICMP
-    stream_s* const stream = &streams[rhost][__builtin_popcountll( (u64) ( v4
+    atomic64_t* const stream = &streams[rhost][__builtin_popcountll( (u64) ( v4
         ? proto4 * ports4 + addrs4
-        : proto6 * ports6 * flow6
+        : proto6 * ports6 * flow6 // TODO: AQUELES DEMAIS BITS DO FLOW
         + addrs6[0] + addrs6[1]
         + addrs6[2] + addrs6[3]
     ))];
 
-    uint now   = jiffies;
-    uint last  = stream->last;
-    uint ports = stream->ports;
+    u64 last  =  atomic64_read(stream);
+    uint ports = last & 0xFF; // 16x16 ports
+    last >>= 8;
 
     // FORCA A MUDANCA DA PORTA ATUAL SE O ULTIMO ENVIADO JA DEU TEMPO DE SER PROCESSADO
     ports += (now - last) >= HZ/5;
@@ -329,13 +330,12 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xlan) {
 
         if (phys && (phys->flags & IFF_UP) == IFF_UP && atomic_read((atomic_t*)phys->rx_handler_data)) { // IFF_RUNNING // IFF_LOWER_UP
 
-            stream->ports = ports;
-            stream->last  = now;
+            atomic64_set(stream, ((u64)now << 8) | ports);
 
             // INSERT ETHERNET HEADER
      *(u64*)eth_dst   = HOST_ADDR64(rhost, rport);
      *(u64*)eth_src   = PHYS_ADDR64(phys);
-            eth_proto = BE16(ETH_P_XLAN);
+            eth_proto = skb->protocol;
 
             // UPDATE SKB
             skb->data       = PTR(pkt);
