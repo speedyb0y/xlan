@@ -221,11 +221,11 @@ static void xlan_announce (struct timer_list* const timer) {
                     void* const pkt = SKB_DATA(skb);
 
                     // BROADCAST
-             *(u64*)eth_dst = 0xFFFFFFFFFFFFFFFFULL;
-             *(u64*)eth_src = PHYS_ADDR64(phys);
-                    eth_proto    = BE16(ETH_P_XLAN);
-                    cntl_host    = HOST;
-                    cntl_port    = p;
+             *(u64*)eth_dst   = 0xFFFFFFFFFFFFFFFFULL;
+             *(u64*)eth_src   = PHYS_ADDR64(phys);
+                    eth_proto = BE16(ETH_P_XLAN);
+                    cntl_host = HOST;
+                    cntl_port = p;
 
                     //
                     skb->transport_header = PTR(pkt) - SKB_HEAD(skb);
@@ -233,15 +233,15 @@ static void xlan_announce (struct timer_list* const timer) {
                     skb->mac_header       = PTR(pkt) - SKB_HEAD(skb);
                     skb->data             = PTR(pkt);
 #ifdef NET_SKBUFF_DATA_USES_OFFSET
-                    skb->tail             = PTR(pkt) + CNTL_TOTAL_SIZE - SKB_HEAD(skb);
+                    skb->tail             = PTR(pkt) + ETH_ZLEN - SKB_HEAD(skb);
 #else
-                    skb->tail             = PTR(pkt) + CNTL_TOTAL_SIZE;
+                    skb->tail             = PTR(pkt) + ETH_ZLEN;
 #endif
                     skb->mac_len          = ETH_HLEN;
-                    skb->len              = CNTL_TOTAL_SIZE;
+                    skb->len              = ETH_ZLEN;
                     skb->ip_summed        = CHECKSUM_NONE;
-                    skb->dev              = phys;
                     skb->protocol         = BE16(ETH_P_XLAN); // TODO: FIXME:
+                    skb->dev              = phys;
 
                     // SEND IT
                     dev_queue_xmit(skb);
