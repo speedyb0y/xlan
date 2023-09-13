@@ -335,24 +335,16 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xlan) {
             last >>= 24;
 
             if (bucks == 0) {
-                if (c >= PORTS_N*PORTS_N) {
-                    // SE CHEGAMOS AO SEGUNDO ROUND, É PORQUE ELE ESTA ZERADO
-                    // SE ESTA CHEIO E NAO TEM OUTRO JEITO, LIBERA UM PEQUENO BURST
+                if (c >= PORTS_N*PORTS_N)
+                    // SE CHEGAMOS AO SEGUNDO ROUND, É PORQUE ELE ESTA ZERADO, E NAO TEM OUTRO JEITO
+                    // LIBERA UM PEQUENO BURST
                     bucks = BUCKETS_BURST;
-                    printk("XLAN: OUT: BURSTING! LPORT %u RHOST %u RPORT %u BUCKS %u\n",
-                        lport, rhost, rport, bucks);
-                } elif (now >= last) {
-                    const uint elapsed =
-                        now >= last ?
-                        now -  last : HZ;
-                        bucks += (elapsed * BUCKETS_PER_SECOND)/HZ;
+                else { // SE DER OVERFLOW NO JIFFIES NAO TEM TANTO IMPACTO
+                    bucks = now - last;
+                    bucks *= BUCKETS_PER_SECOND;
+                    bucks /= HZ;
                     if (bucks > BUCKETS_PER_SECOND)
                         bucks = BUCKETS_PER_SECOND;
-                    printk("XLAN: OUT: BUCKET! LPORT %u RHOST %u RPORT %u BUCKS %u ELAPSED %u\n",
-                        lport, rhost, rport, bucks, elapsed);
-                } else { // SE DEU OVERFLOW NO JIFFIES CONSIDERA COMO 1 SEGUNDO
-                    printk("XLAN: OUT: BUCKET TIME OVERFLOW\n");
-                    bucks = BUCKETS_PER_SECOND;
                 }
             }
 
