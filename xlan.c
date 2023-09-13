@@ -363,14 +363,14 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
     if (h->counter >= rid) {
         if (h->boot == rboot)
             // PACOTE COM INFORMACOES DESATUALIZADAS
-            goto drop; 
+            goto drop;
         h->boot    = rboot;
     }   h->counter = rid;
-    
+
     foreach (p, PORTS_N) {
         if (rmask & 1U) {
-		    // REGISTRA O MAC DESTA PORTA DELE
-		    memcpy(h->macs[p], cntl_macs[p], ETH_ALEN);
+            // REGISTRA O MAC DESTA PORTA DELE
+            memcpy(h->macs[p], cntl_macs[p], ETH_ALEN);
             // REPORTA ELA COMO VISTA
             set_bit(p, &seens[rhost]);
         } rmask >>= 1;
