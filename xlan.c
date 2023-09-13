@@ -39,10 +39,6 @@ typedef struct notifier_block notifier_block_s;
 // TODO: FIXME:
 typedef typeof(jiffies) jiffies_t;
 
-//BUILD_BUG_ON( sizeof(BITWORD_t)*8 == PORTS_N )
-// ARGUMENTO DA FUNCAO test_and_clear_bit
-typedef unsigned long BITWORD_t;
-
 #define SKB_HEAD(skb) PTR((skb)->head)
 #define SKB_DATA(skb) PTR((skb)->data)
 #define SKB_TAIL(skb) PTR(skb_tail_pointer(skb))
@@ -196,7 +192,6 @@ static stream_s streams[HOSTS_N][64]; // POPCOUNT64()
 static void xlan_keeper (struct timer_list*);
 static DEFINE_TIMER(doTimer, xlan_keeper);
 
-
 static inline bool xlan_is_up (void) {
 
     return xlan->operstate == IF_OPER_UP // netif_oper_up()
@@ -219,7 +214,7 @@ static void xlan_keeper (struct timer_list* const timer) {
                 atomic_set ((atomic_t*)phys->rx_handler_data,
                 atomic_read((atomic_t*)phys->rx_handler_data) >> 1);
 
-                sk_buff_s* const skb = alloc_skb(64 + CNTL_TOTAL_SIZE, GFP_ATOMIC);
+                sk_buff_s* const skb = alloc_skb(128, GFP_ATOMIC);
 
                 if (skb) {
 
