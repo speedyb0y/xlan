@@ -194,8 +194,7 @@ static void xlan_announce (struct timer_list* const timer) {
 
             if (phys && phys->flags & IFF_UP) {
 
-                atomic_set ((atomic_t*)phys->rx_handler_data,
-                atomic_read((atomic_t*)phys->rx_handler_data) >> 1);
+                atomic_dec((atomic_t*)phys->rx_handler_data);
 
                 sk_buff_s* const skb = alloc_skb(128, GFP_ATOMIC);
 
@@ -231,11 +230,11 @@ static void xlan_announce (struct timer_list* const timer) {
                 }
             }
         }
-    }
 
-    // REINSTALL TIMER
-    doTimer.expires = now + XLAN_ANNOUNCE_INTERVAL;
-    add_timer(&doTimer);
+        // REINSTALL TIMER
+        doTimer.expires = now + XLAN_ANNOUNCE_INTERVAL;
+        add_timer(&doTimer);
+    }
 }
 
 static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
@@ -362,9 +361,10 @@ drop:
 
 static int __f_cold xlan_down (net_device_s* const xlan) {
 
-    printk("XLAN: %s DOWN\n", xlan->name);
+    // CANCEL TIMER
+    del_timer_sync(&doTimer);
 
-    // TODO: DON'T EXECUTE TIMER
+    printk("XLAN: %s DOWN\n", xlan->name);
 
     return 0;
 }
@@ -373,7 +373,9 @@ static int __f_cold xlan_up (net_device_s* const xlan) {
 
     printk("XLAN: %s UP\n", xlan->name);
 
-    // TODO: REARM TIMER
+    // ACTIVATE TIMER
+    doTimer.expires = jiffies + XLAN_ANNOUNCE_DELAY;
+    add_timer(&doTimer);
 
     return 0;
 }
@@ -497,10 +499,6 @@ static int __init xlan_init (void) {
 
     //
     register_netdev(xlan);
-
-    // INSTALL TIMER
-    doTimer.expires = jiffies + XLAN_ANNOUNCE_DELAY;
-    add_timer(&doTimer);
 
     return 0;
 }
