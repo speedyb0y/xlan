@@ -354,7 +354,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xlan) {
             }
 
             //
-            if (bucks >= 1000 || c >= PORTS_N*PORTS_N) {
+            if (bucks >= 1000 || (bucks && c >= PORTS_N*PORTS_N)) {
                 atomic64_set(&buckets[lport], ((u64)last << 24) | (bucks - 1));
                 stream->ports = ports;
 
