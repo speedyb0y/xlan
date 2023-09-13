@@ -27,9 +27,6 @@ typedef __u16 u16;
 typedef __u32 u32;
 typedef __u64 u64;
 
-typedef atomic_t   a32;
-typedef atomic64_t a64;
-
 typedef unsigned int uint;
 typedef unsigned long long int uintll;
 
@@ -41,6 +38,10 @@ typedef struct notifier_block notifier_block_s;
 
 // TODO: FIXME:
 typedef typeof(jiffies) jiffies_t;
+
+//BUILD_BUG_ON( sizeof(BITWORD_t)*8 == PORTS_N )
+// ARGUMENTO DA FUNCAO test_and_clear_bit
+typedef unsigned long BITWORD_t;
 
 #define clear(obj) memset((obj), 0, sizeof(*(obj)))
 
@@ -75,7 +76,6 @@ typedef typeof(jiffies) jiffies_t;
 #define HOSTS_N 256 // MULTIPLE OF U64
 #define PORTS_N 32 // atomic_t
 
-#define VENDOR             XCONF_XLAN_VENDOR
 #define _NET4              XCONF_XLAN_NET4
 #define _NET6              XCONF_XLAN_NET6
 #define HOST               XCONF_XLAN_HOST
@@ -85,10 +85,6 @@ typedef typeof(jiffies) jiffies_t;
 
 #define XLAN_TIMER_DELAY    (XCONF_XLAN_TIMER_DELAY*HZ) // AFTER SYSTEM BOOT
 #define XLAN_TIMER_INTERVAL (XCONF_XLAN_TIMER_INTERVAL*HZ)
-
-#if !(VENDOR && VENDOR <= 0xFFFFFFFF && !(VENDOR & 0x01000000))
-#error "BAD VENDOR"
-#endif
 
 #if !(_NET4 && !(_NET4 % HOSTS_N))
 #error "BAD NET4"
@@ -124,10 +120,9 @@ typedef typeof(jiffies) jiffies_t;
 
 #define CNTL_TOTAL_SIZE (ETH_SIZE + CNTL_SIZE_)
 
-#define CNTL_O_BOOT     0
-#define CNTL_O_ID       8
-#define CNTL_O_MASK    16
-#define CNTL_SIZE_     64 // YOU MOSTLY WON'T USE IT
+#define CNTL_O_HOST  0
+#define CNTL_O_PORT  1
+#define CNTL_SIZE_   2 // YOU MOSTLY WON'T USE IT
 
 #define IP4_O_VERSION  0
 #define IP4_O_PROTO    9
@@ -151,25 +146,16 @@ typedef typeof(jiffies) jiffies_t;
 #define IP6_SIZE      40
 
 #define NET4 ((u32)_NET4)
-#define NET6 ((u64)_NET6)
+#define NET6 ((u64)_NET6) // TODO: U64 SUFFIX?
 
 #define ETH_P_XLAN 0x2562
 
-#define MAC_VENDOR(mac) ((u32*)mac)[0]
-#define MAC_HOST(mac)    ((u8*)mac)[4]
-#define MAC_PORT(mac)    ((u8*)mac)[5]
-
-#define dst_vendor  (*(u32*)(pkt + ETH_O_DST_V))
-#define dst_host    (*(u8 *)(pkt + ETH_O_DST_H))
-#define dst_port    (*(u8 *)(pkt + ETH_O_DST_P))
-#define src_vendor  (*(u32*)(pkt + ETH_O_SRC_V))
-#define src_host    (*(u8 *)(pkt + ETH_O_SRC_H))
-#define src_port    (*(u8 *)(pkt + ETH_O_SRC_P))
+#define eth_dst     (*(u8 *)(pkt + ETH_O_DST_V))
+#define eth_src     (*(u8 *)(pkt + ETH_O_SRC_V))
 #define eth_proto   (*(u16*)(pkt + ETH_O_PROTO))
 
-#define cntl_boot    (*(u64*)(pkt + ETH_SIZE + CNTL_O_BOOT))
-#define cntl_id      (*(u64*)(pkt + ETH_SIZE + CNTL_O_ID))
-#define cntl_mask    (*(u32*)(pkt + ETH_SIZE + CNTL_O_MASK))
+#define cntl_host   (*(u8 *)(pkt + ETH_SIZE))
+#define cntl_port   (*(u8 *)(pkt + ETH_SIZE + 1))
 
 #define version4    (*(u8 *)(pkt + ETH_SIZE + IP4_O_VERSION))
 #define proto4      (*(u8 *)(pkt + ETH_SIZE + IP4_O_PROTO))
@@ -189,12 +175,6 @@ typedef typeof(jiffies) jiffies_t;
 #define dst6_host   (*(u8 *)(pkt + ETH_SIZE + IP6_O_DST_H))
 #define ports6      (*(u32*)(pkt + ETH_SIZE + IP6_SIZE))
 
-// TODO: THOSE MUST BE ATOMIC; AND BOOT AFTER BOOT
-typedef struct host_s {
-    a64 counter; // CONTROL PACKET COUNTER
-    u64 boot; // BOOT ID
-} host_s;
-
 typedef struct stream_s {
     u32 ports; // TODO: FIXME: ATOMIC
     u32 last;
@@ -205,95 +185,74 @@ typedef struct bucket_s {
     u32 last;
 } bucket_s;
 
-#define PHYS_PORT(phys) ((uint)(uintptr_t)(phys)->rx_handler_data)
-
-static void xlan_keeper (struct timer_list*);
-static DEFINE_TIMER(doTimer, xlan_keeper);
-
-// TODAS AS PORTAS DE TODOS OS HOSTS
-#define ALL_PORTS (HOSTS_N * PORTS_N)
-
+// TODO: THOSE MUST BE ATOMIC; AND BOOT AFTER BOOT
+static atomic64_t macs[HOSTS_N][PORTS_N];
+static atomic_t seens[HOSTS_N][PORTS_N]; // CADA BIT É UMA PORTA QUE FOI VISTA COMO RECEBENDO
+static stream_s streams[HOSTS_N][64]; // POPCOUNT64()
 static net_device_s* xlan;
 static net_device_s* physs[PORTS_N];
 static host_s hosts[HOSTS_N];
 static bucket_s buckets[PORTS_N];
-static stream_s streams[HOSTS_N][64]; // POPCOUNT64()
-static BITWORD_t seens[HOSTS_N]; // CADA BIT É UMA PORTA QUE FOI VISTA COMO RECEBENDO
-static u8 masks[HOSTS_N]; // CADA WORD É UM MASK, CADA BIT É UMA PORTA QUE ESTA RECEBENDO
-static u8 timeouts[HOSTS_N*PORTS_N]; // CADA WORD É UM NUMERO
-static uint keeperPort = 0;
 
-//BUILD_BUG_ON( sizeof(BITWORD_t)*8 == PORTS_N )
 
-// ARGUMENTO DA FUNCAO test_and_clear_bit
-typedef unsigned long BITWORD_t;
+static void xlan_keeper (struct timer_list*);
+static DEFINE_TIMER(doTimer, xlan_keeper);
+
+
+static inline bool xlan_is_up (void) {
+
+    return xlan->operstate == IF_OPER_UP // netif_oper_up()
+        || xlan->operstate == IF_OPER_UNKNOWN;
+}
 
 static void xlan_keeper (struct timer_list* const timer) {
 
     const jiffies_t now = jiffies;
 
-    // UPDATE THE MASKS OF THE PORTS THAT ARE RECEIVING
-    foreach (h, HOSTS_N) {
+    if (xlan_is_up()) {
 
-        uint mask = masks[h];
-
+        // SELECIONA UMA INTERFACE DA QUAL ENVIAR
         foreach (p, PORTS_N) {
-            if (test_and_clear_bit(p, &seens[h])) {
-                    mask |=   1U << p;
-                    timeouts[h][p] = 8;
-            } elif (timeouts[h][p])
-              if (--timeouts[h][p] == 0)
-                    mask &= ~(1U << p);
-        }
 
-        masks[h] = mask;
-    }
+            net_device_s* const phys = physs[p];
 
-    // SELECIONA UMA INTERFACE DA QUAL ENVIAR
-    foreach (c, PORTS_N) {
+            if (phys && phys->flags & IFF_UP) {
 
-        net_device_s* const phys = physs[keeperPort++ % PORTS_N];
+                atomic_set ((atomic_t*)phys->rx_handler_data,
+                atomic_read((atomic_t*)phys->rx_handler_data) >> 1);
 
-        if (phys && phys->flags & IFF_UP) {
+                sk_buff_s* const skb = alloc_skb(64 + CNTL_TOTAL_SIZE, GFP_ATOMIC);
 
-            sk_buff_s* const skb = alloc_skb(64 + CNTL_TOTAL_SIZE, GFP_ATOMIC);
+                if (skb) {
 
-            if (skb) {
+                    void* const pkt = SKB_DATA(skb);
 
-                void* const pkt = SKB_DATA(skb);
+                    // BROADCAST
+             *(u64*)eth_dst = 0xFFFFFFFFFFFFFFFFULL;
+             *(u64*)eth_src = *(u64*)(phys->dev_addr ?: "\x00\x00\x00\x00\x00\x00\x00\x00");
+                    eth_proto    = BE16(ETH_P_XLAN);
+                    cntl_host    = HOST;
+                    cntl_port    = p;
 
-                dst_mac[0]   = 0xFFFFU;
-                dst_mac[1]   = 0xFFFFU;
-                dst_mac[2]   = 0xFFFFU;
-                src_mac[0]   = ((u16*)dev->dev_addr)[0];
-                src_mac[1]   = ((u16*)dev->dev_addr)[1];
-                src_mac[2]   = ((u16*)dev->dev_addr)[2];
-                eth_proto    = BE16(ETH_P_XLAN);
-                cntl_boot    = BE64(hosts[HOST].boot);
-                cntl_id      = BE64(hosts[HOST].counter++);
-                cntl_host    = HOST;
-                cntl_mask    = masks[HOST];
-
-                // PREENCHE OS MACS
-                skb->transport_header = PTR(pkt) - SKB_HEAD(skb);
-                skb->network_header   = PTR(pkt) - SKB_HEAD(skb);
-                skb->mac_header       = PTR(pkt) - SKB_HEAD(skb);
-                skb->data             = PTR(pkt);
+                    //
+                    skb->transport_header = PTR(pkt) - SKB_HEAD(skb);
+                    skb->network_header   = PTR(pkt) - SKB_HEAD(skb);
+                    skb->mac_header       = PTR(pkt) - SKB_HEAD(skb);
+                    skb->data             = PTR(pkt);
 #ifdef NET_SKBUFF_DATA_USES_OFFSET
-                skb->tail             = PTR(pkt) + CNTL_TOTAL_SIZE - SKB_HEAD(skb);
+                    skb->tail             = PTR(pkt) + CNTL_TOTAL_SIZE - SKB_HEAD(skb);
 #else
-                skb->tail             = PTR(pkt) + CNTL_TOTAL_SIZE;
+                    skb->tail             = PTR(pkt) + CNTL_TOTAL_SIZE;
 #endif
-                skb->mac_len          = ETH_HLEN;
-                skb->len              = CNTL_TOTAL_SIZE;
-                skb->ip_summed        = CHECKSUM_NONE;
-                skb->dev              = phys;
-                skb->protocol         = BE16(ETH_P_XLAN); // TODO: FIXME:
+                    skb->mac_len          = ETH_HLEN;
+                    skb->len              = CNTL_TOTAL_SIZE;
+                    skb->ip_summed        = CHECKSUM_NONE;
+                    skb->dev              = phys;
+                    skb->protocol         = BE16(ETH_P_XLAN); // TODO: FIXME:
 
-                // SEND IT
-                dev_queue_xmit(skb);
-
-                break;
+                    // SEND IT
+                    dev_queue_xmit(skb);
+                }
             }
         }
     }
@@ -309,74 +268,36 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
 
     const void* const pkt = SKB_MAC(skb);
 
-    if (eth_proto == BE16(ETH_P_XLAN_DATA)) {
-        // NORMAL PACKET
-
-        if (xlan->operstate != IF_OPER_UP // netif_oper_up()
-         && xlan->operstate != IF_OPER_UNKNOWN)
-            // WE ARE NOT DOING
-            goto drop;
-
-        //
-        skb->dev = xlan;
-        skb->protocol = version4 == 0x45 ?
-            BE16(ETH_P_IP) :
-            BE16(ETH_P_IPV6);
-        return RX_HANDLER_ANOTHER;
-    }
-
-    if (eth_proto != BE16(ETH_P_XLAN_CONTROL)
-     || skb->len != CNTL_TOTAL_SIZE)
-        // NOT A XLAN PACKET - DON'T INTERCEPT IT
+    if (eth_proto != BE16(ETH_P_XLAN))
+        // NOT XLAN - DONT INTERCEPT
         return RX_HANDLER_PASS;
 
-    // CONTROL PACKET
-    const uint rhost = cntl_host;
-    const u64  rboot = cntl_boot;
-    const u64  rid   = cntl_id;
-          uint rmask = cntl_mask;
+    // INTERCEPT
+    if (skb->len != CNTL_TOTAL_SIZE) {
+        // NORMAL
 
-    // MARCA ESTA INTERFACE AQUI COMO RECEBENDO
-    if (rhost == HOST) {
-        bit_set(&seens[HOST], PHYS_PORT(skb->dev));
-        goto drop;
+        if (xlan_is_up()) {
+            // RECEIVING
+            skb->dev = xlan;
+            skb->protocol = version4 == 0x45 ?
+                BE16(ETH_P_IP) :
+                BE16(ETH_P_IPV6);
+            return RX_HANDLER_ANOTHER;
+        }
+
+    } else {
+        // CONTROL
+        const uint h = cntl_host;
+        const uint p = cntl_port;
+
+        if (h < HOSTS_N && p < PORTS_N) {
+            atomic64_set(&macs [h][p], *(u64*)eth_src);
+              atomic_set(&seens[h][p], 1U << 4);
+            // MARCA ESTA INTERFACE COMO RECEBENDO
+            atomic_set((atomic_t*)skb->dev->rx_handler_data, 1U << 4);
+        }
     }
 
-    if (rhost >= HOSTS_N)
-        // INVALID
-        goto drop;
-
-    // VERIFY CHECKSUM
-    u64 checksum = 0;
-
-    foreach (w, CNTL_TOTAL_SIZE/sizeof(u64)) {
-        checksum += cntl_words[w];
-        checksum += checksum >> w;
-    }
-
-    if (checksum != cntl_checksum)
-        // CORRUPTED
-        goto drop;
-
-    host_s* const h = &hosts[rhost];
-
-    if (h->counter >= rid) {
-        if (h->boot == rboot)
-            // PACOTE COM INFORMACOES DESATUALIZADAS
-            goto drop;
-        h->boot    = rboot;
-    }   h->counter = rid;
-
-    foreach (p, PORTS_N) {
-        if (rmask & 1U) {
-            // REGISTRA O MAC DESTA PORTA DELE
-            memcpy(h->macs[p], cntl_macs[p], ETH_ALEN);
-            // REPORTA ELA COMO VISTA
-            set_bit(p, &seens[rhost]);
-        } rmask >>= 1;
-    }
-
-drop:
     kfree_skb(skb);
 
     return RX_HANDLER_CONSUMED;
@@ -432,15 +353,9 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xlan) {
                 // PARA QUE O SWITCH A DESCUBRA
                 // E PORQUE NOS TEMOS MAIS CONTROLE SE ESSA NOSSA PORTA ESTA EXAUSTA OU NAO
 
-// TODO: FIXME: NEM VERIFICAR ISSO
-ao atachar/unatachar primeiro remove o bit
-muda
-colocar/ou deixa sem
         net_device_s* const phys = physs[lport];
 
-        if (phys && (phys->flags & IFF_UP) == IFF_UP &&
-            eleesarecebendodaminhaporta[lport]
-          & eleestarecebendoNAportadele[rport]) { // IFF_RUNNING // IFF_LOWER_UP
+        if (phys && (phys->flags & IFF_UP) == IFF_UP && *(atomic_t*)phys->rx_handler_data) { // IFF_RUNNING // IFF_LOWER_UP
 
             bucket_s* const bucket = &buckets[lport];
 
@@ -475,14 +390,10 @@ colocar/ou deixa sem
                 stream->ports = ports;
                 stream->last  = now;
 
-                // FILL ETHERNET HEADER
-                dst_vendor = BE32(VENDOR);
-                dst_host   = rhost;
-                dst_port   = rport;
-                src_vendor = BE32(VENDOR);
-                src_host   = HOST;
-                src_port   = lport;
-                eth_proto  = skb->protocol;
+                // INSERT ETHERNET HEADER
+             *(u64*)eth_dst = atomic64_read(&macs[rhost][rport]);
+             *(u64*)eth_src = *(u64*)(phys->dev_addr ?: "\x00\x00\x00\x00\x00\x00\x00\x00");
+                    eth_proto    = BE16(ETH_P_XLAN);
 
                 // UPDATE SKB
                 skb->data       = PTR(pkt);
@@ -536,66 +447,42 @@ static int __f_cold xlan_up (net_device_s* const xlan) {
 
 static int __f_cold xlan_enslave (net_device_s* xlan, net_device_s* phys, struct netlink_ext_ack* extack) {
 
-    const u8* const mac = PTR(phys->dev_addr);
-
-    if (mac == NULL)
+    if (phys == xlan || phys->flags & IFF_LOOPBACK || phys->addr_len != ETH_ALEN)
+        //
         return -EINVAL;
 
-    const uint vendor = BE32(MAC_VENDOR(mac));
-    const uint host   =      MAC_HOST(mac);
-    const uint port   =      MAC_PORT(mac);
-
-    printk("XLAN: ENSLAVE PHYS %s: VENDOR 0x%04X HOST %u PORT %u MAC %02X:%02X:%02X:%02X:%02X:%02X\n",
-        phys->name, vendor, host, port,
-        mac[0], mac[1], mac[2],
-        mac[3], mac[4], mac[5]);
-
-    if (vendor != VENDOR)
-        printk("XLAN: WARNING: WRONG VENDOR\n");
-
-    if (host != HOST)
-        printk("XLAN: WARNING: WRONG HOST\n");
-
-    if (port >= PORTS_N) {
-        printk("XLAN: FAILED: BAD PORT\n");
-        return -EINVAL;
-    }
-
-    if (physs[port] == phys) {
-        printk("XLAN: FAILED: PHYS ALREADY ATTACHED AS THIS PORT\n");
-        return -EISCONN;
-    }
-
-    if (physs[port]) {
-        printk("XLAN: FAILED: OTHER PHYS ATTACHED AS THIS PORT\n");
-        return -EEXIST;
-    }
-
-    if (phys == xlan
-     || phys->flags & IFF_LOOPBACK
-     || phys->addr_len != ETH_ALEN) {
-        printk("XLAN: FAILED: BAD PHYS (ITSELF / LOOPBACK / NOT ETHERNET)\n");
-        return -EINVAL;
-    }
-
-    if (netdev_is_rx_handler_busy(phys)) {
-        printk("XLAN: FAILED: PHYS ALREADY HAS A HANDLER\n");
+    if (netdev_is_rx_handler_busy(phys))
+        //
         return -EBUSY;
+
+    foreach (p, PORTS_N) {
+
+        if (physs[p] == phys)
+            //
+            return -EEXIST;
+
+        if (phys[p] == NULL) {
+            // FREE PORT
+
+            if (netdev_rx_handler_register(phys, xlan_in, &seens[HOST][p]) != 0) {
+                printk("XLAN: FAILED TO ATTACH HANDLER ON PHYS %s\n", phys->name);
+                return -1;
+            }
+
+            // HOLD IT
+            dev_hold(phys);
+
+            // REGISTER IT
+            physs[p] = phys;
+
+            printk("XLAN: PORT %u: ATTACHED PHYS %s\n", p, phys->name);
+
+            return 0;
+        }
     }
 
-    if (netdev_rx_handler_register(phys, xlan_in, (uintpntr_t)p) != 0) {
-        printk("XLAN: FAILED: FAILED TO ATTACH HANDLER\n");
-        skb_free(skb);
-        return -1;
-    }
-
-    // HOLD IT
-    dev_hold(phys);
-
-    // REGISTER IT
-    physs[port] = phys;
-
-    return 0;
+   // ALL PORTS IN USE
+   return -ENOSPC;
 }
 
 static int __f_cold xlan_unslave (net_device_s* xlan, net_device_s* phys) {
@@ -605,14 +492,13 @@ static int __f_cold xlan_unslave (net_device_s* xlan, net_device_s* phys) {
             physs[p] = NULL; // UNREGISTER
             netdev_rx_handler_unregister(phys); // UNHOOK
             dev_put(phys); // DROP
-            printk("XLAN: DETACHED PHYS %s FROM PORT %u\n", phys->name, p);
+            printk("XLAN: PORT %u: DETACHED PHYS %s\n", p, phys->name);
             return 0;
         }
     }
 
-    printk("XLAN: CANNOT DETACH PHYS %s FROM ANY PORT\n", phys->name);
-
-    return -ENOTCONN;
+    //
+    return -ENOENT;
 }
 
 static const net_device_ops_s xlanDevOps = {
@@ -662,31 +548,14 @@ static int __init xlan_init (void) {
 
     // CREATE THE VIRTUAL INTERFACE
     // MAKE IT VISIBLE IN THE SYSTEM
-    printk("XLAN: INIT - VENDOR 0x%04x HOST %u 0x%02X GW %u 0x%02X NET4 0x%08X NET6 0x%016llX\n",
-        VENDOR, HOST, HOST, GW, GW, NET4, (unsigned long long int)NET6);
-
-    BUILD_BUG_ON(sizeof(atomic_t)  != sizeof(int));
-    BUILD_BUG_ON(sizeof(atomic_t)  != sizeof(u32));
-    BUILD_BUG_ON(sizeof(a32)       != sizeof(u32));
-    BUILD_BUG_ON(sizeof(BITWORD_t  != sizeof(a32));
-    BUILD_BUG_ON(sizeof(BITWORD_t) != sizeof(seens[0]));
-    BUILD_BUG_ON(sizeof(BITWORD_t) != sizeof(masks[0]));
+    printk("XLAN: INIT - HOST %u 0x%02X GW %u 0x%02X NET4 0x%08X NET6 0x%016llX\n",
+        HOST, HOST, GW, GW, NET4, (unsigned long long int)NET6);
 
     clear(physs);
     clear(streams);
     clear(buckets);
-    clear(seen);
-    clear(masks);
-    clear(hosts);
-
-    //
-    foreach (p, ALL_PORTS) {
-        seen [p] = ATOMIC_INIT(0);
-        masks[p] = ATOMIC_INIT(0);
-    }
-
-    // BOOT ID
-    hosts[HOST].boot = jiffies; // TODO: FIXME:
+    clear(seens); // NOTE: ATOMIC_INIT(0)
+    clear(macs);
 
     //
     if ((xlan = alloc_netdev(0, "xlan", NET_NAME_USER, xlan_setup)) == NULL) {
