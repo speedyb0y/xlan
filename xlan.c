@@ -352,7 +352,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xlan) {
 
         net_device_s* const phys = physs[lport];
 
-        if (phys && (phys->flags & IFF_UP) == IFF_UP && *(atomic_t*)phys->rx_handler_data) { // IFF_RUNNING // IFF_LOWER_UP
+        if (phys && (phys->flags & IFF_UP) == IFF_UP && atomic_read((atomic_t*)phys->rx_handler_data)) { // IFF_RUNNING // IFF_LOWER_UP
 
             bucket_s* const bucket = &buckets[lport];
 
