@@ -74,8 +74,6 @@ typedef typeof(jiffies) jiffies_t;
 #define _NET6              XCONF_XLAN_NET6
 #define HOST               XCONF_XLAN_HOST
 #define GW                 XCONF_XLAN_GW
-#define BUCKETS_PER_SECOND XCONF_XLAN_BUCKETS_PER_SECOND
-#define BUCKETS_BURST      XCONF_XLAN_BUCKETS_BURST
 
 #define XLAN_ANNOUNCE_DELAY    (XCONF_XLAN_ANNOUNCE_DELAY    * HZ) // AFTER SYSTEM BOOT
 #define XLAN_ANNOUNCE_INTERVAL (XCONF_XLAN_ANNOUNCE_INTERVAL * HZ)
@@ -175,7 +173,6 @@ typedef struct stream_s {
 
 static net_device_s* xlan;
 static net_device_s* physs[PORTS_N];
-static atomic64_t buckets[PORTS_N];
 static atomic64_t macs[HOSTS_N][PORTS_N];
 static atomic_t seens[HOSTS_N][PORTS_N]; // CADA WORD É UM COUNTDOWN (SHIFTED)
 static stream_s streams[HOSTS_N][64]; // POPCOUNT64()
@@ -495,7 +492,6 @@ static int __init xlan_init (void) {
 
     memset(physs, 0, sizeof(physs));
     memset(streams, 0, sizeof(streams));
-    memset(buckets, 0, sizeof(buckets));
     memset(seens, 0, sizeof(seens)); // NOTE: ATOMIC_INIT(0)
     memset(macs, 0, sizeof(macs));
 
