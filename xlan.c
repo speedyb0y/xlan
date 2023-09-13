@@ -234,7 +234,7 @@ static void xlan_announce (struct timer_list* const timer) {
     }
 
     // REINSTALL TIMER
-    doTimer.expires = now + XLAN_ANNOUNCE_INTERVAL*HZ;
+    doTimer.expires = now + XLAN_ANNOUNCE_INTERVAL;
     add_timer(&doTimer);
 }
 
