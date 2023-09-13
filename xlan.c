@@ -330,17 +330,16 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xlan) {
 
         if (phys && (phys->flags & IFF_UP) == IFF_UP && atomic_read((atomic_t*)phys->rx_handler_data)) { // IFF_RUNNING // IFF_LOWER_UP
 
-            const u64 bucket = atomic64_read(&buckets[lport]);
-
-            uint bucks = bucket & 0xFFFFFFFFU;
-            uint last = bucket >> 32;
+            u64 last  = atomic64_read(&buckets[lport]);
+            uint bucks = last & 0xFFFFFFU;            
+            last >>= 24;
 
             if (bucks == 0) {
                 if (c >= PORTS_N*PORTS_N) {
                     // SE CHEGAMOS AO SEGUNDO ROUND, É PORQUE ELE ESTA ZERADO
                     // SE ESTA CHEIO E NAO TEM OUTRO JEITO, LIBERA UM PEQUENO BURST
                     bucks = BUCKETS_BURST;
-                    printk("XLAN: OUT: BURSTING! LPORT %u RHOST %u RPORT %u BCAN %u\n",
+                    printk("XLAN: OUT: BURSTING! LPORT %u RHOST %u RPORT %u BUCKS %u\n",
                         lport, rhost, rport, bucks);
                 } elif (now >= last) {
                     const uint elapsed =
@@ -349,7 +348,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xlan) {
                         bucks += (elapsed * BUCKETS_PER_SECOND)/HZ;
                     if (bucks > BUCKETS_PER_SECOND)
                         bucks = BUCKETS_PER_SECOND;
-                    printk("XLAN: OUT: BUCKET! LPORT %u RHOST %u RPORT %u BCAN %u ELAPSED %u\n",
+                    printk("XLAN: OUT: BUCKET! LPORT %u RHOST %u RPORT %u BUCKS %u ELAPSED %u\n",
                         lport, rhost, rport, bucks, elapsed);
                 } else { // SE DEU OVERFLOW NO JIFFIES CONSIDERA COMO 1 SEGUNDO
                     printk("XLAN: OUT: BUCKET TIME OVERFLOW\n");
@@ -359,7 +358,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xlan) {
 
             //
             if (bucks) {
-                atomic64_set(&buckets[lport], ((u64)now << 32) | (bucks - 1));
+                atomic64_set(&buckets[lport], ((u64)now << 24) | (bucks - 1));
                 stream->ports = ports;
                 stream->last  = now;
 
