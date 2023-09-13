@@ -256,7 +256,7 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
         } elif (proto == BE16(ETH_P_IP)
              || proto == BE16(ETH_P_IPV6)) {
             // NORMAL
-            if (xlan_is_up()) {
+            if (xlan_is_up() && skbtype -> PACKET_HOST) {
                 // RECEIVING
                 skb->dev = xlan;
                 return RX_HANDLER_ANOTHER;
