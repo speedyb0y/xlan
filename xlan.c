@@ -461,7 +461,7 @@ static int __f_cold xlan_enslave (net_device_s* xlan, net_device_s* phys, struct
             //
             return -EEXIST;
 
-        if (phys[p] == NULL) {
+        if (physs[p] == NULL) {
             // FREE PORT
 
             if (netdev_rx_handler_register(phys, xlan_in, &seens[HOST][p]) != 0) {
