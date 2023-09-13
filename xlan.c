@@ -256,12 +256,14 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
             const void* const pkt = SKB_MAC(skb);
             const uint h = cntl_host;
             const uint p = cntl_port;
+            // ASSERT: h < HOSTS_N
 
-            if (h < HOSTS_N && p < PORTS_N) {
-                atomic64_set(&macs [h][p], *(u64*)eth_src);
-                  atomic_set(&seens[h][p], 1U << 4);
+            if (h == HOST)
                 // MARCA ESTA INTERFACE COMO RECEBENDO
                 atomic_set((atomic_t*)skb->dev->rx_handler_data, 1U << 4);
+            elif (p < PORTS_N) {
+                atomic64_set(&macs [h][p], *(u64*)eth_src);
+                  atomic_set(&seens[h][p], 1U << 4); // XLAN_ANNOUNCE_INTERVAL
             }
         } elif (proto == BE16(ETH_P_IP)
              || proto == BE16(ETH_P_IPV6)) {
@@ -315,7 +317,7 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xlan) {
     // FORCA A MUDANCA DA PORTA ATUAL SE O ULTIMO ENVIADO JA DEU TEMPO DE SER PROCESSADO
     ports += (now - last) >= HZ/5;
 
-    foreach (c, (PORTS_N * PORTS_N * 2)) {
+    foreach (c, (PORTS_N * PORTS_N)) {
         ports %= PORTS_N * PORTS_N;
 
         const uint rport = ports / PORTS_N;
@@ -358,9 +360,6 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xlan) {
     }
 
 drop:
-    printk("XLAN: OUT: DROP: PROTOCOL 0x%04X SIZE %d\n",
-        skb->len, BE16(skb->protocol));
-
     dev_kfree_skb(skb);
 
     return NETDEV_TX_OK;
