@@ -183,58 +183,53 @@ static inline bool xlan_is_up (void) {
 
 static void xlan_announce (struct timer_list* const timer) {
 
-    const jiffies_t now = jiffies;
+    foreach (p, PORTS_N) {
 
-    if (xlan_is_up()) {
+        net_device_s* const phys = physs[p];
 
-        // SELECIONA UMA INTERFACE DA QUAL ENVIAR
-        foreach (p, PORTS_N) {
+        if (phys && phys->flags & IFF_UP) {
 
-            net_device_s* const phys = physs[p];
+            atomic_dec((atomic_t*)phys->rx_handler_data);
 
-            if (phys && phys->flags & IFF_UP) {
+            sk_buff_s* const skb = alloc_skb(128, GFP_ATOMIC);
 
-                atomic_dec((atomic_t*)phys->rx_handler_data);
+            if (skb) {
 
-                sk_buff_s* const skb = alloc_skb(128, GFP_ATOMIC);
+                void* const pkt = SKB_DATA(skb);
 
-                if (skb) {
+                // BROADCAST
+            *(u64*)eth_dst   = 0xFFFFFFFFFFFFFFFFULL;
+            *(u64*)eth_src   = PHYS_ADDR64(phys);
+                eth_proto = BE16(ETH_P_XLAN);
+                cntl_host = HOST;
+                cntl_port = p;
 
-                    void* const pkt = SKB_DATA(skb);
-
-                    // BROADCAST
-             *(u64*)eth_dst   = 0xFFFFFFFFFFFFFFFFULL;
-             *(u64*)eth_src   = PHYS_ADDR64(phys);
-                    eth_proto = BE16(ETH_P_XLAN);
-                    cntl_host = HOST;
-                    cntl_port = p;
-
-                    //
-                    skb->transport_header = PTR(pkt) - SKB_HEAD(skb);
-                    skb->network_header   = PTR(pkt) - SKB_HEAD(skb);
-                    skb->mac_header       = PTR(pkt) - SKB_HEAD(skb);
-                    skb->data             = PTR(pkt);
+                //
+                skb->transport_header = PTR(pkt) - SKB_HEAD(skb);
+                skb->network_header   = PTR(pkt) - SKB_HEAD(skb);
+                skb->mac_header       = PTR(pkt) - SKB_HEAD(skb);
+                skb->data             = PTR(pkt);
 #ifdef NET_SKBUFF_DATA_USES_OFFSET
-                    skb->tail             = PTR(pkt) + ETH_ZLEN - SKB_HEAD(skb);
+                skb->tail             = PTR(pkt) + ETH_ZLEN - SKB_HEAD(skb);
 #else
-                    skb->tail             = PTR(pkt) + ETH_ZLEN;
+                skb->tail             = PTR(pkt) + ETH_ZLEN;
 #endif
-                    skb->mac_len          = ETH_HLEN;
-                    skb->len              = ETH_ZLEN;
-                    skb->ip_summed        = CHECKSUM_NONE;
-                    skb->protocol         = BE16(ETH_P_XLAN); // TODO: FIXME:
-                    skb->dev              = phys;
+                skb->mac_len          = ETH_HLEN;
+                skb->len              = ETH_ZLEN;
+                skb->ip_summed        = CHECKSUM_NONE;
+                skb->protocol         = BE16(ETH_P_XLAN); // TODO: FIXME:
+                skb->dev              = phys;
 
-                    // SEND IT
-                    dev_queue_xmit(skb);
-                }
+                // SEND IT
+                dev_queue_xmit(skb);
             }
         }
-
-        // REINSTALL TIMER
-        doTimer.expires = now + XLAN_ANNOUNCE_INTERVAL;
-        add_timer(&doTimer);
     }
+
+    // REINSTALL TIMER
+    doTimer.expires = jiffies + XLAN_ANNOUNCE_INTERVAL;
+    
+    add_timer(&doTimer);
 }
 
 static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
@@ -253,10 +248,10 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
 
             if (h == HOST)
                 // MARCA ESTA INTERFACE COMO RECEBENDO
-                atomic_set((atomic_t*)skb->dev->rx_handler_data, 1U << 4);
+                atomic_set((atomic_t*)skb->dev->rx_handler_data, 5);
             elif (p < PORTS_N) { // ASSERT: h < HOSTS_N
                 atomic64_set(&macs [h][p], *(u64*)eth_src);
-                  atomic_set(&seens[h][p], 1U << 4); // XLAN_ANNOUNCE_INTERVAL
+                  atomic_set(&seens[h][p], 5);
             }
         } elif (proto == BE16(ETH_P_IP)
              || proto == BE16(ETH_P_IPV6)) {
@@ -320,8 +315,8 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xlan) {
                 // PARA QUE O SWITCH A DESCUBRA
                 // E PORQUE NOS TEMOS MAIS CONTROLE SE ESSA NOSSA PORTA ESTA EXAUSTA OU NAO
 
-        if (atomic_read(&seens[HOST][lport])
-         && atomic_read(&seens[rhost][rport]) {
+        if (0 < atomic_read(&seens[HOST][lport])
+         && 0 < atomic_read(&seens[rhost][rport]) {
 
             net_device_s* const phys = physs[lport];
 
@@ -352,6 +347,8 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xlan) {
 
                 return NETDEV_TX_OK;
             }
+
+            atomic_set(&seens[HOST][lport], 0);
         }
 
         ports++;
