@@ -320,34 +320,38 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xlan) {
                 // PARA QUE O SWITCH A DESCUBRA
                 // E PORQUE NOS TEMOS MAIS CONTROLE SE ESSA NOSSA PORTA ESTA EXAUSTA OU NAO
 
-        net_device_s* const phys = physs[lport];
+        if (atomic_read(&seens[HOST][lport])
+         && atomic_read(&seens[rhost][rport]) {
 
-        if (phys && (phys->flags & IFF_UP) == IFF_UP && atomic_read((atomic_t*)phys->rx_handler_data)) { // IFF_RUNNING // IFF_LOWER_UP
+            net_device_s* const phys = physs[lport];
 
-            atomic64_set(stream, ((u64)now << 8) | ports);
+            if (phys && (phys->flags & IFF_UP) == IFF_UP) { // IFF_RUNNING // IFF_LOWER_UP
 
-            // INSERT ETHERNET HEADER
-     *(u64*)eth_dst   = HOST_ADDR64(rhost, rport);
-     *(u64*)eth_src   = PHYS_ADDR64(phys);
-            eth_proto = skb->protocol;
+                atomic64_set(stream, ((u64)now << 8) | ports);
 
-            // UPDATE SKB
-            skb->data       = PTR(pkt);
+                // INSERT ETHERNET HEADER
+        *(u64*)eth_dst   = HOST_ADDR64(rhost, rport);
+        *(u64*)eth_src   = PHYS_ADDR64(phys);
+                eth_proto = skb->protocol;
+
+                // UPDATE SKB
+                skb->data       = PTR(pkt);
 #ifdef NET_SKBUFF_DATA_USES_OFFSET
-            skb->mac_header = PTR(pkt) - SKB_HEAD(skb);
+                skb->mac_header = PTR(pkt) - SKB_HEAD(skb);
 #else
-            skb->mac_header = PTR(pkt);
+                skb->mac_header = PTR(pkt);
 #endif
-            skb->len        = SKB_TAIL(skb) - PTR(pkt);
-            skb->mac_len    = ETH_HLEN;
-            skb->dev        = phys;
+                skb->len        = SKB_TAIL(skb) - PTR(pkt);
+                skb->mac_len    = ETH_HLEN;
+                skb->dev        = phys;
 
-            // -- THE FUNCTION CAN BE CALLED FROM AN INTERRUPT
-            // -- WHEN CALLING THIS METHOD, INTERRUPTS MUST BE ENABLED
-            // -- REGARDLESS OF THE RETURN VALUE, THE SKB IS CONSUMED
-            dev_queue_xmit(skb);
+                // -- THE FUNCTION CAN BE CALLED FROM AN INTERRUPT
+                // -- WHEN CALLING THIS METHOD, INTERRUPTS MUST BE ENABLED
+                // -- REGARDLESS OF THE RETURN VALUE, THE SKB IS CONSUMED
+                dev_queue_xmit(skb);
 
-            return NETDEV_TX_OK;
+                return NETDEV_TX_OK;
+            }
         }
 
         ports++;
@@ -428,10 +432,10 @@ static int __f_cold xlan_unslave (net_device_s* xlan, net_device_s* phys) {
     foreach (p, PORTS_N) {
         if (physs[p] == phys) {
             physs[p] = NULL; // UNREGISTER
-            atomic_set(&seens[HOST][p], 0);
+            netdev_rx_handler_unregister(phys); // UNHOOK
 	        phys->dev->flags ^= IFF_SLAVE;
             netdev_upper_dev_unlink(phys, xlan);
-            netdev_rx_handler_unregister(phys); // UNHOOK
+            atomic_set(&seens[HOST][p], 0);
             dev_put(phys); // DROP
             printk("XLAN: PORT %u: DETACHED PHYS %s\n", p, phys->name);
             return 0;
@@ -468,6 +472,7 @@ static void __f_cold xlan_setup (net_device_s* const dev) {
     dev->mtu             = ETH_DATA_LEN;
     dev->tx_queue_len    = 0; // DEFAULT_TX_QUEUE_LEN
     dev->flags           = IFF_POINTOPOINT
+                         | IFF_MASTER
                          | IFF_NOARP; // IFF_BROADCAST | IFF_MULTICAST
     dev->priv_flags      = IFF_NO_QUEUE
                          | IFF_NO_RX_HANDLER
