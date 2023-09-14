@@ -326,8 +326,8 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xlan) {
                 atomic64_set(stream, ((u64)now << 8) | ports);
 
                 // INSERT ETHERNET HEADER
-        *(u64*)eth_dst   = HOST_ADDR64(rhost, rport);
-        *(u64*)eth_src   = PHYS_ADDR64(phys);
+         *(u64*)eth_dst   = HOST_ADDR64(rhost, rport);
+         *(u64*)eth_src   = PHYS_ADDR64(phys);
                 eth_proto = skb->protocol;
 
                 // UPDATE SKB
@@ -344,7 +344,9 @@ static netdev_tx_t xlan_out (sk_buff_s* const skb, net_device_s* const xlan) {
                 // -- THE FUNCTION CAN BE CALLED FROM AN INTERRUPT
                 // -- WHEN CALLING THIS METHOD, INTERRUPTS MUST BE ENABLED
                 // -- REGARDLESS OF THE RETURN VALUE, THE SKB IS CONSUMED
-                dev_queue_xmit(skb);
+                if (dev_queue_xmit(skb) < 0)
+                    //
+                    atomic_set(&seens[HOST][lport], 0);
 
                 return NETDEV_TX_OK;
             }
