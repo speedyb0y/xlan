@@ -247,10 +247,10 @@ static rx_handler_result_t xlan_in (sk_buff_s** const pskb) {
             const uint h = cntl_host;
             const uint p = cntl_port;
 
-            if (h == HOST)
-                // MARCA ESTA INTERFACE COMO RECEBENDO
-                atomic_set((atomic_t*)skb->dev->rx_handler_data, ANNOUNCE_ROUNDS);
-            elif (p < PORTS_N) { // ASSERT: h < HOSTS_N
+            // MARCA ESTA INTERFACE COMO RECEBENDO
+            atomic_set((atomic_t*)skb->dev->rx_handler_data, ANNOUNCE_ROUNDS);
+
+            if (p < PORTS_N) { // ASSERT: h < HOSTS_N
                 atomic64_set(&macs [h][p], *(u64*)eth_src);
                   atomic_set(&seens[h][p], ANNOUNCE_ROUNDS);
             }
