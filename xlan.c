@@ -199,7 +199,7 @@ static void xlan_announce (struct timer_list* const timer) {
                 void* const pkt = SKB_DATA(skb);
 
                 // BROADCAST
-         *(u64*)eth_dst   = 0xFFFFFFFFFFFFFFFFULL;
+                memset(pkt, 0xFF, 64); // ETH_ZLEN
          *(u64*)eth_src   = PHYS_ADDR64(phys);
                 eth_proto = BE16(ETH_P_XLAN);
                 cntl_host = HOST;
@@ -211,12 +211,12 @@ static void xlan_announce (struct timer_list* const timer) {
                 skb->mac_header       = PTR(pkt) - SKB_HEAD(skb);
                 skb->data             = PTR(pkt);
 #ifdef NET_SKBUFF_DATA_USES_OFFSET
-                skb->tail             = PTR(pkt) + ETH_ZLEN - SKB_HEAD(skb);
+                skb->tail             = PTR(pkt) + 64 - SKB_HEAD(skb);
 #else
-                skb->tail             = PTR(pkt) + ETH_ZLEN;
+                skb->tail             = PTR(pkt) + 64;
 #endif
                 skb->mac_len          = ETH_HLEN;
-                skb->len              = ETH_ZLEN;
+                skb->len              = 64;
                 skb->ip_summed        = CHECKSUM_NONE;
                 skb->protocol         = BE16(ETH_P_XLAN); // TODO: FIXME:
                 skb->dev              = phys;
