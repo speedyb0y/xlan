@@ -379,7 +379,7 @@ static int __f_cold xlan_up (net_device_s* const xlan) {
     printk("XLAN: %s UP\n", xlan->name);
 
     // ACTIVATE TIMER
-    mod_timer(&doTimer, jiffies + ANNOUNCE_DELAY);
+    mod_timer(&doTimer, jiffies + 1*HZ); // ANNOUNCE_DELAY
 
     return 0;
 }
@@ -511,6 +511,10 @@ static int __init xlan_init (void) {
 
     //
     register_netdev(xlan);
+
+    //
+	doTimer.expires = jiffies + ANNOUNCE_DELAY;
+    add_timer(&doTimer);
 
     return 0;
 }
